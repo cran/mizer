@@ -1,19 +1,19 @@
 ### R code from vignette source 'mizer_vignette.Rnw'
 
 ###################################################
-### code chunk number 1: mizer_vignette.Rnw:115-116
+### code chunk number 1: mizer_vignette.Rnw:116-117
 ###################################################
 rm(list=ls())
 
 
 ###################################################
-### code chunk number 2: mizer_vignette.Rnw:149-150 (eval = FALSE)
+### code chunk number 2: mizer_vignette.Rnw:150-151 (eval = FALSE)
 ###################################################
 ## install.packages("mizer")
 
 
 ###################################################
-### code chunk number 3: mizer_vignette.Rnw:154-155
+### code chunk number 3: mizer_vignette.Rnw:155-156
 ###################################################
 library(mizer)
 
@@ -282,7 +282,7 @@ dim(sim0@n)
 
 
 ###################################################
-### code chunk number 46: mizer_vignette.Rnw:834-836
+### code chunk number 46: mizer_vignette.Rnw:837-839
 ###################################################
 total_abund0 <- apply(sim0@n[76,,],2,sum)
 total_abund1 <- apply(sim1@n[76,,],2,sum)
@@ -304,12 +304,12 @@ relative_abundance <- total_abund1 / total_abund0
 
 
 ###################################################
-### code chunk number 49: show_plot_relative_comm_abund (eval = FALSE)
+### code chunk number 49: show_plot_relative_comm_abund
 ###################################################
-## plot(x=sim0@params@w, y=relative_abundance, log="xy", type="n", xlab = "Size (g)",
-##     ylab="Relative abundance", ylim = c(0.1,10))
-## lines(x=sim0@params@w, y=relative_abundance)
-## lines(x=c(min(sim0@params@w),max(sim0@params@w)), y=c(1,1),lty=2)
+plot(x=sim0@params@w, y=relative_abundance, log="xy", type="n", xlab = "Size (g)",
+    ylab="Relative abundance", ylim = c(0.1,10))
+lines(x=sim0@params@w, y=relative_abundance)
+lines(x=c(min(sim0@params@w),max(sim0@params@w)), y=c(1,1),lty=2)
 
 
 ###################################################
@@ -431,16 +431,16 @@ relative_abundance <- total_abund1 / total_abund0
 
 
 ###################################################
-### code chunk number 66: show_plot_relative_comm_abund_industrial (eval = FALSE)
+### code chunk number 66: show_plot_relative_comm_abund_industrial
 ###################################################
-## plot(x=sim0@params@w, y=relative_abundance, log="xy", type="n", xlab = "Size (g)",
-##     ylab="Relative abundance", ylim = c(0.1,10))
-## lines(x=sim0@params@w, y=relative_abundance)
-## lines(x=c(min(sim0@params@w),max(sim0@params@w)), y=c(1,1),lty=2)
+plot(x=sim0@params@w, y=relative_abundance, log="xy", type="n", xlab = "Size (g)",
+    ylab="Relative abundance", ylim = c(0.1,10))
+lines(x=sim0@params@w, y=relative_abundance)
+lines(x=c(min(sim0@params@w),max(sim0@params@w)), y=c(1,1),lty=2)
 
 
 ###################################################
-### code chunk number 67: mizer_vignette.Rnw:1219-1220 (eval = FALSE)
+### code chunk number 67: mizer_vignette.Rnw:1222-1223 (eval = FALSE)
 ###################################################
 ## ?knife_edge
 
@@ -458,13 +458,13 @@ relative_abundance <- total_abund1 / total_abund0
 
 
 ###################################################
-### code chunk number 70: mizer_vignette.Rnw:1351-1352
+### code chunk number 70: mizer_vignette.Rnw:1354-1355
 ###################################################
 params_data <- read.csv("NS_species_params.csv")
 
 
 ###################################################
-### code chunk number 71: mizer_vignette.Rnw:1358-1359
+### code chunk number 71: mizer_vignette.Rnw:1361-1362
 ###################################################
 class(params_data)
 
@@ -507,13 +507,13 @@ summary(params)
 
 
 ###################################################
-### code chunk number 78: mizer_vignette.Rnw:1427-1428 (eval = FALSE)
+### code chunk number 78: mizer_vignette.Rnw:1430-1431 (eval = FALSE)
 ###################################################
 ## system.file("doc/inter.csv",package="mizer")
 
 
 ###################################################
-### code chunk number 79: mizer_vignette.Rnw:1433-1434
+### code chunk number 79: mizer_vignette.Rnw:1436-1437
 ###################################################
 inter <- read.csv("inter.csv", row.names=1)
 
@@ -525,13 +525,13 @@ inter <- as(inter, "matrix")
 
 
 ###################################################
-### code chunk number 81: mizer_vignette.Rnw:1448-1449
+### code chunk number 81: mizer_vignette.Rnw:1451-1452
 ###################################################
 params <- MizerParams(params_data, interaction = inter)
 
 
 ###################################################
-### code chunk number 82: mizer_vignette.Rnw:1469-1474
+### code chunk number 82: mizer_vignette.Rnw:1472-1477
 ###################################################
 params_data_gears <- params_data
 params_data_gears$gear <- c("Industrial","Industrial","Industrial",
@@ -619,7 +619,8 @@ plotFMort(sim)
 ###################################################
 gear_names <- c("Industrial","Pelagic","Beam","Otter")
 times <- seq(from = 1, to = 10, by = 1)
-effort_array <- array(NA, dim = c(length(times), length(gear_names)), dimnames = list(time = times, gear = gear_names))
+effort_array <- array(NA, dim = c(length(times), length(gear_names)),
+    dimnames = list(time = times, gear = gear_names))
 
 
 ###################################################
@@ -657,7 +658,7 @@ dim(sim@n)
 
 
 ###################################################
-### code chunk number 101: mizer_vignette.Rnw:1768-1769
+### code chunk number 101: mizer_vignette.Rnw:1772-1773
 ###################################################
 sim@n[,"Cod",]
 
@@ -871,13 +872,13 @@ slope <- getCommunitySlope(sim, species = demersal_species,
 ##     data.frame(year = years, measure = "Slope", data = slope))
 ## # Unexploited data
 ## community_unfished_data <- rbind(
-##     data.frame(year = years, measure = "LFI", data = lfi0),
-##     data.frame(year = years, measure = "Mean Weight", data = mw0),
-##     data.frame(year = years, measure = "Mean Max Weight", data = mmw0),
-##     data.frame(year = years, measure = "Slope", data = slope0))
+##     data.frame(year = years, measure = "LFI", data = lfi0[[1]]),
+##     data.frame(year = years, measure = "Mean Weight", data = mw0[[1]]),
+##     data.frame(year = years, measure = "Mean Max Weight", data = mmw0[[1]]),
+##     data.frame(year = years, measure = "Slope", data = slope0[[1]]))
 ## # Reference level
 ## community_reference_level <-
-##     data.frame(year=years, measure = "LFI", data = lfi0 * 0.8)
+##     data.frame(year=years, measure = "LFI", data = lfi0[[1]] * 0.8)
 ## # Build up the plot
 ## p <- ggplot(community_plot_data) + geom_line(aes(x=year, y = data)) +
 ##     facet_wrap(~measure, scales="free")
@@ -899,13 +900,13 @@ community_plot_data <- rbind(
     data.frame(year = years, measure = "Slope", data = slope))
 # Unexploited data
 community_unfished_data <- rbind(
-    data.frame(year = years, measure = "LFI", data = lfi0),
-    data.frame(year = years, measure = "Mean Weight", data = mw0),
-    data.frame(year = years, measure = "Mean Max Weight", data = mmw0),
-    data.frame(year = years, measure = "Slope", data = slope0))
+    data.frame(year = years, measure = "LFI", data = lfi0[[1]]),
+    data.frame(year = years, measure = "Mean Weight", data = mw0[[1]]),
+    data.frame(year = years, measure = "Mean Max Weight", data = mmw0[[1]]),
+    data.frame(year = years, measure = "Slope", data = slope0[[1]]))
 # Reference level
 community_reference_level <-
-    data.frame(year=years, measure = "LFI", data = lfi0 * 0.8)
+    data.frame(year=years, measure = "LFI", data = lfi0[[1]] * 0.8)
 # Build up the plot
 p <- ggplot(community_plot_data) + geom_line(aes(x=year, y = data)) +
     facet_wrap(~measure, scales="free")

@@ -3,23 +3,18 @@
 \title{Sets up parameters for a community-type model}
 \usage{
   set_community_model(max_w = 1e+06, min_w = 0.001,
-    z0 = 0.1, recruitment = 4e+07, alpha = 0.2, h = 10,
-    beta = 100, sigma = 2, q = 0.8, n = 2/3, kappa = 1000,
-    lambda = 2 + q - n, f0 = 0.7, knife_edge_size = 1000,
-    knife_is_min = TRUE, ...)
+    z0 = 0.1, alpha = 0.2, h = 10, beta = 100, sigma = 2,
+    q = 0.8, n = 2/3, kappa = 1000, lambda = 2 + q - n,
+    f0 = 0.7, r_pp = 10, gamma = NA,
+    knife_edge_size = 1000, knife_is_min = TRUE,
+    recruitment = kappa * min_w^-lambda, rec_mult = 1, ...)
 }
 \arguments{
   \item{z0}{The background mortality of the community. The
   default value is 0.1.}
 
   \item{alpha}{The assimilation efficiency of the
-  community. The default value is 0.2 (from Andersen et.
-  al., 2009).}
-
-  \item{recruitment}{The constant recruitment in the
-  smallest size class of the community spectrum. This
-  should be set so that the community spectrum continues
-  the background spectrum.}
+  community. The default value is 0.2}
 
   \item{f0}{The average feeding level of individuals who
   feed mainly on the resource. This value is to used to
@@ -46,6 +41,21 @@
 
   \item{lambda}{The exponent of the background spectrum.
   The default value is 2 + q - n.}
+
+  \item{r_pp}{Growth rate of the primary productivity.
+  Default value is 10.}
+
+  \item{gamma}{Volumetric search rate. Estimated using
+  \code{h}, \code{f0} and \code{kappa} if not supplied.}
+
+  \item{recruitment}{The constant recruitment in the
+  smallest size class of the community spectrum. This
+  should be set so that the community spectrum continues
+  the background spectrum. The default value = \code{kappa}
+  * \code{min_w}^-\code{lambda}.}
+
+  \item{rec_mult}{Additional multiplier for the constant
+  recruitment. Default value is 1.}
 
   \item{knife_edge_size}{The size at the edge of the
   knife-selectivity function.}
