@@ -1,11 +1,12 @@
 # Class specification and constructors for the simulation class
 
-# Copyright 2012 Finlay Scott and Julia Blanchard. 
+# Copyright 2012 Finlay Scott and Julia Blanchard.
+# Copyright 2018 Gustav Delius and Richard Southwell.
+# Development has received funding from the European Commission's Horizon 2020 
+# Research and Innovation Programme under Grant Agreement No. 634495 
+# for the project MINOUW (http://minouw-project.eu/).
 # Distributed under the GPL 3 or later 
 # Maintainer: Gustav Delius, University of York, <gustav.delius@york.ac.uk>
-
-# Hackiness to get past the 'no visible binding ... ' warning when running check
- utils::globalVariables(c("lm"))
 
 # Validity check
 valid_MizerSim <- function(object){
@@ -25,17 +26,12 @@ valid_MizerSim <- function(object){
 	errors <- c(errors, msg)
     }
     # Check time dimension is good - size, dim name, and names
-    if(!all(c(dim(object@n)[1]-1,dim(object@n_pp)[1]-1) == dim(object@effort)[1])){
-	msg <- "First dimension of effort, n and n_pp slots must be the same length (n and n_pp are + 1 longer)"
+    if(!all(c(dim(object@n)[1],dim(object@n_pp)[1]) == dim(object@effort)[1])){
+	msg <- "First dimension of effort, n and n_pp slots must be the same length"
 	errors <- c(errors, msg)
     }
     if(!all(c(names(dimnames(object@n))[1], names(dimnames(object@n_pp))[1], names(dimnames(object@effort))[1]) == "time")){
 	msg <- "First dimension of effort, n and n_pp slots must be called 'time'"
-	errors <- c(errors, msg)
-    }
-    if(!all(c(names(dimnames(object@n))[1], names(dimnames(object@n_pp))[1]) == 
-	names(dimnames(object@effort))[1])){
-	msg <- "First dimension of effort, n and n_pp slots must have the same names"
 	errors <- c(errors, msg)
     }
     # species dimension of n
@@ -94,13 +90,13 @@ valid_MizerSim <- function(object){
 }
 
 # Soundtrack: Yob - Quantum Mystic
-
+#### Class definition ####
 #' MizerSim
 #' 
 #' A class that holds the results of projecting a \linkS4class{MizerParams}
 #' object through time.
 #' 
-#' \code{MizerSim} objects are created by using the \code{\link{project}} method
+#' \linkS4class{MizerSim} objects are created by using the \code{\link{project}} method
 #' on an object of type \code{MizerParams}.
 #' 
 #' There are several plotting methods available to explore the contents of a
@@ -143,8 +139,7 @@ setValidity("MizerSim", valid_MizerSim)
 remove(valid_MizerSim)
 
 
-# Constructors
-
+#### Constructors ####
 #' Constructor for the \code{MizerSim} class
 #' 
 #' A constructor for the \code{MizerSim} class. This is used by the
@@ -181,36 +176,33 @@ setMethod('MizerSim', signature(object='MizerParams'),
         # If the dimnames for the time dimension not passed in, calculate them
         # from t_max and t_save
         if (any(is.na(t_dimnames))){
-            if((t_max %% t_save) != 0)
-                stop("t_max must be divisible by t_save with no remainder")
-            t_dimnames <- seq(from = t_save, to = t_max, by = t_save)
+            t_dimnames <- seq(from = 0, to = t_max, by = t_save)
         }
-        if (is.character(t_dimnames)){
+        if (!is.numeric(t_dimnames)){
             stop("The t_dimnames argument must be numeric.")
+        }
+        if (is.unsorted(t_dimnames)) {
+            stop("The t_dimnames argument should be increasing.")
         }
         no_sp <- nrow(object@species_params)
         species_names <- dimnames(object@psi)$sp
         no_w <- length(object@w)
         w_names <- dimnames(object@psi)$w
-        t_dimnames_n <-
-            c(t_dimnames[1] - (t_dimnames[2] - t_dimnames[1]),t_dimnames) 
-            # N is 1 bigger because it holds the initial population
-        t_dim_n <- length(t_dimnames_n) 
-        t_dim_effort <- length(t_dimnames)
-        array_n <- array(NA, dim = c(t_dim_n, no_sp, no_w), 
-                         dimnames = list(time = t_dimnames_n, 
+        t_dim <- length(t_dimnames)
+        array_n <- array(NA, dim = c(t_dim, no_sp, no_w), 
+                         dimnames = list(time = t_dimnames, 
                                          sp = species_names, w = w_names))
 
         no_gears <- dim(object@selectivity)[1]
         gear_names <- dimnames(object@selectivity)$gear
-        array_effort <- array(NA, dim = c(t_dim_effort, no_gears), 
+        array_effort <- array(NA, dim = c(t_dim, no_gears), 
                               dimnames = list(time = t_dimnames, 
                                               gear = gear_names))
 
         no_w_full <- length(object@w_full)
         w_full_names <- names(object@rr_pp)
-        array_n_pp <- array(NA, dim = c(t_dim_n, no_w_full), 
-                            dimnames = list(time=t_dimnames_n, 
+        array_n_pp <- array(NA, dim = c(t_dim, no_w_full), 
+                            dimnames = list(time=t_dimnames, 
                                             w = w_full_names))
 
         sim <- new('MizerSim',
@@ -219,6 +211,6 @@ setMethod('MizerSim', signature(object='MizerParams'),
                n_pp = array_n_pp,
                params = object)
         return(sim)
-        }
+    }
 )
 

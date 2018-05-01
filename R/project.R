@@ -1,6 +1,10 @@
 # Project method for the size based modelling package mizer
 
-# Copyright 2012 Finlay Scott and Julia Blanchard. 
+# Copyright 2012 Finlay Scott and Julia Blanchard.
+# Copyright 2018 Gustav Delius and Richard Southwell.
+# Development has received funding from the European Commission's Horizon 2020 
+# Research and Innovation Programme under Grant Agreement No. 634495 
+# for the project MINOUW (http://minouw-project.eu/).
 # Distributed under the GPL 3 or later 
 # Maintainer: Gustav Delius, University of York, <gustav.delius@york.ac.uk>
 
@@ -11,6 +15,7 @@
 #' @importFrom Rcpp sourceCpp
 NULL
 
+#### project ####
 #' project method for the size based modelling
 #' 
 #' Runs the size-based model simulation and projects the size based model
@@ -20,7 +25,7 @@ NULL
 #' \linkS4class{MizerSim} which can then be explored with a range of summary and
 #' plotting methods.
 #' 
-#' @param object A \code{MizerParams} object
+#' @param object A \linkS4class{MizerParams} object
 #' @param effort The effort of each fishing gear through time. See notes below.
 #' @param t_max The maximum time the projection runs for. The default value is
 #'   100. However, this argument is not needed if an array is used for the
@@ -28,12 +33,16 @@ NULL
 #'   below.
 #' @param dt Time step of the solver. The default value is 0.1.
 #' @param t_save The frequency with which the output is stored. The default
-#'   value is 1.
-#' @param initial_n The initial populations of the species. See the notes below.
+#'   value is 1. Must be an integer multiple of dt.
+#' @param initial_n The initial populations of the species. By default the 
+#'   \code{initial_n} slot of the \linkS4class{MizerParams} argument is used.
+#'   See the notes below.
 #' @param initial_n_pp The initial population of the background spectrum. It
 #'   should be a numeric vector of the same length as the \code{w_full} slot of
-#'   the \code{MizerParams} argument. By default the \code{cc_pp} slot of the
-#'   \code{\link{MizerParams}} argument is used.
+#'   the \code{MizerParams} argument. By default the \code{initial_n_pp} slot of the
+#'   \linkS4class{MizerParams} argument is used.
+#' @param shiny_progress A shiny progress object used to update shiny progress bar.
+#'   Default NULL.
 #' @param ... Currently unused.
 #' 
 #' @note The \code{effort} argument specifies the level of fishing effort during
@@ -49,12 +58,17 @@ NULL
 #' fishing effort of each gear at each time step.  The first dimension, time,
 #' must be named numerically and contiguously. The second dimension of the array
 #' must be named and the names must correspond to the gear names in the
-#' \code{MizerParams} argument. }
+#' \code{MizerParams} argument. The value for the effort for a particular time
+#' is used during the interval from that time to the next time in the array.}
 #' 
-#' If effort is specified as an array then the \code{t_max} argument is ignored
-#' and the maximum simulation time is the taken from the dimension names.
+#' If effort is specified as an array then the smallest time in the array is 
+#' used as the initial time for the simulation. Otherwise the initial time is
+#' set to 0. Also, if the effort is an array then the \code{t_max} argument is 
+#' ignored and the maximum simulation time is the largest time of the effort
+#' array.
 #' 
-#' The \code{initial_n} argument is a matrix with dimensions species x size. The
+#' The \code{initial_n} argument is a matrix with dimensions species x size. 
+#' It specifies the abundances of the species at the initial time. The
 #' order of species must be the same as in the \code{MizerParams} argument. If
 #' the initial population is not specified, the argument is set by default by
 #' the \code{get_initial_n} function which is set up for a North Sea model.
@@ -86,7 +100,7 @@ NULL
 setGeneric('project', function(object, effort, ...)
     standardGeneric('project'))
 
-# No effort is specified - default is to set an effort of 1
+# No effort is specified - default is to set an effort of 0
 # All other arguments passed as ...
 
 #' Project without an effort argument.
@@ -101,10 +115,6 @@ setMethod('project', signature(object='MizerParams', effort='missing'),
 #' @rdname project
 setMethod('project', signature(object='MizerParams', effort='numeric'),
     function(object, effort,  t_max = 100, dt = 0.1, ...){
-    #if (!all.equal(t_max %% dt, 0))
-	#if (!all((t_max %% dt) == 0))
-    if(!all.equal((t_max - floor(t_max / dt) * dt),0))
-	    stop("t_max must be divisible by dt with no remainder")
 	no_gears <- dim(object@catchability)[1]
 	if ((length(effort)>1) & (length(effort) != no_gears))
 	    stop("Effort vector must be the same length as the number of fishing gears\n")
@@ -119,16 +129,17 @@ setMethod('project', signature(object='MizerParams', effort='numeric'),
         stop(gear_names_error_message)
     }
 	# Set up the effort array transposed so we can use the recycling rules
-    time_dimnames <- signif(seq(from=1,to=t_max,by=dt),3)
+    time_dimnames <- signif(seq(from=0, to=t_max, by=dt), 3)
 	effort_array <- t(array(effort, dim=c(no_gears,length(time_dimnames)), dimnames=list(gear=effort_gear_names,time=time_dimnames)))
-	res <- project(object,effort_array, dt=dt, ...)
+	res <- project(object, effort_array, dt=dt, ...)
 	return(res)
 })
 
 #' Project with time varying effort
 #' @rdname project
 setMethod('project', signature(object='MizerParams', effort='array'),
-    function(object, effort, t_save=1, dt=0.1, initial_n=get_initial_n(object), initial_n_pp=object@cc_pp,  ...){
+    function(object, effort, t_save=1, dt=0.1, initial_n=object@initial_n, 
+             initial_n_pp=object@initial_n_pp, shiny_progress = NULL, ...){
         validObject(object)
         # Check that number and names of gears in effort array is same as in MizerParams object
         no_gears <- dim(object@catchability)[1]
@@ -153,22 +164,26 @@ setMethod('project', signature(object='MizerParams', effort='array'),
             stop("The time dimname of the effort argument must be numeric.")
         }
         time_effort <- as.numeric(dimnames(effort)[[1]])
+        if (is.unsorted(time_effort)) {
+            stop("The time dimname of the effort argument should be increasing.")
+        }
         t_max <- time_effort[length(time_effort)]
         # Blow up effort so that rows are dt spaced
         time_effort_dt <- seq(from = time_effort[1], to = t_max, by = dt)
         effort_dt <- t(array(NA, dim = c(length(time_effort_dt), dim(effort)[2]), dimnames=list(time = time_effort_dt, dimnames(effort)[[2]])))
-        for (i in 1:length(time_effort)){
+        for (i in 1:(length(time_effort)-1)){
             effort_dt[,time_effort_dt >= time_effort[i]] <- effort[i,]
         }
         effort_dt <- t(effort_dt)
 
         # Make the MizerSim object with the right size
         # We only save every t_save steps
-        #if (!all((t_save %% dt)  == 0))
-        if(!all.equal((t_max - floor(t_max / dt) * dt),0))
-            stop("t_save must be divisible by dt with no remainder")
-        t_dimnames_index <- as.integer(seq(from = 1+ ((t_save-1) / dt), to = length(time_effort_dt), by = t_save/dt))
-        t_dimnames_index <- t_dimnames_index[t_dimnames_index>0]
+        # Divisibility test needs to be careful about machine rounding errors,
+        # see https://github.com/sizespectrum/mizer/pull/2
+        if((t_save < dt) || !isTRUE(all.equal((t_save - round(t_save / dt) * dt), 0)))
+            stop("t_save must be a positive multiple of dt")
+        t_skip <- round(t_save/dt)
+        t_dimnames_index <- seq(1, to = length(time_effort_dt), by = t_skip)
         t_dimnames <- time_effort_dt[t_dimnames_index]
         sim <- MizerSim(object, t_dimnames = t_dimnames) 
         # Fill up the effort array
@@ -204,7 +219,16 @@ setMethod('project', signature(object='MizerParams', effort='array'),
         n <- array(sim@n[1,,],dim=dim(sim@n)[2:3])
         dimnames(n) <- dimnames(sim@n)[2:3]
         n_pp <- sim@n_pp[1,]
-        t_steps <- dim(effort_dt)[1]
+        t_steps <- dim(effort_dt)[1]-1
+        # Set up progress bar
+        pb <- progress::progress_bar$new(
+            format = "[:bar] :percent ETA: :eta",
+            total = length(t_dimnames_index), width= 60)
+        if (hasArg(shiny_progress)) {
+            # We have been passed a shiny progress object
+            shiny_progress$set(message = "Running simulation", value = 0)
+            proginc <- 1/length(t_dimnames_index)
+        }
         for (i_time in 1:t_steps){
             # Do it piece by piece to save repeatedly calling methods
             # Calculate amount E_{a,i}(w) of available food
@@ -257,10 +281,16 @@ setMethod('project', signature(object='MizerParams', effort='array'),
             n_pp <- tmp - (tmp - n_pp) * exp(-(sim@params@rr_pp+m2_background)*dt)
 
             # Store results only every t_step steps.
-            store <- t_dimnames_index %in% i_time
+            store <- t_dimnames_index %in% (i_time+1)
             if (any(store)){
-                sim@n[which(store)+1,,] <- n 
-                sim@n_pp[which(store)+1,] <- n_pp
+                # Advance progress bar
+                pb$tick()
+                if (hasArg(shiny_progress)) {
+                    shiny_progress$inc(amount = proginc)
+                }
+                # Store result
+                sim@n[which(store),,] <- n 
+                sim@n_pp[which(store),] <- n_pp
             }
         }
         # and end
@@ -275,7 +305,7 @@ setMethod('project', signature(object='MizerParams', effort='array'),
 #' abundances should be reasonable guesses at the equilibrium values. The 
 #' returned population can be passed to the \code{project} method.
 #' 
-#' @param params The model parameters. An object of type \code{MizerParams}.
+#' @param params The model parameters. An object of type \linkS4class{MizerParams}.
 #' @param a A parameter with a default value of 0.35.
 #' @param n0_mult Multiplier for the abundance at size 0. Default value is
 #'   kappa/1000.

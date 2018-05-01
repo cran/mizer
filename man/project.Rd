@@ -16,10 +16,11 @@ project(object, effort, ...)
   dt = 0.1, ...)
 
 \S4method{project}{MizerParams,array}(object, effort, t_save = 1, dt = 0.1,
-  initial_n = get_initial_n(object), initial_n_pp = object@cc_pp, ...)
+  initial_n = object@initial_n, initial_n_pp = object@initial_n_pp,
+  shiny_progress = NULL, ...)
 }
 \arguments{
-\item{object}{A \code{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} object}
 
 \item{effort}{The effort of each fishing gear through time. See notes below.}
 
@@ -33,14 +34,19 @@ below.}
 \item{dt}{Time step of the solver. The default value is 0.1.}
 
 \item{t_save}{The frequency with which the output is stored. The default
-value is 1.}
+value is 1. Must be an integer multiple of dt.}
 
-\item{initial_n}{The initial populations of the species. See the notes below.}
+\item{initial_n}{The initial populations of the species. By default the 
+\code{initial_n} slot of the \linkS4class{MizerParams} argument is used.
+See the notes below.}
 
 \item{initial_n_pp}{The initial population of the background spectrum. It
 should be a numeric vector of the same length as the \code{w_full} slot of
-the \code{MizerParams} argument. By default the \code{cc_pp} slot of the
-\code{\link{MizerParams}} argument is used.}
+the \code{MizerParams} argument. By default the \code{initial_n_pp} slot of the
+\linkS4class{MizerParams} argument is used.}
+
+\item{shiny_progress}{A shiny progress object used to update shiny progress bar.
+Default NULL.}
 }
 \value{
 An object of type \code{MizerSim}.
@@ -73,12 +79,17 @@ constant through time but each gear may have a different fishing effort.
 fishing effort of each gear at each time step.  The first dimension, time,
 must be named numerically and contiguously. The second dimension of the array
 must be named and the names must correspond to the gear names in the
-\code{MizerParams} argument. }
+\code{MizerParams} argument. The value for the effort for a particular time
+is used during the interval from that time to the next time in the array.}
 
-If effort is specified as an array then the \code{t_max} argument is ignored
-and the maximum simulation time is the taken from the dimension names.
+If effort is specified as an array then the smallest time in the array is 
+used as the initial time for the simulation. Otherwise the initial time is
+set to 0. Also, if the effort is an array then the \code{t_max} argument is 
+ignored and the maximum simulation time is the largest time of the effort
+array.
 
-The \code{initial_n} argument is a matrix with dimensions species x size. The
+The \code{initial_n} argument is a matrix with dimensions species x size. 
+It specifies the abundances of the species at the initial time. The
 order of species must be the same as in the \code{MizerParams} argument. If
 the initial population is not specified, the argument is set by default by
 the \code{get_initial_n} function which is set up for a North Sea model.

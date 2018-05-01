@@ -1,11 +1,15 @@
 # Summary methods for mizer package
 
-# Copyright 2012 Finlay Scott and Julia Blanchard. 
+# Copyright 2012 Finlay Scott and Julia Blanchard.
+# Copyright 2018 Gustav Delius and Richard Southwell.
+# Development has received funding from the European Commission's Horizon 2020 
+# Research and Innovation Programme under Grant Agreement No. 634495 
+# for the project MINOUW (http://minouw-project.eu/).
 # Distributed under the GPL 3 or later 
 # Maintainer: Gustav Delius, University of York, <gustav.delius@york.ac.uk>
 
 # Soundtrack: The Definitive Lead Belly
-
+#### getSSB ####
 #' Calculate the SSB of species
 #' 
 #' Calculates the spawning stock biomass (SSB) through time of the species in
@@ -37,6 +41,8 @@ setMethod('getSSB', signature(object='MizerSim'),
     }
 )
 
+
+#### getBiomass ####
 #' Calculate the total biomass of each species within a size range at each time step.
 #' 
 #' Calculates the total biomass through time of the species in the
@@ -46,7 +52,7 @@ setMethod('getSSB', signature(object='MizerSim'),
 #' both min_l and min_w are supplied, only min_l will be used).
 #' 
 #' @param object An object of class \code{MizerSim}.
-#' @param ... Other arguments to select the size range of the species to be used
+#' @param ... Other arguments to select the size range of fish to be used
 #'   in the calculation (min_w, max_w, min_l, max_l).
 #'
 #' @return An array containing the biomass (time x species)
@@ -74,6 +80,8 @@ setMethod('getBiomass', signature(object='MizerSim'),
     }
 )
 
+
+#### getN ####
 #' Calculate the total abundance in terms of numbers of species within a size range
 #'
 #' Calculates the total numbers through time of the species in the
@@ -112,6 +120,7 @@ setMethod('getN', signature(object='MizerSim'),
 )
 
 
+#### getYieldGear ####
 #' Calculate the total yield per gear and species
 #'
 #' Calculates the total yield per gear and species at each simulation
@@ -138,14 +147,15 @@ setGeneric('getYieldGear', function(object)
 #' @rdname getYieldGear
 setMethod('getYieldGear', signature(object='MizerSim'),
     function(object){
-        # biomass less the first time step
-        biomass <- sweep(object@n,3,object@params@w * object@params@dw, "*")[-1,,,drop=FALSE]
+        biomass <- sweep(object@n,3,object@params@w * object@params@dw, "*")
         f_gear <- getFMortGear(object)
         yield_species_gear <- apply(sweep(f_gear,c(1,3,4),biomass,"*"),c(1,2,3),sum)
         return(yield_species_gear)
     }
 )
 
+
+#### getYield ####
 #' Calculate the total yield of each species
 #'
 #' Calculates the total yield of each species across all gears at each
@@ -204,7 +214,7 @@ get_size_range_array <- function(params, min_w = min(params@w), max_w = max(para
 }
 
 # TODO: Check documentation for summary
-
+#### summary for MizerParams ####
 #' Summarize MizerParams object 
 #'
 #' Outputs a general summary of the structure and content of the object
@@ -248,6 +258,7 @@ setMethod("summary", signature(object="MizerParams"),
 	}
 })
 
+#### summary for MizerSim ####
 #' Summarize MizerSim object 
 #'
 #' Outputs a general summary of the structure and content of the object
@@ -275,6 +286,7 @@ setMethod("summary", signature(object="MizerSim"),
 })
 
 
+#### getProportionOfLargeFish ####
 #' Calculate the proportion of large fish
 #' 
 #' Calculates the proportion of large fish through time in the \code{MizerSim}
@@ -338,6 +350,8 @@ setMethod('getProportionOfLargeFish', signature(object='MizerSim'),
 	return(1-(upto_threshold_measure / total_measure))
 })
 
+
+#### getMeanWeight ####
 #' Calculate the mean weight of the community
 #'
 #' Calculates the mean weight of the community through time.
@@ -347,7 +361,7 @@ setMethod('getProportionOfLargeFish', signature(object='MizerSim'),
 #'
 #' @param object An object of class \code{MizerSim}
 #' @param species numeric or character vector of species to include in the calculation
-#' @param ... Other arguments for the \code{getN} and \code{getBiomass} methods suchs as \code{min_w}, \code{max_w} \code{min_l} and \code{max_l}.
+#' @param ... Other arguments for the \code{getN} and \code{getBiomass} methods such as \code{min_w}, \code{max_w} \code{min_l} and \code{max_l}.
 #'
 #' @return A vector containing the mean weight of the community through time
 #' @export
@@ -376,6 +390,8 @@ setMethod('getMeanWeight', signature(object='MizerSim'),
 	return(biomass_total / n_total)
 })
 
+
+#### getMeanMaxWeight ####
 #' Calculate the mean maximum weight of the community
 #'
 #' Calculates the mean maximum weight of the community through time. This can be
@@ -389,7 +405,7 @@ setMethod('getMeanWeight', signature(object='MizerSim'),
 #' @param object An object of class \code{MizerSim}.
 #' @param species numeric or character vector of species to include in the calculation.
 #' @param measure The measure to return. Can be 'numbers', 'biomass' or 'both'
-#' @param ... Other arguments for the \code{getN} and \code{getBiomass} methods suchs as \code{min_w}, \code{max_w} \code{min_l} and \code{max_l}.
+#' @param ... Other arguments for the \code{getN} and \code{getBiomass} methods such as \code{min_w}, \code{max_w} \code{min_l} and \code{max_l}.
 #'
 #' @return A matrix or vector containing the mean maximum weight of the community through time
 #' @export
@@ -427,6 +443,8 @@ setMethod('getMeanMaxWeight', signature(object='MizerSim'),
 	    return(cbind(mmw_numbers, mmw_biomass)) 
 })
 
+
+#### getCommunitySlope ####
 #' Calculate the slope of the community abundance
 #'
 #' Calculates the slope of the community abundance through time by performing a linear regression on the logged total numerical abundance at weight and logged weights (natural logs, not log to base 10, are used).

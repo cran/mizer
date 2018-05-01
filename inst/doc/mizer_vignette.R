@@ -1,6 +1,6 @@
 ## ----include=FALSE, cache=FALSE------------------------------------------
 library(knitr)
-opts_chunk$set(concordance=TRUE, cache=TRUE)
+opts_chunk$set(concordance=TRUE, cache=TRUE, message=FALSE)
 
 ## ----include=FALSE-------------------------------------------------------
 opts_chunk$set(width = 7)
@@ -614,4 +614,186 @@ p <- ggplot(ssb_all_df) +
     geom_line(aes(x = time, y = value, colour = scenario)) +
     facet_wrap(~sp, scales = "free", nrow = 4)
 p + theme(legend.position = "none")
+
+## ----plot_scale_sense2, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE----
+#  params_trait <- set_trait_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+#                            knife_edge_size = 100)
+#  sim_trait_initial <- project(params_trait, t_max=100, effort = 0)
+#  sim_trait <- project(params_trait,
+#                       initial_n = sim_trait_initial@n[dim(
+#                           sim_trait_initial@n)[1],,],
+#                       initial_n_pp = sim_trait_initial@
+#                           n_pp[dim(sim_trait_initial@n_pp)[1],], t_max=15,
+#                       effort = 1)
+#  params <- set_scaling_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+#                              min_egg = 1e-4, min_w_mat = 10^(0.4), rfac = Inf,
+#                              knife_edge_size = 100,kappa = 0.005)
+#  sim <- project(params, t_max=15, effort = 1)
+#  b_trait <- getBiomassFrame(sim_trait)
+#  b <- getBiomassFrame(sim)
+#  display_frames(b_trait, b, params)
+
+## ----label=print_plot_scale_sense, echo=FALSE, warning=FALSE, message=FALSE, fig.height=4, fig.keep='last'----
+params_trait <- set_trait_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+                          knife_edge_size = 100)
+sim_trait_initial <- project(params_trait, t_max=100, effort = 0)
+sim_trait <- project(params_trait,
+                     initial_n = sim_trait_initial@n[dim(
+                         sim_trait_initial@n)[1],,],
+                     initial_n_pp = sim_trait_initial@
+                         n_pp[dim(sim_trait_initial@n_pp)[1],], t_max=15,
+                     effort = 1)
+params <- set_scaling_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+                            min_egg = 1e-4, min_w_mat = 10^(0.4), rfac = Inf,
+                            knife_edge_size = 100,kappa = 0.005)
+sim <- project(params, t_max=15, effort = 1)
+b_trait <- getBiomassFrame(sim_trait)
+b <- getBiomassFrame(sim)
+display_frames(b_trait, b, params)
+
+## ----label=demo_trait_model_insensitive, eval=FALSE, warning=FALSE, message=FALSE----
+#  params_trait <- set_trait_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+#                            knife_edge_size = 100)
+#  sim_trait_initial <- project(params_trait, t_max=100, effort = 0)
+#  sim_trait <- project(params_trait,
+#                       initial_n = sim_trait_initial@n[dim(
+#                           sim_trait_initial@n)[1],,],
+#                       initial_n_pp = sim_trait_initial@
+#                           n_pp[dim(sim_trait_initial@n_pp)[1],], t_max=15,
+#                       effort = 1)
+#  plotBiomass(sim_trait)
+
+## ----label=demo_scale_model_sensitive, eval=FALSE, warning=FALSE, message=FALSE----
+#  params <- set_scaling_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+#                              min_egg = 1e-4, min_w_mat = 10^(0.4), rfac = Inf,
+#                              knife_edge_size = 100,kappa = 0.005)
+#  sim <- project(params, t_max=15, effort = 1)
+#  plotBiomass(sim)
+
+## ----label=demo_scaling_model_params-------------------------------------
+params <- set_scaling_model(no_sp = 10, min_w_inf = 10, max_w_inf = 1e3,
+                            min_egg = 1e-4, min_w_mat = 10^(0.4), 
+                            knife_edge_size = 100, kappa = 0.005)
+
+## ----label = scale_run---------------------------------------------------
+sim <- project(params, t_max=5, effort = 0)
+
+## ----plot_scale_sim, eval=FALSE------------------------------------------
+#  plotBiomass(sim)
+
+## ----label=print_plot_scale_sim, echo=FALSE, fig.height=4, fig.keep='last'----
+plotBiomass(sim)
+
+## ----plot_scale_simBS, eval=FALSE----------------------------------------
+#  plotSpectra(sim, total = TRUE)
+
+## ----label=print_plot_scale_simBS, echo=FALSE, fig.height=4, fig.keep='last'----
+plotSpectra(sim, total = TRUE)
+
+## ----label=seed_scaling_model_params-------------------------------------
+params_bg  <- setBackground(
+  set_scaling_model(no_sp = 10, no_w = 400,
+                    min_w_inf = 10, max_w_inf = 1e5,
+                    min_egg = 1e-4, min_w_mat = 10^(0.4),
+                    knife_edge_size = Inf, kappa = 10000,
+                    lambda = 2.08, f0 = 0.6, h = 34)
+)
+
+## ----label=mullet_data---------------------------------------------------
+species_params <- data.frame(
+  species = "Mullet",
+  w_min = 0.001, 
+  w_inf = 173.2425, 
+  w_mat = 15.14863, 
+  beta = 283, 
+  sigma = 1.8, 
+  z0 = 0,
+  alpha = 0.6, 
+  erepro = 0.1, 
+  sel_func = "sigmoid_length", 
+  gear = "sigmoid_gear",
+  l25 = 13.17291,
+  l50 = 15.48,
+  k = 0,
+  k_vb = 0.6,
+  a = 0.0085,
+  b = 3.11,
+  gamma = 0.0017,
+  h = 50,
+  linecolour = "red",
+  linetype = "solid"
+)
+
+## ----label=mullet_add----------------------------------------------------
+params_bg_m <- addSpecies(params_bg, species_params, SSB = 2800, effort=0.4, 
+                rfac = 1.01)
+
+## ----label = mullet_run--------------------------------------------------
+sim <- project(params_bg_m, t_max = 25, effort = 0.4)
+
+## ----plot_mullet_sim, eval=FALSE-----------------------------------------
+#  plotBiomass(sim)
+
+## ----label=print_plot_mullet_sim, echo=FALSE, fig.height=4, fig.keep='last'----
+plotBiomass(sim)
+
+## ----plot_mullet_sim2, eval=FALSE----------------------------------------
+#  plotSpectra(sim)
+
+## ----label=print_plot_mullet_sim2, echo=FALSE, fig.height=4, fig.keep='last'----
+plotSpectra(sim)
+
+## ----label=hake_data-----------------------------------------------------
+species_params <- data.frame(
+  species = "Hake",
+  w_min = 0.001, 
+  w_inf = 4174.194, 
+  w_mat = 183.5169, 
+  beta = 11.02318, 
+  sigma = 1.1, 
+  z0 = 0,
+  alpha = 0.6, 
+  erepro = 0.1, 
+  sel_func = "sigmoid_length", 
+  gear = "sigmoid_gear",
+  l25 = 16.09244,
+  l50 = 16.6,
+  k = 0,
+  k_vb = 0.1, 
+  a = 0.0046,
+  b = 3.12,
+  gamma = 0.003,
+  h = 20,
+  linecolour = "blue",
+  linetype = "solid"
+)
+
+## ----label=add_hake------------------------------------------------------
+params_bg_m_h <- addSpecies(params_bg_m, species_params, SSB = 1200,
+                            effort=0.4, rfac = 1.01)
+
+## ----plot_mullet_hake_spectra, eval=FALSE--------------------------------
+#  plotSpectra(params_bg_m_h)
+
+## ----label=print_plot_mullet_hake_spectra, echo=FALSE, fig.height=4, fig.keep='last'----
+plotSpectra(params_bg_m_h)
+
+## ----plot_mullet_hake_biomass, eval=FALSE--------------------------------
+#  sim <- project(params_bg_m_h, t_max = 50, t_save = 5, effort = 0.4)
+#  plotBiomass(sim)
+
+## ----label=print_plot_mullet_hake_biomass, echo=FALSE, fig.height=4, fig.keep='last'----
+sim <- project(params_bg_m_h, t_max = 50, t_save = 5, effort = 0.4)
+plotBiomass(sim)
+
+## ----mullet_hake_steady--------------------------------------------------
+params_bg_m_h2 <- steady(params_bg_m_h, effort = 0.4)
+
+## ----plot_mullet_hake_biomass_steady, eval=FALSE-------------------------
+#  sim2 <- project(params_bg_m_h2, t_max = 50, t_save = 5, effort = 0.4)
+#  plotBiomass(sim2)
+
+## ----label=print_plot_mullet_hake_biomass_steady, echo=FALSE, fig.height=4, fig.keep='last'----
+sim2 <- project(params_bg_m_h2, t_max = 50, t_save = 5, effort = 0.4)
+plotBiomass(sim2)
 
