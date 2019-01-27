@@ -15,24 +15,24 @@ Authors@R: c(person("Finlay", "Scott", email="drfinlayscott@gmail.com",
                     role=c("ctb", "cre")),
              person("Richard", "Southwell", email="richard.southwell@york.ac.uk",
                     role=c("ctb")))
-Version: 1.0
+Version: 1.0.1
 License: GPL-3
 Imports: deSolve, ggplot2, grid, methods, plyr, progress, Rcpp,
         reshape2
 LinkingTo: Rcpp
-Depends: R (>= 3.4)
+Depends: R (>= 3.1)
 Suggests: testthat, roxygen2, knitr, shiny, shinyBS
 Collate: 'MizerParams-class.R' 'MizerSim-class.R' 'selectivity_funcs.R'
         'project.R' 'help.R' 'project_methods.R' 'summary_methods.R'
         'plots.R' 'wrapper_functions.R' 'data.R' 'RcppExports.R'
 VignetteBuilder: knitr
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2018-05-01 02:55:05 UTC; gustav
+Packaged: 2019-01-27 21:15:09 UTC; gustav
 Author: Finlay Scott [aut, cph],
   Julia Blanchard [aut, cph],
   Ken Andersen [aut, cph],
   Gustav Delius [ctb, cre],
   Richard Southwell [ctb]
 Repository: CRAN
-Date/Publication: 2018-05-01 03:40:53 UTC
+Date/Publication: 2019-01-27 22:42:08 UTC

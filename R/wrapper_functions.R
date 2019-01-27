@@ -421,7 +421,7 @@ set_trait_model <- function(no_sp = 10,
 #' min_egg, min_w_mat, min_w_inf, max_w_inf and no_sp, in the sense that the egg
 #' weights of the no_sp species are logarithmically evenly spaced, ranging from
 #' min_w=min_egg to max_w=max_w_inf. The maturity weights of the species can be
-#' obtained by muliplying the egg_weights by min_w_mat/min_egg. The asymptotic
+#' obtained by multiplying the egg_weights by min_w_mat/min_egg. The asymptotic
 #' weights of the species can be obtained by multiplying the egg weights by
 #' min_w_inf/min_egg.
 #'
@@ -440,7 +440,7 @@ set_trait_model <- function(no_sp = 10,
 #'
 #' The option of including fishing is given, but the steady state may lose its
 #' natural stability if too much fishing is included. In such a case the user
-#' may wish to include stablizing effects (like Rmax and chi) to ensure the
+#' may wish to include stabilizing effects (like Rmax and chi) to ensure the
 #' steady state is stable. Fishing selectivity is modelled as a knife-edge
 #' function with one parameter, \code{knife_edge_size}, which is the size at
 #' which species are selected. Each species can either be fished by the same
@@ -473,7 +473,7 @@ set_trait_model <- function(no_sp = 10,
 #'   \code{lambda} is provided, in which case this argument is ignored and
 #'   q = lambda - 2 + n.
 #' @param lambda Exponent of the abundance power law. If supplied, this 
-#'   overrrules the \code{q} argument. Otherwise the default value is 2+q-n.
+#'   overrules the \code{q} argument. Otherwise the default value is 2+q-n.
 #' @param r_pp Growth rate of the primary productivity. Default value is 0.1.
 #' @param kappa Coefficient in abundance power law. Default value is
 #'   0.005.
@@ -927,10 +927,10 @@ setMethod('addSpecies', signature(params = 'MizerParams'),
             stop("You can not add species that are already there.")
         }
         # calculate h if it is missing
-        if (!hasName(species_params, "h") || is.na(species_params$h)) {
+        if (!("h" %in% names(species_params)) || is.na(species_params$h)) {
             message("Note: \tNo h column in new species data frame so using f0 and k_vb to
                 calculate it.")
-            if(!hasName(species_params, "k_vb")) {
+            if (!("k_vb" %in% names(species_params)))  {
                 stop("\t\tExcept I can't because there is no k_vb column in the new species data frame")
             }
             fc <- 0.2/species_params$alpha
@@ -939,13 +939,13 @@ setMethod('addSpecies', signature(params = 'MizerParams'),
         }
         
         # calculate ks if it is missing
-        if (!hasName(species_params, "ks") || is.na(species_params$ks)){
+        if (!("ks" %in% names(species_params)) || is.na(species_params$ks)){
             message("Note: \tNo ks column in new species data frame. Setting ks = 0.2*h.")
             species_params$ks <- 0.2*species_params$h # mizer's default setting
         }
         
         # calculate gamma if it is missing
-        if (!hasName(species_params, "gamma") || is.na(species_params$gamma)){
+        if (!("gamma" %in% names(species_params)) || is.na(species_params$gamma)){
             message("Note: \tNo gamma column in new species data frame so using f0, h, beta, sigma, lambda and kappa to calculate it.")
             ae <- sqrt(2*pi) * species_params$sigma * 
                 species_params$beta^(params@lambda-2) * 
@@ -1030,7 +1030,16 @@ setMethod('addSpecies', signature(params = 'MizerParams'),
         if (any(is.infinite(p@initial_n))) {
             stop("Candidate steady state holds infinities")
         }
-        if (any(is.na(p@initial_n) || is.nan(p@initial_n))) {
+        # Due to an apparent bug in R-devel (R 3.6) the following gives an
+        # error and therefore I temporarily replace it by the two if statements.
+        #
+        # if (is.na(p@initial_n) || is.nan(p@initial_n)) {
+        #     stop("Candidate steady state holds none numeric values")
+        # }
+        if (any(is.na(p@initial_n))) {
+            stop("Candidate steady state holds none numeric values")
+        }
+        if (any(is.nan(p@initial_n))) {
             stop("Candidate steady state holds none numeric values")
         }
         
