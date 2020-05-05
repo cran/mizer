@@ -117,7 +117,7 @@ getDiet <- function(params,
     }
     # Multiply by interaction matrix, including resource, and then by 
     # search volume
-    inter <- cbind(params@interaction, params@species_params$interaction_p)
+    inter <- cbind(params@interaction, params@species_params$interaction_resource)
     diet[, , 1:(no_sp + 1)] <- sweep(sweep(diet[, , 1:(no_sp + 1), drop = FALSE],
                                            c(1, 3), inter, "*"), 
                                      c(1, 2), params@search_vol, "*")
@@ -302,6 +302,7 @@ getYield <- function(sim) {
 #' sim <- project(params, effort=1, t_max = 20, t_save = 2, progress_bar = FALSE)
 #' getGrowthCurves(sim, max_age = 24)
 #' }
+
 getGrowthCurves <- function(object, 
                             species,
                             max_age = 20,
@@ -430,7 +431,10 @@ setMethod("summary", signature(object = "MizerParams"), function(object, ...) {
     cat("\tno. size bins:\t", length(object@w_full[object@initial_n_pp > 0]), 
         "\t(", length(object@w_full)," size bins in total)\n", sep = "")
     cat("Species details:\n")
-    sp <- object@species_params[,c("species","w_inf","w_mat","beta","sigma")]
+    sel_params <- intersect(c("species","w_inf","w_mat", "w_min", "f0", "fc", 
+                              "k_vb", "beta", "sigma"),
+                            names(object@species_params))
+    sp <- object@species_params[, sel_params]
     rownames(sp) <- NULL
     print(sp)
     cat("Fishing gear details:\n")
