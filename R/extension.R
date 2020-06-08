@@ -30,6 +30,12 @@
 #' ```
 #' params <- setRateFunction(params, "Mort", "myMort")
 #' ```
+#' In general if you want to replace a function `mizerSomeRateFunc()` with
+#' a function `myVersionOfThis()` you would call
+#' ```
+#' params <- setRateFunction(params, "SomeRateFunc", "myVersionOfThis")
+#' ```
+#' 
 #' In some extreme cases you may need to swap out the entire `mizerRates()`
 #' function for your own function called `myRates()`. That you can do with
 #' ```
@@ -275,4 +281,24 @@ finalNOther <- function(sim) {
 #' @export
 test_dyn <- function(params, ...) {
     111
+}
+#' Dummy function used during testing only
+#' 
+#' @inheritParams resource_constant
+#' @inheritParams constant_other
+#' @param ... Unused
+#' @export
+semichemostat <- function(params, n_other, rates, dt, component, ...) {
+    c <- params@other_params[[component]]
+    interaction <- params@species_params$interaction_resource
+    mort <- as.vector(interaction  %*% rates$pred_rate)
+    tmp <- c$rate * c$capacity / (c$rate + mort)
+    return(tmp - (tmp - n_other[[component]]) * exp(-(c$rate + mort) * dt))
+}
+#' Dummy function used during testing only
+#' 
+#' @inheritParams resource_constant
+#' @export
+resource_encounter <- function(params, n, n_pp, n_other, ...) {
+    mizerEncounter(params, n = n, n_pp = n_other$resource, ...)
 }

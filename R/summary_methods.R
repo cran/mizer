@@ -46,37 +46,37 @@ NULL
 #' available biomass. Outside the range of sizes for a predator species the
 #' returned rate is zero.
 #'
-#' @param params A MizerParams object
-#' @inheritParams getFeedingLevel
+#' @inheritParams getEncounter
 #' @param proportion If TRUE (default) the function returns the diet as a
 #'   proportion of the total consumption rate. If FALSE it returns the 
 #'   consumption rate in grams.
 #' 
 #' @return An array (predator species  x predator size x 
-#'   (prey species + resource) )
+#'   (prey species + resource + other components) )
 #' @export
 #' @family summary functions
 #' @concept summary_function
-getDiet <- function(params, 
+getDiet <- function(params,
                     n = initialN(params), 
                     n_pp = initialNResource(params),
+                    n_other = initialNOther(params),
                     proportion = TRUE) {
     # The code is based on that for getEncounter()
-    assert_that(is(params, "MizerParams"),
-                is.array(n),
-                is.numeric(n),
-                is.numeric(n_pp))
+    assert_that(is(params, "MizerParams"))
     species <- params@species_params$species
     no_sp <- length(species)
     no_w <- length(params@w)
     no_w_full <- length(params@w_full)
+    no_other <- length(params@other_encounter)
+    other_names <- names(params@other_encounter)
     assert_that(identical(dim(n), c(no_sp, no_w)),
                 length(n_pp) == no_w_full)
-    diet <- array(0, dim = c(no_sp, no_w, no_sp + 1),
+    diet <- array(0, dim = c(no_sp, no_w, no_sp + 1 + no_other),
                   dimnames = list("predator" = species,
                                   "w" = dimnames(params@initial_n)$w,
                                   "prey" = c(as.character(species), 
-                                             "Resource")))
+                                             "Resource",
+                                             other_names)))
     # idx_sp are the index values of object@w_full such that
     # object@w_full[idx_sp] = object@w
     idx_sp <- (no_w_full - no_w + 1):no_w_full
@@ -121,7 +121,15 @@ getDiet <- function(params,
     diet[, , 1:(no_sp + 1)] <- sweep(sweep(diet[, , 1:(no_sp + 1), drop = FALSE],
                                            c(1, 3), inter, "*"), 
                                      c(1, 2), params@search_vol, "*")
-
+    # Add diet from other components
+    for (i in seq_along(params@other_encounter)) {
+        diet[, , no_sp + 1 + i] <-
+            do.call(params@other_encounter[[i]], 
+                    list(params = params,
+                         n = n, n_pp = n_pp, n_other = n_other,
+                         component = names(params@other_encounter)[[i]]))
+    }
+    
     # Correct for satiation and keep only entries corresponding to fish sizes
     f <- getFeedingLevel(params, n, n_pp)
     fish_mask <- n > 0
@@ -444,7 +452,7 @@ setMethod("summary", signature(object = "MizerParams"), function(object, ...) {
             dimnames(object@catchability)$sp[object@catchability[i,]>0], 
             "\n", sep=" ") 
     }
-    invisible(params)
+    invisible(object)
 })
 
 
@@ -474,7 +482,7 @@ setMethod("summary", signature(object = "MizerSim"), function(object, ...){
     cat("\tOutput stored every ", 
         as.numeric(dimnames(object@n)$time)[2] - 
             as.numeric(dimnames(object@n)$time)[1], " time units\n", sep = "")
-    return()
+    invisible(object)
 })
 
 # Indicator functions ####
@@ -533,7 +541,7 @@ NULL
 #'     threshold_w = 500, biomass_proportion=FALSE)
 #' }
 getProportionOfLargeFish <- function(sim, 
-                                     species = seq_len(nrow(species_params(params(sim)))), 
+                                     species = seq_len(nrow(species_params(getParams(sim)))), 
                                      threshold_w = 100, threshold_l = NULL, 
                                      biomass_proportion=TRUE, ...) {
     check_species(sim, species)
@@ -581,7 +589,7 @@ getProportionOfLargeFish <- function(sim,
 #' getMeanWeight(sim, species=c("Herring","Sprat","N.pout"))
 #' getMeanWeight(sim, min_w = 10, max_w = 5000)
 #' }
-getMeanWeight <- function(sim, species = seq_len(nrow(species_params(params(sim)))), ...){
+getMeanWeight <- function(sim, species = seq_len(nrow(species_params(getParams(sim)))), ...){
     check_species(sim, species)
     n_species <- getN(sim, ...)
     biomass_species <- getBiomass(sim, ...)
@@ -621,7 +629,7 @@ getMeanWeight <- function(sim, species = seq_len(nrow(species_params(params(sim)
 #' getMeanMaxWeight(sim, species=c("Herring","Sprat","N.pout"))
 #' getMeanMaxWeight(sim, min_w = 10, max_w = 5000)
 #' }
-getMeanMaxWeight <- function(sim, species = seq_len(nrow(species_params(params(sim)))), 
+getMeanMaxWeight <- function(sim, species = seq_len(nrow(species_params(getParams(sim)))), 
                              measure = "both", ...) {
     if (!(measure %in% c("both","numbers","biomass"))) {
         stop("measure must be one of 'both', 'numbers' or 'biomass'")
@@ -676,7 +684,7 @@ getMeanMaxWeight <- function(sim, species = seq_len(nrow(species_params(params(s
 #' dem_species <- c("Dab","Whiting","Sole","Gurnard","Plaice","Haddock", "Cod","Saithe")
 #' slope_biomass <- getCommunitySlope(sim, species = dem_species, min_w = 10, max_w = 1000)
 #' }
-getCommunitySlope <- function(sim, species = seq_len(nrow(species_params(params(sim)))),
+getCommunitySlope <- function(sim, species = seq_len(nrow(species_params(getParams(sim)))),
                               biomass = TRUE, ...) {
     check_species(sim, species)
     size_range <- get_size_range_array(sim@params, ...)

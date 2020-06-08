@@ -27,7 +27,9 @@
 #'   [plotFMort()] \tab Plots the total fishing mortality of each species against size. \cr
 #'   [plotYield()] \tab Plots the total yield of each species across all fishing gears against time. \cr
 #'   [plotYieldGear()] \tab Plots the total yield of each species by gear against time. \cr
-#'   [plot()] \tab Produces 5 plots ([plotFeedingLevel()], [plotBiomass()], [plotPredMort()], [plotFMort()] and [plotSpectra()]) in the same window as a summary. \cr
+#'   [plotDiet()] \tab Plots the diet composition at size for a given predator species. \cr
+#'   [plotGrowthCurves()] \tab Plots the size as a function of age. \cr
+#'   [plot()] \tab Produces 5 plots ([plotFeedingLevel()], [plotBiomass()], [plotPredMort()], [plotFMort()] and [plotSpectra()]) in the same window. \cr
 #' }
 #' 
 #' These functions use the ggplot2 package and return the plot as a ggplot
@@ -698,7 +700,8 @@ plotlySpectra <- function(object, species = NULL,
 #' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotFeedingLevel(sim)
-#' plotFeedingLevel(sim, time_range = 10:20, species = c("Cod", "Herring"))
+#' plotFeedingLevel(sim, time_range = 10:20, species = c("Cod", "Herring"),
+#'                  include_critical = TRUE)
 #' }
 plotFeedingLevel <- function(object,
             species = NULL,
@@ -745,22 +748,6 @@ plotFeedingLevel <- function(object,
         }
         plot_dat <- plot_dat[complete.cases(plot_dat), ]
     }
-    
-    p <- ggplot() +
-            geom_line(aes(x = w, y = value, colour = Species, 
-                          linetype = Species, size = Species),
-                      data = plot_dat)
-
-    linesize <- rep(0.8, length(params@linetype))
-    names(linesize) <- names(params@linetype)
-    linesize[highlight] <- 1.6
-    p <- p +
-        scale_x_continuous(name = "Size [g]", trans = "log10") +
-        scale_y_continuous(name = "Feeding Level", limits = c(0, 1)) +
-        scale_colour_manual(values = params@linecolour) +
-        scale_linetype_manual(values = params@linetype) +
-        scale_size_manual(values = linesize)
-    
     if (include_critical) {
         feed_crit <- getCriticalFeedingLevel(params)[sel_sp, , drop = FALSE]
         plot_dat_crit <- data.frame(
@@ -779,11 +766,32 @@ plotFeedingLevel <- function(object,
             }
             plot_dat_crit <- plot_dat_crit[complete.cases(plot_dat_crit), ]
         }
-        p <- p +
+        p <- ggplot() +
             geom_line(aes(x = w, y = value, colour = Species, 
-                          linetype = Species),
-                      data = plot_dat_crit)
+                          linetype = Species, size = Species,
+                          alpha = "actual"),
+                      data = plot_dat) +
+            geom_line(aes(x = w, y = value, colour = Species, 
+                          linetype = Species, alpha = "critical"),
+                      data = plot_dat_crit) +
+            scale_discrete_manual("alpha", name = "Feeding Level", 
+                                  values = c(actual = 1, critical = 0.5))
+    } else {
+        p <- ggplot() +
+            geom_line(aes(x = w, y = value, colour = Species, 
+                          linetype = Species, size = Species),
+                      data = plot_dat)
     }
+
+    linesize <- rep(0.8, length(params@linetype))
+    names(linesize) <- names(params@linetype)
+    linesize[highlight] <- 1.6
+    p <- p +
+        scale_x_continuous(name = "Size [g]", trans = "log10") +
+        scale_y_continuous(name = "Feeding Level", limits = c(0, 1)) +
+        scale_colour_manual(values = params@linecolour) +
+        scale_linetype_manual(values = params@linetype) +
+        scale_size_manual(values = linesize)
     
     return(p)
 }
@@ -1062,6 +1070,7 @@ plotlyGrowthCurves <- function(object, species,
 #' Plot diet
 #' 
 #' @inheritParams plotSpectra
+#' @param species The name of the species whose diet should be plotted
 #'
 #' @return A plot
 #' @export

@@ -1,3 +1,45 @@
+# mizer 2.0.2
+
+## Bug fixes
+
+* Time passed to rate functions is now the actual simulation time, not the time 
+  elapsed since start of simulation.
+* `upgradeParams()` works also on params objects that were created with a
+  development version of mizer.
+* When upgrading an older params object, `upgradeParams()` does a better job at 
+  guessing the value for `w_pp_cutoff`.
+* `getFeedingLevel()`, `getPredMort()`, `setInitialValues()` and `steady()` now
+  work also when model has extra components.
+* The critical feeding level lines are now mentioned in the legend of
+  `plotFeedinglevel()` when called with `include_critical = TRUE`, see #162.
+* Avoid annoying warnings from dplyr package when `species_params` is a tibble.
+
+## Name changes
+
+* Renamed the functions `params()`, `effort()` and `times()` to `getParams()`,
+  `getEffort()` and `getTimes()` to avoid conflicts.
+
+## Minor enhancements
+
+* Some improvements to documentation.
+* More unit tests.
+* Uses less memory when time step is very small by not creating array with
+  effort values at each time step.
+* `getDiet()` also takes into account possible contributions by user-defined
+  other components.
+* In extension mechanism, now the name of a component is also passed to the
+  functions implementing dynamics, encounter and mortality.
+* If `project()` is called with `t_max < t_save` then `t_save` is automatically
+  reduced so that the result at `t_max` will get saved.
+* Start showing progress bar earlier during `project()`.
+* New helper function `project_simple()` that projects a given number of
+  time steps. This might be useful to extension writers.
+* The `...` argument to `project()` is passed on to the dynamics and rate
+  functions.
+* `steady()` runs faster by using `project_simple()`.
+* Documentation on mizer website now has a search bar.
+
+
 # mizer 2.0.1
 
 ## Bug fixes
@@ -7,7 +49,7 @@
 * `setInitialValues()` also works in a model with only a single species. #161
 * `resource_params()<-` now works and has unit tests.
 
-## Naming changes
+## Name changes
 
 Some inconsistencies in the choice of names for parameters was removed by
 renaming
@@ -16,7 +58,7 @@ renaming
 * `r_resource` -> `resource_rate`
 * `K_resource` -> `resource_capacity`
 
-## New functionality
+## Minor enhancements
 
 * New functions `other_params()<-` and `other_params()` for setting and 
   getting other parameters, for example to be used in user-defined rate

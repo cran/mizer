@@ -351,7 +351,7 @@ as
 
 
 \subsection{Investment}{
-For each species and at each size, the proportion of the available energy
+For each species and at each size, the proportion \eqn{\psi}{psi} of the available energy
 that is invested into reproduction is the product of two factors: the
 proportion \code{maturity} of individuals that are mature and the proportion
 \code{repro_prop} of the energy available to a mature individual that is
@@ -379,7 +379,7 @@ maximum size, taken from the compulsory \code{w_inf} column in the
 If the \code{repro_prop} argument is not supplied, it is set to the
 allometric form
 \deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{inf}}\right)^{m-n}.}{
-  repro_prop = (w/w_inf)^(m - n).}
+  repro_prop(w) = (w/w_inf)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
 reproduction for mature individuals. By default it is chosen to be
@@ -388,11 +388,14 @@ scales linearly with the size. This default can be overridden by including a
 column \code{m} in the species parameter dataframe. The asymptotic sizes
 are taken from the compulsory \code{w_inf} column in the species_params
 data frame.
+
+So finally we have
+\deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{psi(w) = maturity(w) * repro_prop(w)}
 }
 
 \subsection{Efficiency}{
 The reproductive efficiency, i.e., the proportion of energy allocated to
-reproduction that results in egg biomass, is set from the \code{erepro}
+reproduction that results in egg biomass, is set through the \code{erepro}
 column in the species_params data frame. If that is not provided, the default
 is set to 1 (which you will want to override). The offspring biomass divided
 by the egg biomass gives the rate of egg production, returned by
@@ -482,6 +485,7 @@ up. Mizer will then copy these columns over to create the \code{gear_params} dat
 frame when it creates the MizerParams object. However changing these columns
 in the species parameter data frame later will not update the \code{gear_params}
 data frame.
+
 \strong{Catchability}
 
 Catchability is used as an additional factor to make the link between gear
@@ -519,15 +523,15 @@ function in the \code{resource_dynamics} argument.
 
 The \code{resource_rate} argument is a vector specifying the intrinsic resource
 growth rate for each size class. If it is not supplied, then the intrinsic growth
-rate \eqn{r_p(w)} at size \eqn{w}
-is set to \deqn{r_p(w) = r_p\, w^{n-1}.}{r_p(w) = r_p w^{n-1}}
-The values of \eqn{r_p} and \eqn{n} are taken from the \code{resource_rate}
+rate \eqn{r(w)} at size \eqn{w}
+is set to \deqn{r(w) = r_{pp}\, w^{n-1}.}{r(w) = r_pp w^{n-1}}
+The values of \eqn{r_{pp}} and \eqn{n} are taken from the \code{r_pp}
 and \code{n} arguments.
 
 The \code{resource_capacity} argument is a vector specifying the intrinsic resource
 carrying capacity for each size class. If it is not supplied, then the
-intrinsic carrying capacity \eqn{c_p(w)} at size \eqn{w}
-is set to \deqn{c_p(w) = \kappa\, w^{-\lambda}}{c_p(w) = \kappa w^{-\lambda}}
+intrinsic carrying capacity \eqn{c(w)} at size \eqn{w}
+is set to \deqn{c(w) = \kappa\, w^{-\lambda}}{c(w) = \kappa w^{-\lambda}}
 for all \eqn{w} less than \code{w_pp_cutoff} and zero for larger sizes.
 The values of \eqn{\kappa} and \eqn{\lambda} are taken from the \code{kappa}
 and \code{lambda} arguments.
