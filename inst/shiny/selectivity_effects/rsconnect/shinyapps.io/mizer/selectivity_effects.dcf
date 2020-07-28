@@ -1,0 +1,12 @@
+name: selectivity_effects
+title: selectivity_effects
+username:
+account: mizer
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2537623
+bundleId: 3353671
+url: https://mizer.shinyapps.io/selectivity_effects/
+when: 1593937295.95838
+asMultiple: FALSE
+asStatic: FALSE

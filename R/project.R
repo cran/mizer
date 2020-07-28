@@ -18,8 +18,8 @@ NULL
 #' Runs the size spectrum model simulation.
 #' The function returns an object of type
 #' \linkS4class{MizerSim} that can then be explored with a range of
-#' [summary_functions()], [indicator_functions()] and 
-#' [plotting_functions()].
+#' [summary_functions], [indicator_functions] and 
+#' [plotting_functions].
 #' 
 #' @param object Either a \linkS4class{MizerParams} object or a 
 #'   \linkS4class{MizerSim} object (which contains a `MizerParams` object).
@@ -43,7 +43,7 @@ NULL
 #'   are appended to the previous ones. Only relevant if `object` is a
 #'   `MizerSim` object. Default = TRUE.
 #' @param progress_bar Either a boolean value to determine whether a progress
-#'   bar should be shown in the console, or a shiny progress object to implement 
+#'   bar should be shown in the console, or a shiny Progress object to implement 
 #'   a progress bar in a shiny app.
 #' @param ... Other arguments will be passed to rate functions.
 #' 
@@ -229,16 +229,15 @@ project <- function(object, effort,
     rates_fns <- lapply(params@rates_funcs, get)
     
     # Set up progress bar
-    if (progress_bar == TRUE) {
-        pb <- progress::progress_bar$new(
-            format = "[:bar] :percent ETA: :eta",
-            total = length(t_dimnames), width = 60)
-        pb$tick(0)
-    }
     if (is(progress_bar, "Progress")) {
         # We have been passed a shiny progress object
         progress_bar$set(message = "Running simulation", value = 0)
         proginc <- 1/length(t_dimnames)
+    } else if (progress_bar == TRUE) {
+        pb <- progress::progress_bar$new(
+            format = "[:bar] :percent ETA: :eta",
+            total = length(t_dimnames), width = 60)
+        pb$tick(0)
     }
     
     t <- t_start  # keep track of time
@@ -264,14 +263,13 @@ project <- function(object, effort,
             t = t, dt = dt, steps = skip, effort = current_effort,
             resource_dynamics_fn = resource_dynamics_fn,
             other_dynamics_fns = other_dynamics_fns,
-            rates_fns = rates_fns)
+            rates_fns = rates_fns, ...)
         t <- t + t_save
         
         # Advance progress bar
         if (is(progress_bar, "Progress")) {
             progress_bar$inc(amount = proginc)
-        }
-        if (progress_bar == TRUE) {
+        } else if (progress_bar == TRUE) {
             pb$tick()
         }
         
@@ -365,7 +363,6 @@ project <- function(object, effort,
 #' @param ... Other arguments that are passed on to the rate functions.
 #' @return List with the final values of `n`, `n_pp` and `n_other`, `rates`.
 #' 
-#' @md
 #' @export
 project_simple <- function(params, n, n_pp, n_other, t, dt, steps, 
                            effort, resource_dynamics_fn, other_dynamics_fns,
@@ -376,7 +373,7 @@ project_simple <- function(params, n, n_pp, n_other, t, dt, steps,
     idx <- 2:no_w
     # Hacky shortcut to access the correct element of a 2D array using 1D notation
     # This references the egg size bracket for all species, so for example
-    # n[w_minidx_array_ref] = n[,w_min_idx]
+    # n[w_min_idx_array_ref] = n[,w_min_idx]
     w_min_idx_array_ref <- (params@w_min_idx - 1) * no_sp + (1:no_sp)
     # Matrices for solver
     a <- matrix(0, nrow = no_sp, ncol = no_w)

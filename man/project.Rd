@@ -50,7 +50,7 @@ are appended to the previous ones. Only relevant if \code{object} is a
 \code{MizerSim} object. Default = TRUE.}
 
 \item{progress_bar}{Either a boolean value to determine whether a progress
-bar should be shown in the console, or a shiny progress object to implement
+bar should be shown in the console, or a shiny Progress object to implement
 a progress bar in a shiny app.}
 
 \item{...}{Other arguments will be passed to rate functions.}
@@ -62,8 +62,8 @@ An object of class \linkS4class{MizerSim}.
 Runs the size spectrum model simulation.
 The function returns an object of type
 \linkS4class{MizerSim} that can then be explored with a range of
-\code{\link[=summary_functions]{summary_functions()}}, \code{\link[=indicator_functions]{indicator_functions()}} and
-\code{\link[=plotting_functions]{plotting_functions()}}.
+\link{summary_functions}, \link{indicator_functions} and
+\link{plotting_functions}.
 }
 \note{
 The \code{effort} argument specifies the level of fishing effort during

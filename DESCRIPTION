@@ -18,7 +18,7 @@ Authors@R: c(person("Gustav", "Delius", email="gustav.delius@york.ac.uk",
                     comment = c(ORCID = "0000-0002-8478-3430")),
              person("Richard", "Southwell", email="richard.southwell@york.ac.uk",
                     role=c("ctb", "cph")))
-Version: 2.0.2
+Version: 2.0.3
 License: GPL-3
 Imports: assertthat, deSolve, dplyr, ggplot2, grid, methods, plotly,
         plyr, progress, Rcpp, reshape2,
@@ -32,11 +32,11 @@ Collate: 'MizerParams-class.R' 'MizerSim-class.R' 'species_params.R'
         'setReproduction.R' 'setResource.R' 'setFishing.R'
         'setInitialValues.R' 'upgrade.R' 'selectivity_funcs.R'
         'pred_kernel_funcs.R' 'resource_dynamics.R' 'project.R'
-        'help.R' 'project_methods.R' 'rate_functions.R'
+        'mizer-package.R' 'project_methods.R' 'rate_functions.R'
         'summary_methods.R' 'plots.R' 'newMultispeciesParams.R'
         'wrapper_functions.R' 'steady.R' 'extension.R' 'data.R'
         'RcppExports.R' 'deprecated.R'
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 Encoding: UTF-8
 LazyData: true
 URL: https://sizespectrum.org/mizer,
@@ -44,11 +44,11 @@ URL: https://sizespectrum.org/mizer,
 BugReports: https://github.com/sizespectrum/mizer/issues
 Language: en-GB
 NeedsCompilation: yes
-Packaged: 2020-06-08 15:00:18 UTC; gustav
+Packaged: 2020-07-28 12:58:38 UTC; gustav
 Author: Gustav Delius [cre, aut, cph] (<https://orcid.org/0000-0003-4092-8228>),
   Finlay Scott [aut, cph],
   Julia Blanchard [aut, cph] (<https://orcid.org/0000-0003-0532-4824>),
   Ken Andersen [aut, cph] (<https://orcid.org/0000-0002-8478-3430>),
   Richard Southwell [ctb, cph]
 Repository: CRAN
-Date/Publication: 2020-06-08 15:30:03 UTC
+Date/Publication: 2020-07-28 14:30:02 UTC

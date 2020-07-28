@@ -9,10 +9,16 @@ get_time_elements(sim, time_range, slot_name = "n")
 \arguments{
 \item{sim}{A MizerSim object}
 
-\item{time_range}{The time_range can be character or numeric.}
+\item{time_range}{A vector of times. Only the range of times is relevant,
+i.e., all times between the smallest and largest will be selected.
+The time_range can be character or numeric.}
 
-\item{slot_name}{Necessary to include a slot_name argument because the effort
-and abundance slots have different time dimensions}
+\item{slot_name}{Obsolete. Was only needed in early versions of mizer where
+the effort slot could have different time dimension from the other slots.}
+}
+\value{
+Named boolean vector indicating for each time whether it is included
+in the range or not.
 }
 \description{
 Internal function to get the array element references of the time dimension
