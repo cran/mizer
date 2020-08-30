@@ -25,15 +25,14 @@
 #' @examples
 #' \dontrun{
 #' params <- newTraitParams()
-#' params@species_params$gamma[5] <- 3000
-#' params <- setSearchVolume(params)
+#' species_params(params)$gamma[5] <- 3000
 #' params <- steady(params)
 #' plotSpectra(params)
 #' }
 steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
                    dt = 0.1, return_sim = FALSE, progress_bar = TRUE) {
-    assert_that(is(params, "MizerParams"),
-                noNA(getRDD(params)))
+    params <- validParams(params)
+    assert_that(noNA(getRDD(params)))
     if ((t_per < dt) || !isTRUE(all.equal((t_per - round(t_per / dt) * dt), 0))) {
         stop("t_per must be a positive multiple of dt")
     }
@@ -48,6 +47,10 @@ steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
     if (return_sim) {
         # create MizerSim object
         sim <- MizerSim(params, t_dimnames =  t_dimnames)
+        sim@n[1, , ] <- params@initial_n
+        sim@n_pp[1, ] <- params@initial_n_pp
+        sim@n_other[1, ] <- params@initial_n_other
+        sim@effort[1, ] <- params@initial_effort
     }
     
     # Force the reproduction to stay at the current level
@@ -55,6 +58,9 @@ steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
     old_rdd_fun <- params@rates_funcs$RDD
     params@rates_funcs$RDD <- "constantRDD"
     old_rdi <- getRDI(params)
+    if (any(is.na(old_rdi)) || any(old_rdi <= 0)) {
+        stop("The project function expects positive RDI for all species.")
+    }
     rdi_limit <- old_rdi / 1e7
     # Force other componens to stay at current level
     old_other_dynamics <- params@other_dynamics
@@ -71,7 +77,7 @@ steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
                    n_pp = params@initial_n_pp,
                    n_other = params@initial_n_other)
     
-    for (i in seq_along(t_dimnames)) {
+    for (i in 2:length(t_dimnames)) {
         # advance shiny progress bar
         if (is(progress_bar, "Progress")) {
             progress_bar$inc(amount = proginc)
@@ -109,10 +115,10 @@ steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
     }
     if (deviation >= tol) {
         warning("Simulation run in steady() did not converge after ", 
-                i * t_per,
+                (i - 1) * t_per,
                 " years. Residual relative rate of change = ", deviation)
     } else {
-        message("Steady state was reached before ", i * t_per, " years.")
+        message("Steady state was reached before ", (i - 1) * t_per, " years.")
     }
     
     # Restore original RDD and other dynamics
@@ -144,31 +150,20 @@ steady <- function(params, t_max = 100, t_per = 1.5, tol = 10^(-2),
 #' [noRDD()]
 #'
 #' @inheritParams steady
-#' @param species A vector of the names of the species to be affected or a
-#'   boolean vector indicating for each species whether it is to be affected
-#'   (TRUE) or not. By default all species are affected
-#' @return A MizerParams object
+#' @inheritParams valid_species_arg
+#' @return A MizerParams object with updated values for the `erepro` column
+#'   in the `species_params` data frame.
 #' @export
 retune_erepro <- function(params, species = species_params(params)$species) {
     assert_that(is(params, "MizerParams"))
-    
-    no_sp <- nrow(params@species_params)
-    if (is.logical(species)) {
-        if (length(species) != no_sp) {
-            stop("The boolean species argument has the wrong length")
-        }
-    } else {
-        species <- dimnames(params@initial_n)$sp %in% species
-        if (length(species) == 0) {
-            warning("The species argument matches none of the species in the params object")
-            return(params)
-        }
-    }
+    species <- valid_species_arg(params, species)
+    if (length(species) == 0) return(params)
+
     mumu <- getMort(params)
     gg <- getEGrowth(params)
     rdi <- getRDI(params)
     eff <- params@species_params$erepro
-    for (i in (1:no_sp)[species]) {
+    for (i in seq_len(nrow(params@species_params))[species]) {
         gg0 <- gg[i, params@w_min_idx[i]]
         mumu0 <- mumu[i, params@w_min_idx[i]]
         DW <- params@dw[params@w_min_idx[i]]
@@ -186,7 +181,6 @@ retune_erepro <- function(params, species = species_params(params)$species) {
 }
 
 
-
 #' Helper function to keep other components constant
 #' 
 #' @param params MizerParams object
@@ -196,4 +190,31 @@ retune_erepro <- function(params, species = species_params(params)$species) {
 #' @export
 constant_other <- function(params, n_other, component, ...) {
     n_other[[component]]
+}
+
+#' Helper function to assure validity of species argument
+#' 
+#' @param params A MizerParams object
+#' @param species A vector of the names of the species to be affected or a
+#'   boolean vector indicating for each species whether it is to be affected
+#'   (TRUE) or not. By default all species are affected.
+#' @export
+valid_species_arg <- function(params, species) {
+    no_sp <- nrow(params@species_params)
+    if (is.logical(species)) {
+        if (length(species) != no_sp) {
+            stop("The boolean `species` argument has the wrong length")
+        }
+    } else {
+        invalid <- setdiff(species, dimnames(params@initial_n)$sp)
+        if (length(invalid) > 0) {
+            warning("The following species do not exist: ", 
+                    toString(invalid))
+        }
+        species <- dimnames(params@initial_n)$sp %in% species
+        if (length(species) == 0) {
+            warning("The species argument matches none of the species in the params object")
+        }
+    }
+    species
 }

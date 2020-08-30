@@ -6,21 +6,25 @@
 #' 
 #' @section Setting reproduction:
 #' 
-#' \subsection{Investment}{
-#' For each species and at each size, the proportion \eqn{\psi}{psi} of the available energy 
+#' For each species and at each size, the proportion \eqn{\psi}{psi} of the 
+#' available energy 
 #' that is invested into reproduction is the product of two factors: the
 #' proportion `maturity` of individuals that are mature and the proportion
 #' `repro_prop` of the energy available to a mature individual that is 
 #' invested into reproduction.
 #' 
-#' If the `maturity` argument is not supplied, then it is set to a sigmoidal 
+#' \subsection{Maturity ogive}{
+#' If the the proportion of individuals that are mature is not supplied via
+#' the `maturity` argument , then it is set to a sigmoidal 
 #' maturity ogive that changes from 0 to 1 at around the maturity size:
 #' \deqn{{\tt maturity}(w) = \left[1+\left(\frac{w}{w_{mat}}\right)^{-U}\right]^{-1}.}{
 #'   maturity(w) = [1+(w/w_mat)^(-U)]^(-1)}
-#' (To avoid clutter, we are not showing the species index in the equations.)
+#' (To avoid clutter, we are not showing the species index in the equations,
+#' although each species has its own maturity ogive.)
 #' The maturity weights are taken from the `w_mat` column of the 
 #' species_params data frame. Any missing maturity weights are set to 1/4 of the
 #' asymptotic weight in the `w_inf` column.
+#' 
 #' The exponent \eqn{U} determines the steepness of the maturity ogive. By
 #' default it is chosen as \eqn{U = 10}, however this can be overridden by
 #' including a column \code{w_mat25} in the species parameter dataframe that
@@ -30,10 +34,14 @@
 #' The sigmoidal function given above would strictly reach 1 only asymptotically.
 #' Mizer instead sets the function equal to 1 already at the species' 
 #' maximum size, taken from the compulsory `w_inf` column in the
-#' `species_params` data frame.
+#' `species_params` data frame. Also, for computational simplicity, any 
+#' proportion smaller than `1e-8` is set to `0`.
+#' }
 #' 
-#' If the `repro_prop` argument is not supplied, it is set to the
-#' allometric form
+#' \subsection{Investment into reproduction}{
+#' If the the energy available to a mature individual that is 
+#' invested into reproduction is not supplied via the `repro_prop` argument,
+#' it is set to the allometric form
 #' \deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{inf}}\right)^{m-n}.}{
 #'   repro_prop(w) = (w/w_inf)^(m - n).}
 #' Here \eqn{n} is the scaling exponent of the energy income rate. Hence
@@ -49,13 +57,14 @@
 #' \deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{psi(w) = maturity(w) * repro_prop(w)}
 #' }
 #' 
-#' \subsection{Efficiency}{
-#' The reproductive efficiency, i.e., the proportion of energy allocated to
+#' \subsection{Reproductive efficiency}{
+#' The reproductive efficiency \eqn{\epsilon}, i.e., the proportion of energy allocated to
 #' reproduction that results in egg biomass, is set through the `erepro`
 #' column in the species_params data frame. If that is not provided, the default
 #' is set to 1 (which you will want to override). The offspring biomass divided
 #' by the egg biomass gives the rate of egg production, returned by
-#' [getRDI()].
+#' [getRDI()]:
+#' \deqn{R_{di} = \frac{\epsilon}{2 w_{min}} \int N(w)  E_r(w) \psi(w) \, dw}{R_di = (\epsilon/(2 w_min)) \int N(w)  E_r(w) \psi(w) dw}
 #' }
 #' 
 #' \subsection{Density dependence}{
@@ -93,7 +102,8 @@
 #'   "[BevertonHoltRDD()]".
 #' @param ... Unused
 #' 
-#' @return The updated MizerParams object. Because of the way the R language
+#' @return For `setReproduction()`:
+#'   The updated MizerParams object. Because of the way the R language
 #'   works, `setReproduction()` does not make the changes to the params object
 #'   that you pass to it but instead returns a new params object. So to affect
 #'   the change you call the function in the form
@@ -101,14 +111,23 @@
 #' @export
 #' @family functions for setting parameters
 #' @examples
-#' \dontrun{
-#' params <- NS_params
-#' # Change maturity size for species 3
-#' params@species_params$w_mat[3] <- 24
-#' params <- setReproduction(params)
+#' \donttest{
+#' # Plot maturity and reproduction ogives for Cod in North Sea model
+#' maturity <- getMaturityProportion(NS_params)["Cod", ]
+#' repro_prop <- getReproductionProportion(NS_params)["Cod", ]
+#' df <- data.frame(Size = w(NS_params), 
+#'                  Reproduction = repro_prop, 
+#'                  Maturity = maturity, 
+#'                  Total = maturity * repro_prop)
+#' dff <- melt(df, id.vars = "Size", 
+#'             variable.name = "Type", 
+#'             value.name = "Proportion")
+#' library(ggplot2)
+#' ggplot(dff) + geom_line(aes(x = Size, y = Proportion, colour = Type))
 #' }
 setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
                             RDD = NULL, ...) {
+    # check arguments ----
     assert_that(is(params, "MizerParams"))
     if (is.null(RDD)) RDD <- params@rates_funcs[["RDD"]]
     assert_that(is.string(RDD),
@@ -135,6 +154,7 @@ setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
     #     params@species_params$w_inf[i] < params@w[idx]
     # }
     
+    # set maturity proportion ----
     if (!is.null(maturity)) {
         assert_that(is.array(maturity),
                     identical(dim(maturity), dim(params@psi)))
@@ -159,21 +179,16 @@ setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
         assert_that(all(species_params$w_mat > species_params$w_min))
         
         # Set defaults for w_mat25
-        if (!("w_mat25" %in% colnames(species_params))) {
-            species_params$w_mat25 <- 
-                species_params$w_mat / (3 ^ (1 / 10))
-        }
-        missing <- is.na(species_params$w_mat25)
-        if (any(missing)) {
-            species_params$w_mat25[missing] <- 
-                species_params$w_mat[missing] / (3 ^ (1 / 10))
-        }
+        species_params <- set_species_param_default(
+            species_params, "w_mat25",       
+            species_params$w_mat / (3 ^ (1 / 10)))
         # Check w_mat25
         assert_that(all(species_params$w_mat25 > species_params$w_min))
         assert_that(all(species_params$w_mat25 < species_params$w_mat))
         params@species_params$w_mat25 <- species_params$w_mat25
         
-        maturity <- 
+        maturity <- params@maturity  # To get the right dimensions
+        maturity[] <- 
             unlist(
                 tapply(params@w, seq_along(params@w),
                        function(wx, w_inf, w_mat, w_mat25) {
@@ -185,17 +200,33 @@ setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
                        w_mat25 = species_params$w_mat25
                 )
             )
-        if (!is.null(comment(params@maturity)) &&
-            any(params@maturity != maturity)) {
-            message("The maturity ogive has been commented and therefore will ",
-                    "not be recalculated from the species parameters.")
+        
+        # For reasons of efficiency we next set all very small values to 0 
+        maturity[maturity < 1e-8] <- 0
+        
+        # If maturity is protected by a comment, keep the old value
+        if (!is.null(comment(params@maturity))) {
+            if (!isTRUE(all.equal(params@maturity, maturity,
+                                  check.attributes = FALSE))) {
+                message("The maturity ogive has been commented and therefore will ",
+                        "not be recalculated from the species parameters.")
+            }
             maturity <- params@maturity
         }
     }
     assert_that(all(maturity >= 0 & maturity <= 1))
+    
+    # Need to update psi because it contains maturity as a factor
+    if (!isTRUE(all.equal(params@maturity, maturity,
+                          check.attributes = FALSE))) {
+        params@psi[] <- params@psi / params@maturity * maturity
+        params@psi[is.nan(params@psi)] <- 0
+    }
+    
     params@maturity[] <- maturity
     comment(params@maturity) <- comment(maturity)
     
+    # set reproduction proportion ----
     if (!is.null(repro_prop)) {
         assert_that(is.array(repro_prop),
                     identical(dim(repro_prop), dim(params@psi)))
@@ -221,17 +252,16 @@ setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
     psi <- params@maturity * repro_prop
     # psi should never be larger than 1
     psi[params@psi > 1] <- 1
-    # For reasons of efficiency we next set all very small values to 0 
-    # Set w < 10% of w_mat to 0
-    psi[outer(species_params$w_mat * 0.1, params@w, ">")] <- 0
-    # Set all w > w_inf to 1
+    # Set psi for all w > w_inf to 1
     psi[outer(species_params$w_inf, params@w, "<")] <- 1
     assert_that(all(psi >= 0 & psi <= 1))
     
-    if (!is.null(comment(params@psi)) &&
-        any(params@psi != psi)) {
-        message("The reproductive proportion has been commented and therefore ",
-                "will not be recalculated from the species parameters.")
+    if (!is.null(comment(params@psi))) {
+        if (!isTRUE(all.equal(params@psi, psi,
+                              check.attributes = FALSE))) {
+            message("The reproductive proportion has been commented and therefore ",
+                    "will not be recalculated from the species parameters.")
+        }
     } else {
         params@psi[] <- psi
         comment(params@psi) <- comment(repro_prop)
@@ -265,14 +295,24 @@ setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
 }
 
 #' @rdname setReproduction
+#' @return For `getMaturityProportion()`: 
+#'   An array (species x size) that holds the proportion
+#'   of individuals of each species at size that are mature.
 #' @export
 getMaturityProportion <- function(params) {
+    assert_that(is(params, "MizerParams"))
     params@maturity
 }
 
 #' @rdname setReproduction
+#' @return For `getReproductionProportion`:
+#'   An array (species x size) that holds the
+#'   proportion of consumed energy that a mature individual allocates to
+#'   reproduction for each species at size. For sizes where the maturity
+#'   proportion is zero, also the reproduction proportion is returned as zero.
 #' @export
 getReproductionProportion <- function(params) {
+    assert_that(is(params, "MizerParams"))
     repro_prop <- params@psi / params@maturity
     repro_prop[is.nan(repro_prop)] <- 0
     comment(repro_prop) <- comment(params@psi)

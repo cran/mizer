@@ -36,9 +36,10 @@
 #' @param lambda Scaling exponent of the intrinsic resource carrying capacity
 #' @param w_pp_cutoff The upper cut off size of the resource spectrum. 
 #'   Default is 10 g.
-#' @param resource_dynamics Function that determines resource dynamics by
-#'   calculating the resource spectrum at the next time step from the current
-#'   state.
+#' @param resource_dynamics Optional. Name of the function that determines the
+#'   resource dynamics by calculating the resource spectrum at the next time
+#'   step from the current state. You only need to specify this if you do not
+#'   want to use the default [resource_semichemostat()].
 #' @param ... Unused
 #' 
 #' @return A MizerParams object with updated resource parameters. Because of the
@@ -47,6 +48,7 @@
 #'   So to affect the change you call the function in the form
 #'   `params <- setResource(params, ...)`.
 #' @export
+#' @seealso [resource_params()]
 #' @family functions for setting parameters
 setResource <- function(params,
                         resource_rate = NULL,
@@ -78,7 +80,8 @@ setResource <- function(params,
     } else {
         rr_pp <- r_pp * params@w_full^(n - 1)
         if (!is.null(comment(params@rr_pp)) &&
-            any(params@rr_pp != rr_pp)) {
+            !isTRUE(all.equal(params@rr_pp, rr_pp,
+                          check.attributes = FALSE))) {
             message("The resource intrinsic growth rate has been commented and therefore will ",
                     "not be recalculated from the resource parameters.")
         } else {
@@ -95,7 +98,8 @@ setResource <- function(params,
         cc_pp <- kappa*params@w_full^(-lambda)
         cc_pp[params@w_full > w_pp_cutoff] <- 0
         if (!is.null(comment(params@cc_pp)) &&
-            any(params@cc_pp != cc_pp)) {
+            !isTRUE(all.equal(params@cc_pp, cc_pp,
+                              check.attributes = FALSE))) {
             message("The resource carrying capacity has been commented and therefore will ",
                     "not be recalculated from the resource parameters.")
         } else {
@@ -105,7 +109,7 @@ setResource <- function(params,
     if (!is.null(resource_dynamics)) {
         assert_that(is.character(resource_dynamics))
         if (!is.function(get0(resource_dynamics))) {
-            stop("The function ", resource_dynamics, "is not defined.")
+            stop('The resource dynamics function "', resource_dynamics, '" is not defined.')
         }
         params@resource_dynamics <- resource_dynamics
     }
@@ -131,14 +135,25 @@ getResourceDynamics <- function(params) {
     params@resource_dynamics
 }
 
-#' @rdname setResource
+#' Resource parameters
+#' 
+#' These functions allow you to get or set the resource parameters stored in
+#' a MizerParams object.
+#' The resource parameters are stored as a named list with the slot names
+#' `r_pp`, `kappa`, `lambda`, `n`, `w_pp_cutoff`. For their meaning see
+#' [setResource()]. If you change these parameters then this will
+#' recalculate the resource rate and the resource capacity, unless you have
+#' protected these with comments.
+#' 
+#' @param params A MizerParams object
 #' @export
+#' @family functions for setting parameters
 resource_params <- function(params) {
     params@resource_params
 }
 
-#' @rdname setResource
-#' @param value List of resource parameters
+#' @rdname resource_params
+#' @param value A named list of resource parameters.
 #' @export
 `resource_params<-` <- function(params, value) {
     assert_that(

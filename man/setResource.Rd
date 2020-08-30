@@ -5,8 +5,6 @@
 \alias{getResourceRate}
 \alias{getResourceCapacity}
 \alias{getResourceDynamics}
-\alias{resource_params}
-\alias{resource_params<-}
 \title{Set up resource}
 \usage{
 setResource(
@@ -27,10 +25,6 @@ getResourceRate(params)
 getResourceCapacity(params)
 
 getResourceDynamics(params)
-
-resource_params(params)
-
-resource_params(params) <- value
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -50,13 +44,12 @@ resource_params(params) <- value
 \item{w_pp_cutoff}{The upper cut off size of the resource spectrum.
 Default is 10 g.}
 
-\item{resource_dynamics}{Function that determines resource dynamics by
-calculating the resource spectrum at the next time step from the current
-state.}
+\item{resource_dynamics}{Optional. Name of the function that determines the
+resource dynamics by calculating the resource spectrum at the next time
+step from the current state. You only need to specify this if you do not
+want to use the default \code{\link[=resource_semichemostat]{resource_semichemostat()}}.}
 
 \item{...}{Unused}
-
-\item{value}{List of resource parameters}
 }
 \value{
 A MizerParams object with updated resource parameters. Because of the
@@ -96,13 +89,18 @@ and \code{lambda} arguments.
 }
 
 \seealso{
+\code{\link[=resource_params]{resource_params()}}
+
 Other functions for setting parameters: 
+\code{\link{gear_params}()},
+\code{\link{resource_params}()},
 \code{\link{setExtMort}()},
 \code{\link{setFishing}()},
 \code{\link{setInitialValues}()},
 \code{\link{setInteraction}()},
 \code{\link{setMaxIntakeRate}()},
 \code{\link{setMetabolicRate}()},
+\code{\link{setParams}()},
 \code{\link{setPredKernel}()},
 \code{\link{setReproduction}()},
 \code{\link{setSearchVolume}()},

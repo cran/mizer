@@ -1,3 +1,48 @@
+# mizer 2.0.4
+
+## Bug fixes
+
+* The value of `t` passed to dynamics functions has been corrected.
+* `setReproduction()` now correctly sets the the total proportion psi when the 
+  maturity proportion is changed.
+  
+## Enhancements
+
+* The way times are set in `project()` has been simplified. They are now either
+  set by the arguments `t_start`, `t_max` and `t_save` or by the dimension names
+  of the `effort` array.
+* Renamed `setRmax()` to `setBevertonHolt()` and allow it to work on an
+  arbitrary MizerParams object. The old name `setRmax()` is still available as
+  alias.
+* `mizerFMort()` now can also use the abundances and the rates `e_growth` and 
+  `pred_mort`. This is useful for example for implementing balanced harvesting.
+* A calculation in the numeric scheme has been simplified.
+* `gear_params` is allowed to have zero rows.
+* In `validGearParams()` the species name is used as gear name in case 
+  `gear_name` is NA.
+* `validGearParams()` ensures that all required arguments of the 
+  selectivity function are supplied and checks validity of species names.
+* `species_params()<-` suppresses warnings.
+* When `steady()` fails because RDI is zero it gives a meaningful error message.
+* `newCommunityParams()` now protects its zero investment in reproduction with
+  a comment.
+* The default maturity ogive is truncated at proportions smaller than 1e-8.
+* A new helper function `valid_species_arg()` checks validity of species 
+  selection arguments.
+* `upgradeParams()` can now also upgrade old MizerParams objects that do not 
+  have a consistent `initial_effort`.
+* A new helper function `validParams()` validates a MizerParams object and 
+  automatically upgrades it with `upgradeParams()` if necessary.
+* Old MizerParams objects are updated automatically when used in plot functions,
+  rate functions, summary functions or in `project()` or `steady()`, #163.
+* New function `getRates()` to calculates all rates and collects them in a list.
+* `steady()` with `return_sim = TRUE` now creates the sim object the same way 
+  as `project()`, namely with the original values in the first time slot.
+* Added documentation for `species_params()`, `gear_params()` and
+  `resource_params()`.
+* Numerous small improvements to documentation.
+
+
 # mizer 2.0.3
 
 ## Bug fixes
@@ -103,7 +148,7 @@ version 1.0 with the exception of bug fixes and the following breaking changes:
   version never truncates. That leads to very small differences in simulation
   results.
 * Removed the `print_it` argument from plot functions.
-* plotFeedingLevel() now only plots the values within the size range of each
+* `plotFeedingLevel()` now only plots the values within the size range of each
   species. If for some reason you want the old plots that show a feeding level
   also for sizes that the fish can never have, you need to supply an argument
   `all.sizes = TRUE`.
@@ -115,7 +160,7 @@ version 1.0 with the exception of bug fixes and the following breaking changes:
   and `egg_size_scaling = TRUE`.
 * The functions `display_frames()`, `addSpecies()`, `setBackground()` and 
   `retuneAbundance()` have been removed to the "mizerExperimental" package
-  (https://sizespectrum.org/mizerExperimental)
+  (https://sizespectrum.org/mizerExperimental/)
 * During runs of `project()` a progress bar is displayed by default. You can 
   turn this off with the option `progress_bar = FALSE.
 * Throughout mizer the term "plankton" has been replaced by "resource", which
@@ -206,7 +251,7 @@ gain experience in writing extensions for mizer.
 * New argument `include_critical` in `plotFeedingLevel()` allows to show also
   the critical feeding level.
 * New `wlim` argument to `plotSpectra()` in analogy to the existing `ylim`
-  argument to limit the w range in the plot.
+  argument to limit the `w` range in the plot.
 * The colours used in plot functions can be set with `setColours()`.
 * The default line type is `solid` but this can be changed via the 
   `setLinetypes()` function.
@@ -304,7 +349,7 @@ species. The information is set up via a new `gear_params()` data frame. See
 ## Documentation
 
 * Mizer now has a documentation website at <https://sizespectrum.org/mizer/>
-  for the latest released version and at <https://sizespectrum.org/mizer/dev>
+  for the latest released version and at <https://sizespectrum.org/mizer/dev/>
   for the development version. (#48)
 * The help pages of mizer functions has been extended massively, see for
   example the help for `newMultispeciesParams()`.
@@ -343,12 +388,12 @@ species. The information is set up via a new `gear_params()` data frame. See
 * Consistently cutting off predation kernel at 0 and beta + 3 sigma.
 * The `ylim` argument is not handled correctly in plots.
 * `display_frame()` is now exported.
-* plotGrowthCurves() and getGrowthCurves() also works when there is only a 
+* `plotGrowthCurves()` and `getGrowthCurves()` also works when there is only a 
   single species
-* t_start argument in project() is used correctly
+* `t_start` argument in `project()` is used correctly
 * times are not truncated at 3 significant figures, because that would not allow
   something like 2019.
-* get_initial_n() gets values for n and q from params object
+* `get_initial_n()` gets values for `n` and `q` from params object
 * `summary()` of MizerParams object reflects the number of non-empty resource 
   bins. (@patricksykes)
   

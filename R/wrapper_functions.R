@@ -128,6 +128,7 @@ newCommunityParams <- function(max_w = 1e6,
     params@species_params$constant_reproduction <- reproduction
     params@psi[] <- 0 # Need to force to be 0. Can try setting w_mat but 
                           # due to slope still not 0
+    comment(params@psi) <- "No investment into reproduction in community model."
     # Set w_mat to NA for clarity - it is not actually being used
     params@species_params$w_mat[] <- NA
     return(params)
@@ -305,6 +306,9 @@ newTraitParams <- function(no_sp = 11,
         message("R_factor needs to be larger than 1. Setting R_factor = 1.01")
         R_factor <- 1.01
     }
+    if (min_w <= 0) {
+        stop("The smallest egg size min_w must be greater than zero.")
+    }
     no_w <- round(no_w)
     if (no_w < log10(max_w_inf/min_w)*5) {
         no_w <- round(log10(max_w_inf / min_w) * 5 + 1)
@@ -314,9 +318,6 @@ newTraitParams <- function(no_sp = 11,
     if (no_w > 10000) {
         message("Running a simulation with ", no_w, 
                 " size bins is going to be very slow.")
-    }
-    if (min_w <= 0) {
-        stop("The smallest egg size min_w must be greater than zero.")
     }
     if (min_w_inf >= max_w_inf) {
         stop("The asymptotic size of the smallest species min_w_inf must be ",
@@ -488,6 +489,7 @@ newTraitParams <- function(no_sp = 11,
         i_inf <- i_inf + bins_per_sp
         i_min <- i_min + bins_per_sp
     }
+    params@initial_n <- initial_n
     
     # Calculate the community spectrum
     sc <- colSums(initial_n)
@@ -513,15 +515,16 @@ newTraitParams <- function(no_sp = 11,
     if (!perfect_scaling) {
         params@cc_pp[w_full >= w_pp_cutoff] <- 0
     }
+    params@initial_n_pp <- params@cc_pp
     
-    initial_n_pp <- params@cc_pp
     # The cc_pp factor needs to be higher than the desired steady state in
     # order to compensate for predation mortality
-    m2_background <- getResourceMort(params, initial_n, initial_n_pp)
-    params@cc_pp <- (params@rr_pp + m2_background ) * initial_n_pp / params@rr_pp
+    m2_background <- getResourceMort(params)
+    params@cc_pp <- (params@rr_pp + m2_background ) * 
+        params@initial_n_pp / params@rr_pp
     
     ## Setup external death ----
-    m2 <- getPredMort(params, initial_n, initial_n_pp)
+    m2 <- getPredMort(params)
     flag <- FALSE
     for (i in 1:no_sp) {
         # The steplike psi was only needed when we wanted to use the analytic
@@ -537,9 +540,9 @@ newTraitParams <- function(no_sp = 11,
     
     
     ## Set erepro to meet boundary condition ----
-    rdi <- getRDI(params, initial_n, initial_n_pp)
-    gg <- getEGrowth(params, initial_n, initial_n_pp)
-    mumu <- getMort(params, initial_n, initial_n_pp)
+    rdi <- getRDI(params)
+    gg <- getEGrowth(params)
+    mumu <- getMort(params)
     erepro_final <- 1:no_sp  # set up vector of right dimension
     for (i in (1:no_sp)) {
         gg0 <- gg[i, params@w_min_idx[i]]
@@ -549,59 +552,11 @@ newTraitParams <- function(no_sp = 11,
             (initial_n[i, params@w_min_idx[i]] *
                  (gg0 + DW * mumu0)) / rdi[i]
     }
-    if (is.finite(R_factor)) {
-        # erepro has been multiplied by a factor of (R_factor/(R_factor-1)) to
-        # compensate for using Beverton Holt function.
-        erepro_final <- (R_factor / (R_factor - 1)) * erepro_final
-    }
     params@species_params$erepro <- erepro_final
     
-    # Record abundance of fish and resource at steady state, as slots.
-    params@initial_n <- initial_n
-    params@initial_n_pp <- initial_n_pp
-    # set rmax=fac*RDD
-    # note that erepro has been multiplied by a factor of (R_factor/(R_factor-1)) to
-    # compensate for using a Beverton Holt function
-    params@species_params$R_max <-
-        (R_factor - 1) * getRDI(params, initial_n, initial_n_pp)
+    params <- setBevertonHolt(params, R_factor = R_factor)
 
     return(params)
-}
-
-
-#' Set maximum reproduction rate
-#' 
-#' Takes a MizerParams object with density-independent reproduction rate and
-#' sets a Beverton-Holt density-dependence with a maximum reproduction rate that
-#' is a chosen factor `R_factor` higher than the initial-state reproduction
-#' rate. At the same time it adjust the reproductive efficiency `erepro`
-#' (see [setReproduction()]) to keep the same density-dependent reproduction at
-#' the initial state.
-#' 
-#' @param params A MizerParams object
-#' @param R_factor The factor by which the maximum reproduction rate should be higher than
-#'   the initial-state reproduction rate
-#' 
-#' @return A MizerParams object
-#' @export
-setRmax <- function(params, R_factor) {
-    assert_that(is(params, "MizerParams"),
-                is.numeric(R_factor),
-                length(R_factor) %in% c(1, nrow(params@species_params)),
-                all(R_factor > 1))
-    if (params@rates_funcs$RDD != "noRDD") {
-        stop("setRmax can only be applied to params objects using 'noRDD'.")
-    }
-    
-    params@species_params$R_max <- R_factor * getRDI(params)
-    
-    # erepro needs to be divided by a factor of 1-1/R_factor to
-    # compensate for using a Beverton Holt relationship
-    # because RDD = (1-1/R_factor) RDI
-    params@species_params$erepro <- 
-        params@species_params$erepro / (1 - 1 / R_factor)
-    
-    return(setReproduction(params, RDD = "BevertonHoltRDD"))
 }
 
 

@@ -30,14 +30,36 @@ parameters.)}
 \item{...}{Unused}
 }
 \value{
-A numeric vector the length of the number of species
+A numeric vector the length of the number of species.
 }
 \description{
-Calculates the density independent rate of egg production \eqn{R_{p.i}}
-(units 1/year) before density dependence, by species. Used by
-\code{\link[=getRDD]{getRDD()}} to calculate the actual density dependent rate.
+Calculates the density-independent rate of total egg production \eqn{R_{di}}{R_di}
+(units 1/year) before density dependence, by species.
+}
+\details{
+This rate is obtained by taking the per capita rate \eqn{E_r(w)\psi(w)} at
+which energy is invested in reproduction, as calculated by \code{\link[=getERepro]{getERepro()}},
+multiplying it by the number of individuals\eqn{N(w)} and integrating over all sizes
+\eqn{w} and then multiplying by the reproductive efficiency \eqn{\epsilon}
+and dividing by the egg size \code{w_min}, and by a factor of two to account for
+the two sexes:
+\deqn{R_{di} = \frac{\epsilon}{2 w_{min}} \int N(w)  E_r(w) \psi(w) \, dw}{R_di = (\epsilon/(2 w_min)) \int N(w)  E_r(w) \psi(w) dw}
+
+Used by \code{\link[=getRDD]{getRDD()}} to calculate the actual, density dependent rate.
 See \code{\link[=setReproduction]{setReproduction()}} for more details.
 }
+\section{Your own reproduction function}{
+
+By default \code{\link[=getRDI]{getRDI()}} calls \code{\link[=mizerRDI]{mizerRDI()}}. However you can
+replace this with your own alternative reproduction function. If
+your function is called \code{"myRDI"} then you register it in a MizerParams
+object \code{params} with\preformatted{params <- setRateFunction(params, "RDI", "myRDI")
+}
+
+Your function will then be called instead of \code{\link[=mizerRDI]{mizerRDI()}}, with the
+same arguments.
+}
+
 \examples{
 \dontrun{
 params <- newMultispeciesParams(NS_species_params_gears, inter)
@@ -62,6 +84,7 @@ Other rate functions:
 \code{\link{getPredMort}()},
 \code{\link{getPredRate}()},
 \code{\link{getRDD}()},
+\code{\link{getRates}()},
 \code{\link{getResourceMort}()}
 }
 \concept{rate functions}

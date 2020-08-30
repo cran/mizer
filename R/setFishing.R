@@ -100,14 +100,8 @@
 #'   object. So to affect the change you call the function in the form
 #'   `params <- setFishing(params, ...)`.
 #' @export
+#' @seealso [gear_params()]
 #' @family functions for setting parameters
-#' @examples
-#' \dontrun{
-#' params <- NS_params
-#' # Change knife edge size for species 1
-#' params@species_params$knife_edge_size[1] <- 15
-#' params <- setFishing(params)
-#' }
 setFishing <- function(params, selectivity = NULL, catchability = NULL, 
                        initial_effort = NULL, ...) {
     assert_that(is(params, "MizerParams"))
@@ -195,8 +189,7 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
     }
     
     if (!is.null(initial_effort)) {
-        validate_effort_vector(params, initial_effort)
-        params@initial_effort[] <- initial_effort
+        params@initial_effort[] <- validEffortVector(initial_effort, params)
         comment(params@initial_effort) <- comment(initial_effort)
     }
     
@@ -204,14 +197,30 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
     return(params)
 }
 
-#' @rdname setFishing
+#' Gear parameters
+#' 
+#' These functions allow you to get or set the gear parameters stored in
+#' a MizerParams object. These are used by [setFishing()] to set up the 
+#' selectivity and catchability and thus together with the fishing effort
+#' determine the fishing mortality.
+#' 
+#' The `gear_params` data has one row for each gear-species pair and one
+#' column for each parameter that determines how that gear interacts with that
+#' species. For the details see [setFishing()].
+#' 
+#' If you change a gear parameter, this will be used to recalculate the
+#' `selectivity` and `catchability` arrays by calling [setFishing()],
+#' unless you have protected these with comments.
+#' @param params A MizerParams object
 #' @export
+#' @family functions for setting parameters
 gear_params <- function(params) {
     params@gear_params
 }
 
-#' @rdname setFishing
-#' @param value A data frame with the gear parameters
+#' @rdname gear_params
+#' @param value A data frame with the gear parameters.
+#' @seealso [validGearParams()]
 #' @export
 `gear_params<-` <- function(params, value) {
     value <- validGearParams(value, params@species_params)
@@ -242,74 +251,118 @@ getInitialEffort <- function(params) {
 #' The function returns a valid gear parameter data frame that can be used
 #' by `setFishing()` or it gives an error message.
 #' 
+#' The gear_params data frame is allowed to have zero rows, but if it has
+#' rows, then the following requirements apply:
+#' * There must be columns `species` and `gear` and any species - gear pair is 
+#'   allowed to appear at most once. Any species that appears must also appear
+#'   in the `species_params` data frame.
+#' * There must be a `sel_func` column. If a selectivity function is not 
+#'   supplied, it will be set to "knife_edge".
+#' * There must be a `catchability` column. If a catchability is not supplied,
+#'   it will be set to 1.
+#' * All the parameters required by the selectivity functions must be provided.
+#' 
 #' If gear_params is empty, then this function tries to find the necessary
 #' information in the species_params data frame. This restricts each species
 #' to be fished by only one gear. Defaults are used for information that can
 #' not be found in the species_params dataframe, as follows:
-#' * If there is no `gear` column, each species gets its own gear, named after 
-#'   the species.
+#' * If there is no `gear` column or it is NA then a new gear named after the
+#'   species is introduced.
 #' * If there is no `sel_func` column or it is NA then `knife_edge` is used.
 #' * If there is no `catchability` column or it is NA then this is set to 1.
 #' * If the selectivity function is `knife_edge` and no `knife_edge_size` is
 #'   provided, it is set to `w_mat`.
+#'   
+#' For backwards compatibility, when `gear_params` is `NULL` and there is no
+#' gear information in the `species_params`, then a gear called `knife_edge_gear`
+#' is set up with a `knife_edge` selectivity for each species and a
+#' `knive_edge_size` equal to `w_mat`. Catchability is set to 1 for all species.
 #' 
 #' @param gear_params Gear parameter data frame
 #' @param species_params Species parameter data frame
 #' @return A valid gear parameter data frame
 #' @concept helper
+#' @seealso [gear_params()]
+#' @export
 validGearParams <- function(gear_params, species_params) {
-    assert_that(is.data.frame(gear_params),
-                is.data.frame(species_params))
     
+    # This is to agree with old defaults
+    if (is.null(gear_params) && 
+        !("gear" %in% names(species_params) || 
+            "sel_func" %in% names(species_params))) {
+        gear_params <- 
+            data.frame(species = species_params$species,
+                       gear = "knife_edge_gear",
+                       sel_func = "knife_edge",
+                       knife_edge_size = species_params$w_mat,
+                       catchability = 1,
+                       stringsAsFactors = FALSE) # for old versions of R
+    }
+    
+    species_params <- validSpeciesParams(species_params)
     no_sp <- nrow(species_params)
     
-    if (nrow(gear_params) < 1) {
-        if ("gear" %in% names(species_params) ||
-            "sel_func" %in% names(species_params)) {
-            # Try to take parameters from species_params
-            gear_params <- 
-                data.frame(species = as.character(species_params$species),
-                           stringsAsFactors = FALSE)
-            if ("gear" %in% names(species_params)) {
-                gear_params$gear <- as.character(species_params$gear)
-                gear_params$gear[is.na(gear_params$gear)] <- "knife_edge_gear"
-            } else {
-                gear_params$gear <- species_params$species
-            }
-            if ("sel_func" %in% names(species_params)) {
-                gear_params$sel_func <- as.character(species_params$sel_func)
-                gear_params$sel_func[is.na(gear_params$sel_func)] <- "knife_edge"
-            } else {
-                gear_params$sel_func <- "knife_edge"
-            }
-            if ("catchability" %in% names(species_params)) {
-                gear_params$catchability <- species_params$catchability
-                gear_params$catchability[is.na(gear_params$catchability)] <- 1
-            } else {
-                gear_params$catchability <- 1
-            }
-            # copy over any selectivity function parameters
-            for (g in seq_len(no_sp)) {
-                args <- names(formals(as.character(gear_params[g, 'sel_func'])))
-                args <- args[!(args %in% c("w", "species_params", "..."))]
-                for (arg in args) {
-                    if (arg %in% names(species_params)) {
-                        gear_params[[arg]] <- species_params[[arg]]
-                    } else if (arg == "knife_edge_size") {
-                        gear_params[[arg]] <- species_params$w_mat
-                    } else {
-                        stop("You need to provide an `", arg, "` column in the species parameter data frame.")
-                    }
+    # If no gear_params are supplied, but there is either a gear or sel_func
+    # column in the species_params data frame, then try to extract information
+    # from there.
+    if ((is.null(gear_params) || nrow(gear_params) == 0) &&
+        ("gear" %in% names(species_params) || 
+         "sel_func" %in% names(species_params))) {
+        # Try to take parameters from species_params
+        gear_params <- 
+            data.frame(species = as.character(species_params$species),
+                       stringsAsFactors = FALSE)
+        if ("gear" %in% names(species_params)) {
+            gear_params$gear <- as.character(species_params$gear)
+            gear_params$gear[is.na(gear_params$gear)] <- 
+                species_params$species[is.na(gear_params$gear)]
+        } else {
+            gear_params$gear <- species_params$species
+        }
+        if ("sel_func" %in% names(species_params)) {
+            gear_params$sel_func <- as.character(species_params$sel_func)
+            gear_params$sel_func[is.na(gear_params$sel_func)] <- "knife_edge"
+        } else {
+            gear_params$sel_func <- "knife_edge"
+        }
+        if ("catchability" %in% names(species_params)) {
+            gear_params$catchability <- species_params$catchability
+            gear_params$catchability[is.na(gear_params$catchability)] <- 1
+        } else {
+            gear_params$catchability <- 1
+        }
+        # copy over any selectivity function parameters
+        for (g in seq_len(no_sp)) {
+            args <- names(formals(as.character(gear_params[g, 'sel_func'])))
+            args <- args[!(args %in% c("w", "species_params", "..."))]
+            for (arg in args) {
+                if (!arg %in% names(gear_params)) {
+                    gear_params[[arg]] <- NA
+                }
+                if (arg %in% names(species_params) && 
+                    !is.na(species_params[g, arg])) {
+                    gear_params[g, arg] <- species_params[g, arg]
+                } else if (arg == "knife_edge_size") {
+                    gear_params[g, arg] <- species_params$w_mat[[g]]
+                } else {
+                    stop("You need to provide an `", arg, "` column in the species parameter data frame.")
                 }
             }
-        } else {
-            gear_params <- 
-                data.frame(species = species_params$species,
-                           gear = "knife_edge_gear",
-                           sel_func = "knife_edge",
-                           knife_edge_size = species_params$w_mat,
-                           catchability = 1)
         }
+    }
+    
+    # An empty gear_params data frame is valid
+    if (nrow(gear_params) == 0) {
+        return(gear_params)
+    }
+    
+    if (!all(c("species", "gear") %in% names(gear_params))) {
+        stop("`gear_params` must have columns 'species' and 'gear'.")
+    }
+    
+    # Check that every species mentioned in gear_params exists
+    if (!all(gear_params$species %in% species_params$species)) {
+        stop("The gear_params dataframe contains species that do not exist in the model.")
     }
     
     # Check that there are no duplicate gear-species pairs
@@ -323,8 +376,23 @@ validGearParams <- function(gear_params, species_params) {
     }
     gear_params$sel_func[is.na(gear_params$sel_func)] <- "knife_edge"
     
+    # Default gear name is species name
+    sel <- is.na(gear_params$gear)
+    gear_params$gear[sel] <- gear_params$species[sel]
+    
+    # Ensure there is knife_edge_size columng if any knife_edge selectivity function
+    if (any(gear_params$sel_func == "knife_edge") &&
+        !("knife_edge_size" %in% names(gear_params))) {
+        gear_params$knife_edge_size <- NA
+    }
+    
     # Check that every row is complete
     for (g in seq_len(nrow(gear_params))) {
+        if ((gear_params$sel_func[[g]] == "knife_edge") &&
+            is.na(gear_params$knife_edge_size[[g]])) {
+            sel <- species_params$species == gear_params$species[[g]]
+            gear_params$knife_edge_size[[g]] <- species_params$w_mat[sel]
+        }
         # get args
         # These as.characters are annoying - but factors everywhere
         arg <- names(formals(as.character(gear_params[g, 'sel_func'])))
@@ -346,35 +414,54 @@ validGearParams <- function(gear_params, species_params) {
     gear_params
 }
 
-#' Check that an effort vector is specified correctly
+#' Return valid effort vector
 #' 
-#' Throws an error with an explanatory message when the supplied `effort`
-#' vector is not valid for the model described by `params`.
+#' A valid effort vector is a named vector with one entry for each gear,
+#' with the gear names in the same order as in the params object. 
+#' 
+#' The function also accepts an `effort` that is not yet valid:
+#' 
+#' * a scalar, which is then replicated for each gear
+#' * an unnamed vector, which is then assumed to be in the same order as the
+#'   gears in the params object
+#' * a named vector in which the gear names have a different order than in the
+#'   params object. This is then sorted correctly.
+#'   
+#' An `effort` argument of the wrong length or with names not corresponding to 
+#' gears will produce an error.
 #' 
 #' @param params A MizerParams object
-#' @param effort An effort vector
+#' @param effort An vector or scalar.
 #' 
-#' @return TRUE if `effort` is valid. Throws an error otherwise.
+#' @return A valid effort vector with one entry for each gear, named by gear,
+#'   in the same order as in the params object.
 #' @export
 #' @keywords internal
 #' @concept helper
-validate_effort_vector <- function(params, effort) {
+validEffortVector <- function(effort, params) {
     assert_that(is(params, "MizerParams"),
-                is.numeric(effort))
+                (is.null(effort) || is.numeric(effort)))
     no_gears <- dim(params@catchability)[1]
-    if ((length(effort) > 1) & (length(effort) != no_gears)) {
-        stop("Effort vector must be the same length as the number of fishing gears\n")
+    # If only one effort is given, it is replicated for all gears
+    if (length(effort) == 1) {
+        effort <- rep(effort, no_gears)
     }
-    # If more than 1 gear need to check that gear names match
+    if (length(effort) != no_gears) {
+        stop("Effort vector must be the same length as the number of fishing gears.")
+    }
+    # Set gear names if not provided
     gear_names <- dimnames(params@catchability)[[1]]
-    effort_gear_names <- names(effort)
-    if (length(effort) == 1 & is.null(effort_gear_names)) {
-        effort_gear_names <- gear_names
+    if (is.null(names(effort))) {
+        names(effort) <- gear_names
     }
-    if (!all(gear_names %in% effort_gear_names)) {
+    # Check validity of gear names
+    if (!all(gear_names %in% names(effort))) {
         stop("Gear names in the MizerParams object (", 
              paste(gear_names, collapse = ", "), 
              ") do not match those in the effort vector.")
     }
-    return(TRUE)
+    # Sort vector
+    effort <- effort[gear_names]
+    
+    return(effort)
 }

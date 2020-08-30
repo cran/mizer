@@ -44,11 +44,11 @@
 #' #### Setting allometric death rate #######################
 #' 
 #' # Set coefficient for each species. Here we choose 0.1 for each species
-#' z0pre <- rep(0.1, nrow(params@species_params))
+#' z0pre <- rep(0.1, nrow(species_params(params)))
 #' 
 #' # Multiply by power of size with exponent, here chosen to be -1/4
 #' # The outer() function makes it an array species x size
-#' z0 <- outer(z0pre, params@w^(-1/4))
+#' z0 <- outer(z0pre, w(params)^(-1/4))
 #' 
 #' # Change the external mortality rate in the params object
 #' params <- setExtMort(params, z0 = z0)
@@ -72,12 +72,14 @@ setExtMort <- function(params, z0 = NULL, z0pre = 0.6, z0exp = -1/4, ...) {
     params <- set_species_param_default(params, "z0",
                                         z0pre * species_params$w_inf^z0exp,
                                         message)
-    mu_b <- params@species_params$z0
+    mu_b <- params@mu_b
+    mu_b[] <- params@species_params$z0
     
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@mu_b))) {
         # Issue warning but only if a change was actually requested
-        if (any(mu_b != params@mu_b)) {
+        if (!isTRUE(all.equal(mu_b, params@mu_b,
+                              check.attributes = FALSE))) {
             message("The external mortality rate has been commented and therefore ",
                     "will not be recalculated from the species parameters.")
         }

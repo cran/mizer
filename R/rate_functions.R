@@ -6,6 +6,26 @@
 # Distributed under the GPL 3 or later 
 # Maintainer: Gustav Delius, University of York, <gustav.delius@york.ac.uk>
 
+#' Get all rates
+#' 
+#' @inherit mizerRates
+#' @inheritParams mizerRates
+#' @export
+#' @family rate functions
+getRates <- function(params, n = initialN(params), 
+                     n_pp = initialNResource(params),
+                     n_other = initialNOther(params),
+                     effort, t = 0) {
+    params <- validParams(params)
+    if (missing(effort)) {
+        effort <- params@initial_effort
+    }
+    
+    r <- get(params@rates_funcs$Rates)(
+        params, n = n, n_pp = n_pp, n_other = n_other,
+        t = t, effort = effort, rates_fns = lapply(params@rates_funcs, get))
+}
+
 #' Get encounter rate
 #' 
 #' Returns the rate at which a predator of species \eqn{i} and
@@ -26,9 +46,19 @@ getEncounter <- function(params, n = initialN(params),
                          n_pp = initialNResource(params),
                          n_other = initialNOther(params),
                          t = 0) {
-
+    params <- validParams(params)
+    assert_that(is.array(n),
+                is.numeric(n_pp),
+                is.list(n_other),
+                is.number(t),
+                identical(dim(n), dim(params@initial_n)),
+                identical(length(n_pp), length(params@initial_n_pp)),
+                identical(length(n_other), length(params@initial_n_other))
+    )
     f <- get(params@rates_funcs$Encounter)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
+    encounter <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
+    dimnames(encounter) <- dimnames(params@metab)
+    encounter
 }
 
 
@@ -72,17 +102,20 @@ getEncounter <- function(params, n = initialN(params),
 getFeedingLevel <- function(object, n, n_pp, n_other,
                             time_range, drop = FALSE, ...) {
     if (is(object, "MizerParams")) {
-        params <- object
+        params <- validParams(object)
         if (missing(time_range)) time_range <- 0
         t <- min(time_range)
         if (missing(n)) n <- params@initial_n
         if (missing(n_pp)) n_pp <- params@initial_n_pp
         if (missing(n_other)) n_other <- params@initial_n_other
-        encounter <- getEncounter(params, n, n_pp, n_other, t = t)
         # calculate feeding level
         f <- get(params@rates_funcs$FeedingLevel)
-        return(f(params, n = n, n_pp = n_pp, n_other = n_other,
-                 encounter = encounter, t = t))
+        feeding_level <- f(params, n = n, n_pp = n_pp, n_other = n_other,
+                           encounter = getEncounter(params, n, n_pp, n_other, 
+                                                    t = t), 
+                           t = t)
+        dimnames(feeding_level) <- dimnames(params@metab)
+        return(feeding_level)
     } else {
         sim <- object
         if (missing(time_range)) {
@@ -121,8 +154,8 @@ getFeedingLevel <- function(object, n, n_pp, n_other,
 #' @return A matrix (species x size) with the critical feeding level
 #' @export
 getCriticalFeedingLevel <- function(params) {
-  validObject(params)
-  params@metab/params@intake_max/params@species_params$alpha
+    params <- validParams(params)
+    params@metab/params@intake_max/params@species_params$alpha
 }
 
 
@@ -153,11 +186,14 @@ getEReproAndGrowth <- function(params, n = initialN(params),
                                n_pp = initialNResource(params),
                                n_other = initialNOther(params),
                                t = 0, ...) {
-    encounter <- getEncounter(params, n, n_pp, n_other, t = t)
-    feeding_level <- getFeedingLevel(params, n, n_pp, n_other, time_range = t)
+    params <- validParams(params)
     f <- get(params@rates_funcs$EReproAndGrowth)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
-      encounter = encounter, feeding_level = feeding_level)
+    e <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+           encounter = getEncounter(params, n, n_pp, n_other, t = t), 
+           feeding_level = getFeedingLevel(params, n, n_pp, n_other, 
+                                           time_range = t))
+    dimnames(e) <- dimnames(params@metab)
+    e
 }
 
 #' Get predation rate
@@ -190,14 +226,15 @@ getPredRate <- function(params, n = initialN(params),
                         n_pp = initialNResource(params),
                         n_other = initialNOther(params),
                         t = 0, ...) {
+    params <- validParams(params)
     no_sp <- dim(params@interaction)[1]
     no_w <- length(params@w)
     no_w_full <- length(params@w_full)
-    feeding_level = getFeedingLevel(params, n = n, n_pp = n_pp,  
-                                    n_other = n_other, time_range = t)
     f <- get(params@rates_funcs$PredRate)
     pred_rate <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
-                   feeding_level = feeding_level)
+                   feeding_level = getFeedingLevel(params, n = n, n_pp = n_pp,  
+                                                   n_other = n_other, 
+                                                   time_range = t))
     dimnames(pred_rate) <- list(sp = dimnames(params@initial_n)$sp,
                                 w_prey = as.character(signif(params@w_full, 3)))
     pred_rate
@@ -237,18 +274,17 @@ getPredRate <- function(params, n = initialN(params),
 getPredMort <- function(object, n, n_pp, n_other,
                         time_range, drop = TRUE, ...) {
     if (is(object, "MizerParams")) {
-        params <- object
+        params <- validParams(object)
         if (missing(n)) n <- params@initial_n
         if (missing(n_pp)) n_pp <- params@initial_n_pp
         if (missing(n_other)) n_other <- params@initial_n_other
         if (missing(time_range)) time_range <- 0
         t <- min(time_range)
-        pred_rate <- getPredRate(params, n = n, n_pp = n_pp, 
-                                 n_other = n_other, t = t)
         
         f <- get(params@rates_funcs$PredMort)
         pred_mort <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
-                       pred_rate = pred_rate)
+                       pred_rate = getPredRate(params, n = n, n_pp = n_pp, 
+                                               n_other = n_other, t = t))
         dimnames(pred_mort) <- list(prey = dimnames(params@initial_n)$sp,
                                     w_prey = dimnames(params@initial_n)$w)
         pred_mort
@@ -307,13 +343,15 @@ getResourceMort <-
              n_pp = initialNResource(params),
              n_other = initialNOther(params),
              t = 0, ...) {
-
-    pred_rate <- getPredRate(params, n = n, n_pp = n_pp, 
-                              n_other = n_other, t = t)
+      
+    params <- validParams(params)
     
     f <- get(params@rates_funcs$ResourceMort)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, 
-      t = t, pred_rate = pred_rate)
+    mort <- f(params, n = n, n_pp = n_pp, n_other = n_other, 
+              t = t, pred_rate = getPredRate(params, n = n, n_pp = n_pp, 
+                                             n_other = n_other, t = t))
+    names(mort) <- names(params@initial_n_pp)
+    mort
 }
 
 #' Alias for getResourceMort
@@ -390,7 +428,7 @@ getFMortGear <- function(object, effort, time_range) {
         f_mort_gear <- getFMortGear(sim@params, sim@effort)
         return(f_mort_gear[time_elements, , , , drop = FALSE])
     } else {
-        params <- object
+        params <- validParams(object)
         if (missing(effort)) {
             effort <- params@initial_effort
         }
@@ -404,7 +442,9 @@ getFMortGear <- function(object, effort, time_range) {
                 stop("Effort must be a single value or a vector as long as the number of gears\n")
             }
             
-            mizerFMortGear(params, effort = effort)
+            f <- mizerFMortGear(params, effort = effort)
+            dimnames(f) <- dimnames(params@selectivity)
+            return(f)
         
         } else {
             # assuming effort is a matrix, and object is of MizerParams class
@@ -434,6 +474,8 @@ getFMortGear <- function(object, effort, time_range) {
 #' species and size at each time step in the `effort` argument.
 #' The total fishing mortality is just the sum of the fishing mortalities
 #' imposed by each gear, \eqn{\mu_{f.i}(w)=\sum_g F_{g,i,w}}.
+#' The fishing mortality for each gear is obtained as catchability x 
+#' selectivity x effort.
 #' 
 #' @param object A `MizerParams` object or a `MizerSim` object
 #' @param effort The effort of each fishing gear. Only used if the object
@@ -444,13 +486,12 @@ getFMortGear <- function(object, effort, time_range) {
 #'   `object` argument is of type `MizerSim`.
 #' @param drop Only used when object is of type `MizerSim`. Should
 #'   dimensions of length 1 be dropped, e.g. if your community only has one
-#'   species it might make presentation of results easier. Default is TRUE
+#'   species it might make presentation of results easier. Default is TRUE.
 #'
 #' @return An array. If the effort argument has a time dimension, or object is
 #'   of class `MizerSim`, the output array has three dimensions (time x
 #'   species x size). If the effort argument does not have a time dimension, the
 #'   output array has two dimensions (species x size).
-#' @note Here: fishing mortality = catchability x selectivity x effort.
 #'
 #' The `effort` argument is only used if a `MizerParams` object is
 #' passed in. The `effort` argument can be a two dimensional array (time x
@@ -463,6 +504,9 @@ getFMortGear <- function(object, effort, time_range) {
 #' If the object argument is of class `MizerSim` then the effort slot of
 #' the `MizerSim` object is used and the `effort` argument is not
 #' used.
+#' 
+#' @inheritSection mizerFMort Your own fishing mortality function
+#' 
 #' @export
 #' @family rate functions
 #' @examples
@@ -490,22 +534,49 @@ getFMortGear <- function(object, effort, time_range) {
 #' }
 getFMort <- function(object, effort, time_range, drop = TRUE){
     if (is(object, "MizerParams")) {
-        params <- object
+        params <- validParams(object)
         if (missing(effort)) {
           effort <- params@initial_effort
         }
+        n <- params@initial_n
+        n_pp <- params@initial_n_pp
+        n_other <- params@initial_n_other
         no_gears <- dim(params@catchability)[[1]]
         f <- get(params@rates_funcs$FMort)
         if (length(dim(effort)) == 2) {
-            f_mort <- t(apply(effort, 1, function(x) f(params, x)))
+            f_mort <- t(apply(effort, 1, 
+                              function(x) f(
+                                params, n = n, n_pp = n_pp, n_other = n_other, 
+                                effort = x, t = t, 
+                                e_growth = getEGrowth(params, n = n, n_pp = n_pp, 
+                                                      n_other = n_other, t = t), 
+                                pred_mort = getPredMort(params, n = n, n_pp = n_pp, 
+                                                        n_other = n_other, 
+                                                        time_range = t))))
             dim(f_mort) <- c(dim(effort)[[1]], dim(params@initial_n))
             dimnames(f_mort) <- c(list(time = dimnames(effort)[[1]]),
                               dimnames(params@initial_n))
             return(f_mort)
         } else if (length(effort) == 1) {
-            return(f(params, rep(effort, no_gears)))
+            fmort <- f(params, n = n, n_pp = n_pp, n_other = n_other, 
+                       effort = rep(effort, no_gears), t = t, 
+                       e_growth = getEGrowth(params, n = n, n_pp = n_pp, 
+                                             n_other = n_other, t = t), 
+                       pred_mort = getPredMort(params, n = n, n_pp = n_pp, 
+                                               n_other = n_other, 
+                                               time_range = t))
+            dimnames(fmort) <- dimnames(params@metab)
+            return(fmort)
         } else if (length(effort) == no_gears) {
-            return(f(params, effort))
+            fmort <- f(params, n = n, n_pp = n_pp, n_other = n_other, 
+                       effort = effort, t = t, 
+                       e_growth = getEGrowth(params, n = n, n_pp = n_pp, 
+                                             n_other = n_other, t = t), 
+                       pred_mort = getPredMort(params, n = n, n_pp = n_pp, 
+                                               n_other = n_other, 
+                                               time_range = t))
+            dimnames(fmort) <- dimnames(params@metab)
+            return(fmort)
         } else {
             stop("Invalid effort argument")
         }
@@ -518,7 +589,8 @@ getFMort <- function(object, effort, time_range, drop = TRUE){
         time_elements <- get_time_elements(sim, time_range, slot_name = "effort")
         f_mort <- getFMort(sim@params, sim@effort)
         return(f_mort[time_elements, , , drop = drop])
-    }}
+    }
+}
 
 
 #' Get total mortality rate
@@ -552,13 +624,13 @@ getMort <- function(params,
                     n_other = initialNOther(params),
                     effort = getInitialEffort(params),
                     t = 0, ...) {
-    f_mort <- getFMort(params, effort)
-    pred_mort <- getPredMort(params, n = n, n_pp = n_pp, 
-                             n_other = n_other, time_range = t)
+    params <- validParams(params)
   
     f <- get(params@rates_funcs$Mort)
     z <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
-           f_mort = f_mort, pred_mort = pred_mort)
+           f_mort = getFMort(params, effort), 
+           pred_mort = getPredMort(params, n = n, n_pp = n_pp, 
+                                   n_other = n_other, time_range = t))
     dimnames(z) <- list(prey = dimnames(params@initial_n)$sp,
                         w_prey = dimnames(params@initial_n)$w)
     return(z)
@@ -601,10 +673,13 @@ getERepro <- function(params, n = initialN(params),
                       n_pp = initialNResource(params),
                       n_other = initialNOther(params),
                       t = 0, ...) {
-    e <- getEReproAndGrowth(params, n = n, n_pp = n_pp,
-                            n_other = n_other, t = t)
+    params <- validParams(params)
     f <- get(params@rates_funcs$ERepro)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, t = t, e = e)
+    erepro <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t, 
+                e = getEReproAndGrowth(params, n = n, n_pp = n_pp,
+                                       n_other = n_other, t = t))
+    dimnames(erepro) <- dimnames(params@metab)
+    erepro
 }
 
 #' Alias for getERepro
@@ -640,26 +715,27 @@ getEGrowth <- function(params, n = initialN(params),
                        n_pp = initialNResource(params),
                        n_other = initialNOther(params),
                        t = 0, ...) {
-    e_repro <- getERepro(params, n = n, n_pp = n_pp, 
-                        n_other = n_other, t = t)
-    e <- getEReproAndGrowth(params, n = n, n_pp = n_pp, 
-                            n_other = n_other, t = t)
+    params <- validParams(params)
     f <- get(params@rates_funcs$EGrowth)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, 
-      t = t, e_repro = e_repro, e = e)
+    g <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t, 
+           e_repro = getERepro(params, n = n, n_pp = n_pp, 
+                               n_other = n_other, t = t), 
+           e = getEReproAndGrowth(params, n = n, n_pp = n_pp, 
+                                  n_other = n_other, t = t))
+    dimnames(g) <- dimnames(params@metab)
+    g
 }
 
 
 #' Get density independent rate of egg production
-#'
-#' Calculates the density independent rate of egg production \eqn{R_{p.i}}
-#' (units 1/year) before density dependence, by species. Used by
-#' [getRDD()] to calculate the actual density dependent rate.
-#' See [setReproduction()] for more details.
 #' 
+#' Calculates the density-independent rate of total egg production \eqn{R_{di}}{R_di}
+#' (units 1/year) before density dependence, by species. 
+#'
+#' @inherit mizerRDI
 #' @inheritParams mizerRates
 #'   
-#' @return A numeric vector the length of the number of species 
+#' @return A numeric vector the length of the number of species.
 #' @export
 #' @seealso [getRDD()]
 #' @family rate functions
@@ -675,15 +751,16 @@ getRDI <- function(params, n = initialN(params),
                    n_pp = initialNResource(params),
                    n_other = initialNOther(params),
                    t = 0, ...) {
-    e_repro <- getERepro(params, n = n, n_pp = n_pp, 
-                         n_other = n_other, t = t)
-    e_growth <- getEGrowth(params, n = n, n_pp = n_pp, 
-                         n_other = n_other, t = t)
-    mort <- getMort(params, n = n, n_pp = n_pp, 
-                         n_other = n_other, t = t)
     f <- get(params@rates_funcs$RDI)
-    f(params, n = n, n_pp = n_pp, n_other = n_other, t = t, 
-      e_repro = e_repro, e_growth = e_growth, mort = mort)
+    rdi <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t, 
+             e_repro = getERepro(params, n = n, n_pp = n_pp, 
+                                 n_other = n_other, t = t), 
+             e_growth = getEGrowth(params, n = n, n_pp = n_pp, 
+                                   n_other = n_other, t = t), 
+             mort = getMort(params, n = n, n_pp = n_pp, 
+                            n_other = n_other, t = t))
+    names(rdi) <- as.character(params@species_params$species)
+    rdi
 }
 
 
@@ -720,13 +797,16 @@ getRDD <- function(params, n = initialN(params),
                    t = 0,
                    rdi = getRDI(params, n = n, n_pp = n_pp, 
                                 n_other = n_other, t = t)) {
+    params <- validParams(params)
     # Avoid getting into infinite loops
     if (params@rates_funcs$RDD == "getRDD") {
         stop('"getRDD" is not a valid name for the function giving the density',
              'dependent reproductive rate.')
     }
     f <- get(params@rates_funcs$RDD)
-    f(rdi = rdi, species_params = params@species_params)
+    rdd <- f(rdi = rdi, species_params = params@species_params)
+    names(rdd) <- as.character(params@species_params$species)
+    rdd
 }
 
 #' Get_time_elements

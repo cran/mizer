@@ -36,13 +36,6 @@
 #'   `params <- setMetabolicRate(params, ...)`.
 #' @export
 #' @family functions for setting parameters
-#' @examples
-#' \dontrun{
-#' params <- NS_params
-#' # Change activity coefficient for species 3
-#' params@species_params$k[3] <- 8
-#' params <- setMetabolicRate(params)
-#' }
 setMetabolicRate <- function(params, 
                              metab = NULL, p = NULL, ...) {
     assert_that(is(params, "MizerParams"))
@@ -76,7 +69,8 @@ setMetabolicRate <- function(params,
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@metab))) {
         # Issue warning but only if a change was actually requested
-        if (any(metab != params@metab)) {
+        if (!isTRUE(all.equal(metab, params@metab,
+                              check.attributes = FALSE))) {
             message("The metabolic rate has been commented and therefore will ",
                     "not be recalculated from the species parameters.")
         }

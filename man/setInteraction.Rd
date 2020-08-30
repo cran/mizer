@@ -63,18 +63,21 @@ be numbers between 0 and 1. By default this column is set to all 1s.
 \examples{
 \dontrun{
 params <- newTraitParams()
-interaction <- params@interaction
+interaction <- getInteraction(params)
 interaction[1, 3] <- 0
 params <- setInteraction(params, interaction)
 }
 }
 \seealso{
 Other functions for setting parameters: 
+\code{\link{gear_params}()},
+\code{\link{resource_params}()},
 \code{\link{setExtMort}()},
 \code{\link{setFishing}()},
 \code{\link{setInitialValues}()},
 \code{\link{setMaxIntakeRate}()},
 \code{\link{setMetabolicRate}()},
+\code{\link{setParams}()},
 \code{\link{setPredKernel}()},
 \code{\link{setReproduction}()},
 \code{\link{setResource}()},

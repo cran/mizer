@@ -55,21 +55,17 @@ for predators of size \eqn{w = 1} gram is the value of the species parameter
 \eqn{\gamma_i} the same as the value of the search volume \eqn{\gamma_i(w)}.
 }
 
-\examples{
-\dontrun{
-params <- newTraitParams()
-params@species_params$gamma[3] <- 1000
-params <- setSearchVolume(params)
-}
-}
 \seealso{
 Other functions for setting parameters: 
+\code{\link{gear_params}()},
+\code{\link{resource_params}()},
 \code{\link{setExtMort}()},
 \code{\link{setFishing}()},
 \code{\link{setInitialValues}()},
 \code{\link{setInteraction}()},
 \code{\link{setMaxIntakeRate}()},
 \code{\link{setMetabolicRate}()},
+\code{\link{setParams}()},
 \code{\link{setPredKernel}()},
 \code{\link{setReproduction}()},
 \code{\link{setResource}()},

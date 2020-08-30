@@ -40,25 +40,39 @@ validMizerParams <- function(object) {
     }
     
     # Check that the last entries of w_full and dw_full agree with w and dw
-    if (any(object@w[] != object@w_full[w_idx])) {
+    if (!isTRUE(all.equal(object@w[], object@w_full[w_idx],
+                          check.attributes = FALSE))) {
         msg <- "The later entries of w_full should be equal to those of w."
         errors <- c(errors, msg)
     }
-    if (any(object@dw[] != object@dw_full[w_idx])) {
+    if (!isTRUE(all.equal(object@dw[], object@dw_full[w_idx],
+                          check.attributes = FALSE))) {
         msg <- "The later entries of dw_full should be equal to those of dw."
+        errors <- c(errors, msg)
+    }
+    # Check w_min_idx
+    if (any(object@species_params$w_min < object@w[object@w_min_idx]) ||
+        any(object@species_params$w_min > object@w[object@w_min_idx + 1])) {
+        msg <- "The `w_min_idx` should point to the start of the size bin containing the egg size `w_min`."
         errors <- c(errors, msg)
     }
 
     # Check the array dimensions are good ----
+    # Bit tricky this one as I don't know of a way to compare lots of vectors 
+    # at the same time. Just use == and the recycling rule
+    
     # 2D arrays
-    if (!all(c(length(dim(object@psi)),
+    if (!all(c(length(dim(object@initial_n)),
+               length(dim(object@psi)),
                length(dim(object@intake_max)),
                length(dim(object@search_vol)),
                length(dim(object@metab)),
                length(dim(object@mu_b)),
                length(dim(object@interaction)),
+               length(dim(object@maturity)),
+               length(dim(object@ft_mask)),
                length(dim(object@catchability))) == 2)) {
-        msg <- "psi, intake_max, search_vol, metab, mu_b, interaction and catchability must all be two dimensions"
+        msg <- "initial_n, psi, intake_max, search_vol, metab, mu_b, interaction, maturity, ft_mask and catchability must all be two dimensions"
         errors <- c(errors, msg)
     }
     # 3D arrays
@@ -68,6 +82,8 @@ validMizerParams <- function(object) {
     }
     # Check number of species is equal across relevant slots
     if (!all(c(
+        dim(object@initial_n)[1],
+        dim(object@maturity)[1],
         dim(object@psi)[1],
         dim(object@intake_max)[1],
         dim(object@search_vol)[1],
@@ -76,23 +92,27 @@ validMizerParams <- function(object) {
         dim(object@selectivity)[2],
         dim(object@catchability)[2],
         dim(object@interaction)[1],
-        dim(object@interaction)[2]) == 
+        dim(object@interaction)[2],
+        dim(object@ft_mask)[1]) == 
         dim(object@species_params)[1])) {
         msg <- "The number of species in the model must be consistent across the species_params, psi, intake_max, search_vol, mu_b, interaction (dim 1), selectivity, catchability and interaction (dim 2) slots"
         errors <- c(errors, msg)
     }
     # Check number of size groups
     if (!all(c(
+        dim(object@initial_n)[2],
+        dim(object@maturity)[2],
         dim(object@psi)[2],
+        dim(object@mu_b)[2],
         dim(object@intake_max)[2],
         dim(object@search_vol)[2],
         dim(object@metab)[2],
         dim(object@selectivity)[3]) ==
         no_w)) {
-        msg <- "The number of size bins in the model must be consistent across the w, psi, intake_max, search_vol, and selectivity (dim 3) slots"
+        msg <- "The number of size bins in the model must be consistent across the w, initial_n, maturity, psi, mu_b, intake_max, search_vol, and selectivity (dim 3) slots"
         errors <- c(errors, msg)
     }
-    # Check numbe of gears
+    # Check number of gears
     if (!isTRUE(all.equal(dim(object@selectivity)[1], dim(object@catchability)[1]))) {
         msg <- "The number of fishing gears must be consistent across the catchability and selectivity (dim 1) slots"
         errors <- c(errors, msg)
@@ -100,6 +120,8 @@ validMizerParams <- function(object) {
     # Check names of dimnames of arrays ----
     # sp dimension
     if (!all(c(
+        names(dimnames(object@initial_n))[1],
+        names(dimnames(object@maturity))[1],
         names(dimnames(object@psi))[1],
         names(dimnames(object@intake_max))[1],
         names(dimnames(object@search_vol))[1],
@@ -107,7 +129,7 @@ validMizerParams <- function(object) {
         names(dimnames(object@mu_b))[1],
         names(dimnames(object@selectivity))[2],
         names(dimnames(object@catchability))[2]) == "sp")) {
-        msg <- "Name of first dimension of psi, intake_max, search_vol, metab, mu_b, and the second dimension of selectivity and catchability must be 'sp'"
+        msg <- "Name of first dimension of initial_n, maturity, psi, intake_max, search_vol, metab, mu_b, and the second dimension of selectivity and catchability must be 'sp'"
         errors <- c(errors, msg)
     }
     #interaction dimension names
@@ -137,8 +159,6 @@ validMizerParams <- function(object) {
     }
     
     # Check dimnames of species are identical
-    # Bit tricky this one as I don't know of a way to compare lots of vectors 
-    # at the same time. Just use == and the recycling rule
     if (!all(c(
         dimnames(object@psi)[[1]],
         dimnames(object@intake_max)[[1]],
@@ -414,14 +434,9 @@ remove(validMizerParams)
 #' 
 #' @section Changes to species params:
 #' The `species_params` slot of the returned MizerParams object may differ
-#' slightly from the data frame supplied as argument to this function in the
-#' following ways:
-#' \itemize{
-#'   \item Default values are set for \code{w_min, w_inf, alpha, gear, interaction_resource}.
-#'   \item The egg sizes in `w_min` are rounded down to lie on a grid point.
-#' }
-#' Note that the other characteristic sizes of the species, like `w_mat` and
-#' `w_inf`, are not modified to lie on grid points.
+#' slightly from the data frame supplied as argument to this function because
+#' default values are set for 
+#' `w_min, w_inf, alpha, gear, interaction_resource`.
 #' 
 #' @param species_params A data frame of species-specific parameter values.
 #' @param gear_params A data frame with gear-specific parameter values.
@@ -467,7 +482,7 @@ emptyParams <- function(species_params,
     if (is.na(max_w)) {
         max_w <- max(species_params$w_inf)
     } else {
-        if (max(species_params$w_inf) > max_w * (1 + 1e-9)) { # The fudge factor
+        if (max(species_params$w_inf) > max_w * (1 + 1e-6)) { # The fudge factor
             # is there to avoid false alerts due to rounding errors.
             too_large <- species_params$species[max_w < species_params$w_inf]
             stop("Some of your species have an maximum size larger than max_w: ",
@@ -526,7 +541,7 @@ emptyParams <- function(species_params,
     no_sp <- nrow(species_params)
     species_names <- as.character(species_params$species)
     gear_names <- unique(gear_params$gear)
-    mat1 <- array(NA, dim = c(no_sp, no_w), 
+    mat1 <- array(0, dim = c(no_sp, no_w), 
                   dimnames = list(sp = species_names, w = signif(w,3)))
     ft_pred_kernel <- array(NA, dim = c(no_sp, no_w_full),
                             dimnames = list(sp = species_names, k = 1:no_w_full))
@@ -548,15 +563,7 @@ emptyParams <- function(species_params,
     vec1 <- as.numeric(rep(NA, no_w_full))
     names(vec1) <- signif(w_full, 3)
     
-    # Round down w_min to lie on grid points and store the indices of these
-    # grid points in w_min_idx
-    w_min_idx <- as.vector(suppressWarnings(
-        tapply(species_params$w_min, 1:no_sp,
-               function(w_min, wx) max(which(wx <= w_min)), wx = w)))
-    # Due to rounding errors this might happen:
-    w_min_idx[w_min_idx == -Inf] <- 1
-    names(w_min_idx) <- species_names
-    species_params$w_min <- w[w_min_idx]
+    w_min_idx <- get_w_min_idx(species_params, w)
     
     # Colour and linetype scales ----
     # for use in plots
@@ -782,4 +789,40 @@ dw <- function(params) {
 #' @export
 dw_full <- function(params) {
     params@dw_full
+}
+
+#' Validate MizerParams object and upgrade if necessary
+#' 
+#' @param params The MizerParams object to validate
+#' @return A valid MizerParams object
+#' @export
+validParams <- function(params) {
+    assert_that(is(params, "MizerParams"))
+    # Check that params has all the slots
+    # Can't use `slotnames(params)` to find out which slots params actually has
+    # because `slotnames()` just looks at the class definition. 
+    has_slot <- sapply(slotNames(mizer::NS_params),
+                      function(name) .hasSlot(params, name))
+    if (!all(has_slot) ||
+        "interaction_p" %in% names(params@species_params) ||
+        "r_max" %in% names(params@species_params)) {
+        params <- upgradeParams(params)
+        warning("You need to upgrade your MizerParams object with `upgradeParams()`.")
+    }
+    params@w_min_idx <- get_w_min_idx(params@species_params, params@w)
+    validObject(params)
+    params
+}
+
+# helper function to calculate w_min_idx slot
+get_w_min_idx <- function(species_params, w) {
+    # Round down w_min to lie on grid points and store the indices of these
+    # grid points in w_min_idx
+    w_min_idx <- as.vector(suppressWarnings(
+        tapply(species_params$w_min, seq_len(nrow(species_params)),
+               function(w_min, wx) max(which(wx <= w_min)), wx = w)))
+    # Due to rounding errors this might happen:
+    w_min_idx[w_min_idx == -Inf] <- 1
+    names(w_min_idx) <- as.character(species_params$species)
+    w_min_idx
 }

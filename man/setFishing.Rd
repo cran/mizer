@@ -2,8 +2,6 @@
 % Please edit documentation in R/setFishing.R
 \name{setFishing}
 \alias{setFishing}
-\alias{gear_params}
-\alias{gear_params<-}
 \alias{getCatchability}
 \alias{getSelectivity}
 \alias{getInitialEffort}
@@ -16,10 +14,6 @@ setFishing(
   initial_effort = NULL,
   ...
 )
-
-gear_params(params)
-
-gear_params(params) <- value
 
 getCatchability(params)
 
@@ -41,8 +35,6 @@ the fishing effort. If a number, the same effort is used for all gears. If
 a vector, must be named by gear.}
 
 \item{...}{Unused}
-
-\item{value}{A data frame with the gear parameters}
 }
 \value{
 MizerParams object with updated catchability and selectivity. Because
@@ -140,21 +132,18 @@ the simulation is run with \code{project()}, where it is also possible to specif
 an effort that varies through time.
 }
 
-\examples{
-\dontrun{
-params <- NS_params
-# Change knife edge size for species 1
-params@species_params$knife_edge_size[1] <- 15
-params <- setFishing(params)
-}
-}
 \seealso{
+\code{\link[=gear_params]{gear_params()}}
+
 Other functions for setting parameters: 
+\code{\link{gear_params}()},
+\code{\link{resource_params}()},
 \code{\link{setExtMort}()},
 \code{\link{setInitialValues}()},
 \code{\link{setInteraction}()},
 \code{\link{setMaxIntakeRate}()},
 \code{\link{setMetabolicRate}()},
+\code{\link{setParams}()},
 \code{\link{setPredKernel}()},
 \code{\link{setReproduction}()},
 \code{\link{setResource}()},

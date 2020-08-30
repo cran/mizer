@@ -40,6 +40,7 @@
 #' 
 #' @return The upgraded MizerParams object
 #' @export
+#' @seealso [validParams()]
 upgradeParams <- function(params) {
     
     if ("interaction_p" %in% names(params@species_params)) {
@@ -86,10 +87,14 @@ upgradeParams <- function(params) {
         RDD <- "BevertonHoltRDD"
     }
     
-    if (.hasSlot(params, "initial_effort")) {
+    if (.hasSlot(params, "initial_effort") && 
+        length(params@initial_effort) == length(unique(gear_params$gear))) {
         initial_effort <- params@initial_effort
     } else {
-        initial_effort <- NULL
+        gears <- as.character(unique(gear_params$gear))
+        initial_effort <- rep(0, length(gears))
+        names(initial_effort) <- gears
+        message("Initial effort has been set to 0.")
     }
     
     if (.hasSlot(params, "metab")) {
@@ -262,8 +267,8 @@ upgradeParams <- function(params) {
             comment(slot(pnew, slot)) <- comment(slot(params, slot))
         }
     }
-    
-    return(pnew)
+    validObject(pnew)
+    pnew
 }
 
 #' Upgrade MizerSim object from earlier mizer versions
@@ -308,5 +313,6 @@ upgradeSim <- function(sim) {
     }
     comment(new_sim) <- comment(sim)
     comment(new_sim@effort) <- comment(sim@effort)
+    validObject(new_sim)
     new_sim
 }
