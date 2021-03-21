@@ -5,7 +5,12 @@
 \alias{getMaxIntakeRate}
 \title{Set maximum intake rate}
 \usage{
-setMaxIntakeRate(params, intake_max = NULL, ...)
+setMaxIntakeRate(
+  params,
+  intake_max = NULL,
+  comment_intake_max = "set manually",
+  ...
+)
 
 getMaxIntakeRate(params)
 }
@@ -15,6 +20,11 @@ getMaxIntakeRate(params)
 \item{intake_max}{Optional. An array (species x size) holding the maximum
 intake rate for each species at size. If not supplied, a default is set as
 described in the section "Setting maximum intake rate".}
+
+\item{comment_intake_max}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+A string describing how the value for 'intake_max' was obtained. This is
+ignored if 'intake_max' is not supplied or already has a comment
+attribute.}
 
 \item{...}{Unused}
 }
@@ -35,7 +45,7 @@ weight \eqn{w} determines the feeding level, calculated with
 \code{\link[=getFeedingLevel]{getFeedingLevel()}}. It is measured in grams/year.
 
 If the \code{intake_max} argument is not supplied, then the maximum intake
-rate is set to \deqn{h_i(w) = h_i w^n_i.}
+rate is set to \deqn{h_i(w) = h_i w^{n_i}.}
 The values of \eqn{h_i} (the maximum intake rate of an individual of size 1
 gram) and \eqn{n_i} (the allometric exponent for the intake rate) are taken
 from the \code{h} and \code{n} columns in the species parameter dataframe. If

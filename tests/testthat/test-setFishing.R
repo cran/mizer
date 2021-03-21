@@ -55,13 +55,13 @@ test_that("validEffort works", {
     # A single number is converted into a constant vector
     ie[] <- 2
     expect_identical(validEffortVector(2, params), ie)
-    # The length of the vector is checked
-    expect_error(validEffortVector(ie[1:3], params),
-                 "Effort vector must be the same length as the number of fishing gears.")
+    # A shortened vector is expanded with zeros
+    expect_identical(validEffortVector(ie[c(1,2,4)], params)[[3]], 0)
+                
     # The names are checked
     names(ie)[[1]] <- "test"
     expect_error(validEffortVector(ie, params), 
-                 "Gear names in the MizerParams object")
+                 "it has names that are not among the gear names")
 })
 test_that("validEffortParams works when no gears are set up", {
     params <- newMultispeciesParams(NS_species_params,
@@ -98,33 +98,94 @@ test_that("Setting catchability works", {
     expect_identical(comment(getCatchability(params)), "catchability")
 })
 
-test_that("Comments protect slots", {
+test_that("Comments protect catchability slot", {
     catchability <- getCatchability(params)
     comment(catchability) <- "catchability"
     params <- setFishing(params, catchability = catchability)
     expect_message(gear_params(params) <- params@gear_params,
                    "The catchability has been commented")
     
+    # comment argument is ignored when there is a comment on catchability
+    params <- setFishing(params, catchability = catchability,
+                         comment_catchability = "overwrite")
+    expect_identical(comment(params@catchability), "catchability")
+    # but it is used otherwise
+    comment(catchability) <- NULL
+    params <- setFishing(params, catchability = catchability,
+                         comment_catchability = "overwrite")
+    expect_identical(comment(params@catchability), "overwrite")
+
     selectivity <- getSelectivity(params)
     comment(selectivity) <- "selectivity"
     expect_message(params <- setFishing(params, selectivity = selectivity),
                    "The catchability has been commented")
     expect_message(gear_params(params) <- params@gear_params,
                    "The selectivity has been commented")
+    
+    # comment argument is ignored when there is a comment on catchability
+    params <- setFishing(params, selectivity = selectivity,
+                         comment_selectivity = "overwrite")
+    expect_identical(comment(params@selectivity), "selectivity")
+    # but it is used otherwise
+    comment(selectivity) <- NULL
+    params <- setFishing(params, selectivity = selectivity,
+                         comment_selectivity = "overwrite")
+    expect_identical(comment(params@catchability), "overwrite")
+})
+
+test_that("We can change gears via catchability and selectivity arrays", {
+    catchability <- getCatchability(params)
+    sel <- c(1, 2, 4)
+    expect_error(setFishing(params, catchability = catchability[sel, ]),
+                 "you also need to supply a selectivity array")
+    selectivity <- getSelectivity(params)
+    p2 <- setFishing(params, catchability = catchability[sel, ],
+                     selectivity = selectivity[sel, , ], 
+                     comment_catchability = NULL, comment_selectivity = NULL)
+    expect_identical(p2@selectivity, selectivity[sel, , ])
+    expect_identical(p2@catchability, catchability[sel, ])
+    expect_identical(p2@initial_effort, params@initial_effort[sel])
+    expect_error(setFishing(params, catchability = catchability[sel, ],
+                            selectivity = selectivity),
+                 "not equal to no_gears")
 })
 
 test_that("Arguments of wrong dimension throw errors", {
     catchability <- getCatchability(params)
-    expect_error(setFishing(params, catchability = catchability[1:3, ]))
-                # "dim(catchability)[[1]] not equal to dim(selectivity)[[1]]"
-    expect_error(setFishing(params, catchability = catchability[, 1:3]))
-                 #"dim(catchability)[[2]] not equal to no_sp")
+    expect_error(setFishing(params, catchability = catchability[, 1:3]),
+                 "not equal to no_sp")
     
     selectivity <- getSelectivity(params)
     expect_error(setFishing(params, selectivity = selectivity[1:3, ]),
                  "incorrect number of dimensions")
-    expect_error(setFishing(params, selectivity = selectivity[1:3, , ]))
-                 #"dim(selectivity)[[1]] not equal to no_gears")
+    expect_error(setFishing(params, selectivity = selectivity[1:3, , ]),
+                 "not equal to no_gears")
+})
+
+test_that("Wrong dimnames throw errors or get fixed", {
+    catchability <- getCatchability(params)
+    cw <- catchability
+    dimnames(cw)[[1]][1] <- "wrong"
+    expect_error(setFishing(params, catchability = cw),
+                 "The gear dimnames in the catchability array do not match the gear names.")
+    cw <- catchability
+    dimnames(cw)[[2]][1] <- "wrong"
+    expect_error(setFishing(params, catchability = cw),
+                 "The species dimnames in the catchability array do not match the species names.")
+
+    selectivity <- getSelectivity(params)
+    sw <- selectivity
+    dimnames(sw)[[1]][1] <- "wrong"
+    expect_error(setFishing(params, selectivity = sw),
+                 "The gear dimnames in the selectivity array do not match the gear names.")
+    sw <- selectivity
+    dimnames(sw)[[2]][1] <- "wrong"
+    expect_error(setFishing(params, selectivity = sw),
+                 "The species dimnames in the selectivity array do not match the species names.")
+    sw <- selectivity
+    dimnames(sw)[[3]][1] <- "wrong"
+    expect_warning(setFishing(params, selectivity = sw),
+                 "I have changed the size dimnames in the selectivity array to agree with mizer conventions.")
 })
 
 test_that("Dimensions after number of gears has increased", {
@@ -137,6 +198,10 @@ test_that("Dimensions after number of gears has increased", {
                      params@species_params$species)
     expect_identical(dimnames(params@selectivity)[[1]],
                      params@species_params$species)
+    # The initial effort has also changed
+    effort <- rep(0, no_gears)
+    names(effort) <- params@species_params$species
+    expect_identical(params@initial_effort, effort)
 })
 
 test_that("Duplicate gear-species pairs give error", {

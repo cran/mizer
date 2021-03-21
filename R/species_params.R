@@ -99,7 +99,6 @@ species_params <- function(params) {
 #'   not already exist
 #' @return The `object` with an updated column in the species params data frame.
 #' @export
-#' @keywords internal
 #' @concept helper
 set_species_param_default <- function(object, parname, default,
                                       message = NULL) {
@@ -175,7 +174,7 @@ get_h_default <- function(params) {
         if (any(is.na(species_params$k_vb[missing]))) {
             stop("Can not calculate defaults for h because some k_vb values are NA.")
         }
-        if (!isTRUE(all.equal(species_params$n[missing], species_params$p[missing],,
+        if (!isTRUE(all.equal(species_params$n[missing], species_params$p[missing],
                               check.attributes = FALSE))) {
             message("Note: Because you have n != p, the default value is not very good.")
         }
@@ -211,7 +210,6 @@ get_h_default <- function(params) {
 #' @param params A MizerParams object
 #' @return A vector with the values of gamma for all species
 #' @export
-#' @keywords internal
 #' @concept helper
 #' @family functions calculating defaults
 get_gamma_default <- function(params) {
@@ -265,7 +263,6 @@ get_gamma_default <- function(params) {
 #' @param params A MizerParams object
 #' @return A vector with the values of ks for all species
 #' @export
-#' @keywords internal
 #' @concept helper
 #' @family functions calculating defaults
 get_ks_default <- function(params) {
@@ -312,7 +309,7 @@ get_ks_default <- function(params) {
 #' If `species_params` was provided as a tibble it is converted back to an
 #' ordinary data frame.
 #' 
-#' @concept("helper")
+#' @concept helper
 #' @export
 validSpeciesParams <- function(species_params) {
     assert_that(is.data.frame(species_params))

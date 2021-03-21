@@ -22,6 +22,10 @@
 #' @param params MizerParams
 #' @param z0 Optional. An array (species x size) holding the external
 #'   mortality rate.
+#' @param comment_z0 `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'z0' was obtained. This is
+#'   ignored if 'z0' is not supplied or already has a comment
+#'   attribute.
 #' @param z0pre If `z0`, the mortality from other sources, is not a column
 #'   in the species data frame, it is calculated as z0pre * w_inf ^ z0exp.
 #'   Default value is 0.6.
@@ -53,9 +57,13 @@
 #' # Change the external mortality rate in the params object
 #' params <- setExtMort(params, z0 = z0)
 #' }
-setExtMort <- function(params, z0 = NULL, z0pre = 0.6, z0exp = -1/4, ...) {
+setExtMort <- function(params, z0 = NULL, z0pre = 0.6, z0exp = -1/4,
+                       comment_z0 = "set manually",  ...) {
     assert_that(is(params, "MizerParams"))
     if (!is.null(z0)) {
+        if (is.null(comment(z0))) {
+            comment(z0) <- comment_z0
+        }
         assert_that(is.array(z0),
                     identical(dim(z0), dim(params@mu_b)))
         params@mu_b[] <- z0
@@ -78,8 +86,7 @@ setExtMort <- function(params, z0 = NULL, z0pre = 0.6, z0exp = -1/4, ...) {
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@mu_b))) {
         # Issue warning but only if a change was actually requested
-        if (!isTRUE(all.equal(mu_b, params@mu_b,
-                              check.attributes = FALSE))) {
+        if (different(mu_b, params@mu_b)) {
             message("The external mortality rate has been commented and therefore ",
                     "will not be recalculated from the species parameters.")
         }

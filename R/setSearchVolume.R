@@ -29,6 +29,10 @@
 #' @param search_vol Optional. An array (species x size) holding the search volume
 #'   for each species at size. If not supplied, a default is set as described in
 #'   the section "Setting search volume". 
+#' @param comment_search_vol `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'search_vol' was obtained. This is
+#'   ignored if 'search_vol' is not supplied or already has a comment
+#'   attribute.
 #' @param ... Unused
 #' 
 #' @return MizerParams with updated search volume. Because of the way the R
@@ -39,11 +43,15 @@
 #' @export
 #' @family functions for setting parameters
 setSearchVolume <- function(params, 
-                            search_vol = NULL, ...) {
+                            search_vol = NULL, 
+                            comment_search_vol = "set manually", ...) {
     assert_that(is(params, "MizerParams"))
     species_params <- params@species_params
     # If search_vol array is supplied, check it, store it and return
     if (!is.null(search_vol)) {
+        if (is.null(comment(search_vol))) {
+            comment(search_vol) <- comment_search_vol
+        }
         assert_that(is.array(search_vol))
         assert_that(identical(dim(search_vol), dim(params@search_vol)))
         if (!is.null(dimnames(search_vol)) && 
@@ -69,8 +77,7 @@ setSearchVolume <- function(params,
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@search_vol))) {
         # Issue warning but only if a change was actually requested
-        if (!isTRUE(all.equal(search_vol, params@search_vol,
-                              check.attributes = FALSE))) {
+        if (different(search_vol, params@search_vol)) {
             message("The search volume has been commented and therefore will ",
                     "not be recalculated from the species parameters.")
         }

@@ -85,13 +85,21 @@
 #' an effort that varies through time.
 #' 
 #' @param params A MizerParams object
-#' @param selectivity An array (gear x species x size) that holds the
+#' @param selectivity Optional. An array (gear x species x size) that holds the
 #'   selectivity of each gear for species and size, \eqn{S_{g,i,w}}.
-#' @param catchability An array (gear x species) that holds the catchability of
+#' @param catchability Optional. An array (gear x species) that holds the catchability of
 #'   each species by each gear, \eqn{Q_{g,i}}.
 #' @param initial_effort Optional. A number or a named numeric vector specifying
 #'   the fishing effort. If a number, the same effort is used for all gears. If
 #'   a vector, must be named by gear.
+#' @param comment_selectivity `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'selectivity' was obtained. This is
+#'   ignored if 'selectivity' is not supplied or already has a comment
+#'   attribute.
+#' @param comment_catchability `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'catchability' was obtained. This is
+#'   ignored if 'catchability' is not supplied or already has a comment
+#'   attribute.
 #' @param ... Unused
 #'   
 #' @return MizerParams object with updated catchability and selectivity. Because
@@ -103,30 +111,70 @@
 #' @seealso [gear_params()]
 #' @family functions for setting parameters
 setFishing <- function(params, selectivity = NULL, catchability = NULL, 
+                       comment_selectivity = "set manually", 
+                       comment_catchability = "set manually", 
                        initial_effort = NULL, ...) {
     assert_that(is(params, "MizerParams"))
     species_params <- params@species_params
     gear_params <- params@gear_params
-    no_sp <- nrow(species_params)
-    no_gears <- length(unique(gear_params$gear))
+    sp_names <- as.character(species_params$species)
+    no_sp <- length(sp_names)
+    w_names <- dimnames(params@selectivity)[[3]]
     no_w <- length(params@w)
+    gear_names <- as.character(unique(gear_params$gear))
+    no_gears <- length(gear_names)
+    # The number of gears could be set by the catchability array
+    if (!is.null(catchability) && (dim(catchability)[[1]] != no_gears)) {
+        if (is.null(selectivity)) {
+            stop("The catchability array has changed the number of gears. ",
+                 "Therefore you also need to supply a selectivity array.")
+        }
+        if (is.null(dimnames(catchability))) {
+            stop("The catchability array needs to set the names of the ",
+                 " gears via its dimnames.")
+        }
+        # change gear number and names
+        gear_names <- unique(dimnames(catchability)[[1]])
+        no_gears <- length(gear_names)
+        if (no_gears != dim(catchability)[[1]]) {
+            stop("The gear names provided via the dimnames of the ",
+                 "catchability array need to be all different.")
+        }
+    }
     
     if (!is.null(selectivity)) {
-        assert_that(length(dim(selectivity)) == 3,
-                    dim(selectivity)[[2]] == no_sp,
-                    dim(selectivity)[[3]] == length(params@w))
-        if (!is.null(catchability)) {
-            assert_that(dim(selectivity)[[1]] == dim(catchability)[[1]])
-        } else {
-            assert_that(dim(selectivity)[[1]] == no_gears)
+        if (is.null(comment(selectivity))) {
+            comment(selectivity) <- comment_selectivity
         }
+        assert_that(length(dim(selectivity)) == 3,
+                    dim(selectivity)[[1]] == no_gears,
+                    dim(selectivity)[[2]] == no_sp,
+                    dim(selectivity)[[3]] == no_w)
+        dnames <- dimnames(selectivity)
+        if (!is.null(dnames)) {
+            if (!identical(dnames[[1]], gear_names)) {
+                stop("The gear dimnames in the selectivity array do ",
+                     "not match the gear names.")
+            }
+            if (!identical(dnames[[2]],sp_names)) {
+                stop("The species dimnames in the selectivity array do ",
+                     "not match the species names.")
+            }
+            if (!identical(dnames[[3]], w_names)) {
+                warning("I have changed the size dimnames in the ",
+                        "selectivity array to agree with mizer conventions.")
+            }
+        }
+        dimnames(selectivity) <- list(gear = gear_names, 
+                                      sp = sp_names,
+                                      w = w_names)
         params@selectivity <- selectivity
     } else {
         selectivity <- 
             array(0, dim = c(no_gears, no_sp, no_w),
-                  dimnames = list(gear = as.character(unique(gear_params$gear)), 
-                                  sp = as.character(params@species_params$species),
-                                  w = signif(params@w, 3)
+                  dimnames = list(gear = gear_names, 
+                                  sp = sp_names,
+                                  w = w_names
                   )
             )
         for (g in seq_len(nrow(gear_params))) {
@@ -163,15 +211,32 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
     }
     
     if (!is.null(catchability)) {
+        if (is.null(comment(catchability))) {
+            comment(catchability) <- comment_catchability
+        }
         assert_that(length(dim(catchability)) == 2,
-                    dim(catchability)[[1]] == dim(selectivity)[[1]],
                     dim(catchability)[[2]] == no_sp)
+        # Check dimnames if they were provided, otherwise set them
+        dnames <- dimnames(catchability)
+        if (!is.null(dnames)) {
+            if (!identical(dnames[[1]], gear_names)) {
+                stop("The gear dimnames in the catchability array do ",
+                     "not match the gear names.")
+            }
+            if (!identical(dnames[[2]], sp_names)) {
+                stop("The species dimnames in the catchability array do ",
+                     "not match the species names.")
+            }
+        } else {
+            dimnames(catchability) <- list(gear = gear_names,
+                                           sp = sp_names)
+        }
         params@catchability <- catchability
     } else {
         catchability <- 
             array(0, dim = c(no_gears, no_sp),
-                  dimnames = list(gear = as.character(unique(gear_params$gear)), 
-                                  sp = as.character(params@species_params$species)
+                  dimnames = list(gear = gear_names, 
+                                  sp = sp_names
                   )
             )
         for (g in seq_len(nrow(gear_params))) {
@@ -193,7 +258,12 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
         comment(params@initial_effort) <- comment(initial_effort)
     }
     
-    params@species_params <- species_params
+    # Get rid of any efforts for gears that no longer exist and set effort
+    # for new gears to zero (done by `validEffortVector()`).
+    existing <- names(params@initial_effort) %in% gear_names
+    params@initial_effort <- validEffortVector(params@initial_effort[existing], 
+                                               params)
+    
     return(params)
 }
 
@@ -426,9 +496,13 @@ validGearParams <- function(gear_params, species_params) {
 #'   gears in the params object
 #' * a named vector in which the gear names have a different order than in the
 #'   params object. This is then sorted correctly.
+#' * a named vector which only supplies values for some of the gears.
+#'   The effort for the other gears is then set to zero.
 #'   
-#' An `effort` argument of the wrong length or with names not corresponding to 
-#' gears will produce an error.
+#' An `effort` argument will lead to an error if it is either
+#' * unnamed and of the wrong length
+#' * named but where some names do not match any of the gears
+#' * not numeric
 #' 
 #' @param params A MizerParams object
 #' @param effort An vector or scalar.
@@ -436,30 +510,38 @@ validGearParams <- function(gear_params, species_params) {
 #' @return A valid effort vector with one entry for each gear, named by gear,
 #'   in the same order as in the params object.
 #' @export
-#' @keywords internal
 #' @concept helper
 validEffortVector <- function(effort, params) {
     assert_that(is(params, "MizerParams"),
                 (is.null(effort) || is.numeric(effort)))
-    no_gears <- dim(params@catchability)[1]
+    gear_names <- dimnames(params@catchability)[[1]]
+    no_gears <- length(gear_names)
+    
     # If only one effort is given, it is replicated for all gears
     if (length(effort) == 1) {
         effort <- rep(effort, no_gears)
-    }
-    if (length(effort) != no_gears) {
-        stop("Effort vector must be the same length as the number of fishing gears.")
-    }
-    # Set gear names if not provided
-    gear_names <- dimnames(params@catchability)[[1]]
-    if (is.null(names(effort))) {
         names(effort) <- gear_names
     }
-    # Check validity of gear names
-    if (!all(gear_names %in% names(effort))) {
-        stop("Gear names in the MizerParams object (", 
-             paste(gear_names, collapse = ", "), 
-             ") do not match those in the effort vector.")
+    
+    # If effort is unnamed but of the right length, then set gear names
+    if (is.null(names(effort))) {
+        if (length(effort) != no_gears) {
+            stop("Effort vector must be the same length as the number of fishing gears.")
+        }
+        names(effort) <- gear_names
     }
+    
+    # Effort vector should not supply effort for non-existent gears
+    if (!all(names(effort) %in% gear_names)) {
+        stop("The effort vector is invalid as it has names that are not among the gear names")
+    }
+
+    # Set any missing efforts to zero
+    missing <- setdiff(gear_names, names(effort))
+    new <- rep(0, length(missing))
+    names(new) <- missing
+    effort <- c(effort, new)
+    
     # Sort vector
     effort <- effort[gear_names]
     

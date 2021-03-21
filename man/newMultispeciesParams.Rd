@@ -102,7 +102,8 @@ reproduction rate from the density-independent rate. Defaults to
 
 \item{resource_rate}{Optional. Vector of resource intrinsic birth rates}
 
-\item{resource_capacity}{Optional. Vector of resource intrinsic carrying capacity}
+\item{resource_capacity}{Optional. Vector of resource intrinsic carrying
+capacity}
 
 \item{n}{The allometric growth exponent. This can be overruled for individual
 species by including a \code{n} column in the \code{species_params}.}
@@ -123,10 +124,10 @@ want to use the default \code{\link[=resource_semichemostat]{resource_semichemos
 
 \item{gear_params}{A data frame with gear-specific parameter values.}
 
-\item{selectivity}{An array (gear x species x size) that holds the
+\item{selectivity}{Optional. An array (gear x species x size) that holds the
 selectivity of each gear for species and size, \eqn{S_{g,i,w}}.}
 
-\item{catchability}{An array (gear x species) that holds the catchability of
+\item{catchability}{Optional. An array (gear x species) that holds the catchability of
 each species by each gear, \eqn{Q_{g,i}}.}
 
 \item{initial_effort}{Optional. A number or a named numeric vector specifying
@@ -176,9 +177,8 @@ All the parameters will be mentioned in the following sections.
 \section{Changes to species params}{
 
 The \code{species_params} slot of the returned MizerParams object may differ
-slightly from the data frame supplied as argument to this function because
-default values are set for
-\verb{w_min, w_inf, alpha, gear, interaction_resource}.
+from the data frame supplied as argument to this function because
+default values are set for missing parameters.
 }
 
 \section{Size grid}{
@@ -234,6 +234,8 @@ The values in the interaction matrix are used to scale the encountered food
 and predation mortality (see on the website
 \href{https://sizespectrum.org/mizer/articles/model_description.html#sec:pref}{the section on predator-prey encounter rate}
 and on \href{https://sizespectrum.org/mizer/articles/model_description.html#mortality}{predation mortality}).
+The first index refers to the predator species and the second to the prey
+species.
 
 It is used when calculating the food encounter rate in \code{\link[=getEncounter]{getEncounter()}} and
 the predation mortality rate in \code{\link[=getPredMort]{getPredMort()}}. Its entries are
@@ -343,7 +345,7 @@ weight \eqn{w} determines the feeding level, calculated with
 \code{\link[=getFeedingLevel]{getFeedingLevel()}}. It is measured in grams/year.
 
 If the \code{intake_max} argument is not supplied, then the maximum intake
-rate is set to \deqn{h_i(w) = h_i w^n_i.}
+rate is set to \deqn{h_i(w) = h_i w^{n_i}.}
 The values of \eqn{h_i} (the maximum intake rate of an individual of size 1
 gram) and \eqn{n_i} (the allometric exponent for the intake rate) are taken
 from the \code{h} and \code{n} columns in the species parameter dataframe. If

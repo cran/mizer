@@ -6,7 +6,7 @@
 #' [getFeedingLevel()]. It is measured in grams/year.
 #'
 #' If the `intake_max` argument is not supplied, then the maximum intake
-#' rate is set to \deqn{h_i(w) = h_i w^n_i.} 
+#' rate is set to \deqn{h_i(w) = h_i w^{n_i}.} 
 #' The values of \eqn{h_i} (the maximum intake rate of an individual of size 1
 #' gram) and \eqn{n_i} (the allometric exponent for the intake rate) are taken
 #' from the `h` and `n` columns in the species parameter dataframe. If
@@ -20,6 +20,10 @@
 #' @param intake_max Optional. An array (species x size) holding the maximum
 #'   intake rate for each species at size. If not supplied, a default is set as
 #'   described in the section "Setting maximum intake rate".
+#' @param comment_intake_max `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'intake_max' was obtained. This is
+#'   ignored if 'intake_max' is not supplied or already has a comment
+#'   attribute.
 #' @param ... Unused
 #' 
 #' @return A `MizerParams` object with updated maximum intake rate. Because
@@ -30,12 +34,16 @@
 #' @export
 #' @family functions for setting parameters
 setMaxIntakeRate <- function(params, 
-                             intake_max = NULL, ...) {
+                             intake_max = NULL, 
+                             comment_intake_max = "set manually", ...) {
     assert_that(is(params, "MizerParams"))
     species_params <- params@species_params
     
     # If intake_max array is supplied, check it, store it and return
     if (!is.null(intake_max)) {
+        if (is.null(comment(intake_max))) {
+            comment(intake_max) <- comment_intake_max
+        }
         assert_that(is.array(intake_max),
                     identical(dim(intake_max), dim(params@intake_max)))
         if (!is.null(dimnames(intake_max)) && 
@@ -59,8 +67,7 @@ setMaxIntakeRate <- function(params,
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@intake_max))) {
         # Issue warning but only if a change was actually requested
-        if (!isTRUE(all.equal(intake_max, params@intake_max,
-                              check.attributes = FALSE))) {
+        if (different(intake_max, params@intake_max)) {
             message("The max intake rate has been commented and therefore will ",
                     "not be recalculated from the species parameters.")
         }

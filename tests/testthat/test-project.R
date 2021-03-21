@@ -10,6 +10,7 @@ test_that("time dimension is dealt with properly", {
     t_save <- 1
     dt <- 0.1
     sim <- project(params,t_max = t_max, t_save = t_save, dt = dt, effort = 1)
+    expect_identical(names(dimnames(sim@effort)), c("time", "gear"))
     expect_equal(dim(sim@effort)[1], length(seq(from = 0, to = t_max, by = t_save)))
     expect_equal(dim(sim@n)[1], length(seq(from = 0, to = t_max, by = t_save)))
     expect_identical(dimnames(sim@effort)[[1]], 
@@ -51,6 +52,7 @@ test_that("time dimension is dealt with properly", {
     t_max <- 5
     t_save <- 2
     sim <- project(params, t_max = t_max, t_save = t_save, effort = effort)
+    expect_identical(names(dimnames(sim@effort)), c("time", "gear"))
     expect_equal(dim(sim@effort)[1], length(seq(from = 0, to = t_max, by = t_save)))
     expect_equal(dim(sim@n)[1], length(seq(from = 0, to = t_max, by = t_save)))
     expect_identical(dimnames(sim@effort)[[1]],
@@ -154,8 +156,8 @@ test_that("Gear checking and sorting is OK", {
     # Should fail - number of gears wrong
     effort_vec3 <- c(Industrial = 0, Other = 1, Dummy = 0.5)
     expect_error(project(params_gear, effort = effort_vec3, t_max = 10))
-    effort_vec4 <- c(Industrial = 0) # Is OK because length is 1
-    expect_error(project(params_gear, effort = effort_vec4, t_max = 10))
+    effort_vec4 <- c(Industrial = 0) # Is OK because that gear exists
+    expect_error(project(params_gear, effort = effort_vec4, t_max = 10), NA)
     # Should fail - names of gears wrong
     effort_vec5 <- c(Industrial = 0, Dummy = 1)
     expect_error(project(params_gear, effort = effort_vec5, t_max = 10))
@@ -232,3 +234,14 @@ test_that("Final result the same when called with sim or params", {
   expect_identical(sim1@n[2, 3, ], sim2@n[3, 3, ])
 })
 
+# dimnames ----
+# This test is motivated by the bug in 
+# https://github.com/sizespectrum/mizer/issues/173
+test_that("Dimnames on effort have correct names", {
+  gear_names <- as.character(unique(gear_params(NS_params)$gear))
+  effort <- array(1, dim = c(3, length(gear_names)), 
+                  dimnames = list(1:3,
+                                  gear_names))
+  sim <- project(NS_params, effort, t_max = 0.1)
+  expect_identical(names(dimnames(sim@effort)), c("time", "gear"))
+})

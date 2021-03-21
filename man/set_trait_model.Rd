@@ -105,6 +105,8 @@ same length as the number of species. Default is 1 - no_sp.}
 An object of type \code{MizerParams}
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
 This function has been deprecated in favour of the function
 \code{\link[=newTraitParams]{newTraitParams()}} that sets better default values.
 }
@@ -154,9 +156,4 @@ K. H. Andersen and M. Pedersen, 2010, Damped trophic cascades
 driven by fishing in model marine ecosystems. Proceedings of the Royal
 Society V, Biological Sciences, 1682, 795-802.
 }
-\seealso{
-Other deprecated functions: 
-\code{\link{set_community_model}()},
-\code{\link{set_multispecies_model}()}
-}
-\concept{deprecated functions}
+\concept{deprecated}

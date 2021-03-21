@@ -27,6 +27,10 @@
 #' @param p The allometric metabolic exponent. This is only used if `metab`
 #'   is not given explicitly and if the exponent is not specified in a `p`
 #'   column in the `species_params`.
+#' @param comment_metab `r lifecycle::badge("experimental")`
+#'   A string describing how the value for 'metab' was obtained. This is
+#'   ignored if 'metab' is not supplied or already has a comment
+#'   attribute.
 #' @param ... Unused
 #' 
 #' @return MizerParams object with updated metabolic rate. Because of the way
@@ -37,7 +41,8 @@
 #' @export
 #' @family functions for setting parameters
 setMetabolicRate <- function(params, 
-                             metab = NULL, p = NULL, ...) {
+                             metab = NULL, p = NULL, 
+                             comment_metab = "set manually", ...) {
     assert_that(is(params, "MizerParams"))
     if (!is.null(p)) {
         assert_that(is.numeric(p))
@@ -45,6 +50,9 @@ setMetabolicRate <- function(params,
     }
     species_params <- params@species_params
     if (!is.null(metab)) {
+        if (is.null(comment(metab))) {
+            comment(metab) <- comment_metab
+        }
         assert_that(is.array(metab),
                     identical(dim(metab), dim(params@metab)))
         if (!is.null(dimnames(metab)) && 
@@ -69,8 +77,7 @@ setMetabolicRate <- function(params,
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@metab))) {
         # Issue warning but only if a change was actually requested
-        if (!isTRUE(all.equal(metab, params@metab,
-                              check.attributes = FALSE))) {
+        if (different(metab, params@metab)) {
             message("The metabolic rate has been commented and therefore will ",
                     "not be recalculated from the species parameters.")
         }

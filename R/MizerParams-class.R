@@ -40,13 +40,11 @@ validMizerParams <- function(object) {
     }
     
     # Check that the last entries of w_full and dw_full agree with w and dw
-    if (!isTRUE(all.equal(object@w[], object@w_full[w_idx],
-                          check.attributes = FALSE))) {
+    if (different(object@w[], object@w_full[w_idx])) {
         msg <- "The later entries of w_full should be equal to those of w."
         errors <- c(errors, msg)
     }
-    if (!isTRUE(all.equal(object@dw[], object@dw_full[w_idx],
-                          check.attributes = FALSE))) {
+    if (different(object@dw[], object@dw_full[w_idx])) {
         msg <- "The later entries of dw_full should be equal to those of dw."
         errors <- c(errors, msg)
     }
@@ -257,6 +255,15 @@ validMizerParams <- function(object) {
 #' user you should never need to access the slots inside a `MizerParams` object
 #' directly. 
 #' 
+#' The \linkS4class{MizerParams} class is fairly complex with a large number of
+#' slots, many of which are multidimensional arrays. The dimensions of these
+#' arrays is strictly enforced so that `MizerParams` objects are consistent
+#' in terms of number of species and number of size classes.
+#'   
+#' The `MizerParams` class does not hold any dynamic information, e.g.
+#' abundances or harvest effort through time. These are held in
+#' \linkS4class{MizerSim} objects.
+#' 
 #' @slot w The size grid for the fish part of the spectrum. An increasing
 #'   vector of weights (in grams) running from the smallest egg size to the
 #'   largest asymptotic size.
@@ -321,7 +328,8 @@ validMizerParams <- function(object) {
 #' @slot rates_funcs A named list with the names of the functions that should be
 #'   used to calculate the rates needed by `project()`. By default this will be
 #'   set to the names of the built-in rate functions.
-#' @slot sc The community abundance of the scaling community
+#' @slot sc `r lifecycle::badge("experimental")`
+#'   The community abundance of the scaling community
 #' @slot species_params A data.frame to hold the species specific parameters.
 #'   See [newMultispeciesParams()] for details.
 #' @slot gear_params Data frame with parameters for gear selectivity. See 
@@ -343,7 +351,8 @@ validMizerParams <- function(object) {
 #' @slot initial_n_other A list with the initial abundances of all other
 #'   ecosystem components. Has length zero if there are no other components.
 #' @slot resource_params List with parameters for resource. See [setResource()].
-#' @slot A Abundance multipliers.
+#' @slot A `r lifecycle::badge("experimental")`
+#'   Abundance multipliers.
 #' @slot linecolour A named vector of colour values, named by species.
 #'   Used to give consistent colours in plots.
 #' @slot linetype A named vector of linetypes, named by species. 
@@ -351,15 +360,6 @@ validMizerParams <- function(object) {
 #' @slot ft_mask An array (species x w_full) with zeros for weights larger than
 #'   the asymptotic weight of each species. Used to efficiently minimize
 #'   wrap-around errors in Fourier transform calculations.
-#' 
-#' The \linkS4class{MizerParams} class is fairly complex with a large number of
-#' slots, many of which are multidimensional arrays. The dimensions of these
-#' arrays is strictly enforced so that `MizerParams` objects are consistent
-#' in terms of number of species and number of size classes.
-#'   
-#' The `MizerParams` class does not hold any dynamic information, e.g.
-#' abundances or harvest effort through time. These are held in
-#' \linkS4class{MizerSim} objects.
 #' 
 #' @seealso [project()] [MizerSim()]
 #'   [emptyParams()] [newMultispeciesParams()]
@@ -434,9 +434,8 @@ remove(validMizerParams)
 #' 
 #' @section Changes to species params:
 #' The `species_params` slot of the returned MizerParams object may differ
-#' slightly from the data frame supplied as argument to this function because
-#' default values are set for 
-#' `w_min, w_inf, alpha, gear, interaction_resource`.
+#' from the data frame supplied as argument to this function because
+#' default values are set for missing parameters.
 #' 
 #' @param species_params A data frame of species-specific parameter values.
 #' @param gear_params A data frame with gear-specific parameter values.
@@ -460,6 +459,7 @@ remove(validMizerParams)
 #' @seealso See [newMultispeciesParams()] for a function that fills
 #'   the slots left empty by this function.
 #' @export
+#' @concept helper
 emptyParams <- function(species_params,
                         gear_params = data.frame(),
                         no_w = 100,
@@ -507,6 +507,9 @@ emptyParams <- function(species_params,
         # For fft methods we need a constant log bin size throughout. 
         # Therefore we use as many steps as are necessary so that the first size
         # class includes min_w_pp.
+        if (min_w_pp >= min_w) {
+            stop("min_w_pp must be larger than min_w")
+        }
         x_pp <- rev(seq(from = log10(min_w),
                         to = log10(min_w_pp),
                         by = -dx)) - dx
