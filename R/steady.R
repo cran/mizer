@@ -56,7 +56,7 @@ distanceSSLogN <- function(params, current, previous) {
 #'
 #' Run the full dynamics, as in [project()], but stop once the change has slowed
 #' down sufficiently, in the sense that the distance between states at
-#' successive timesteps is less than `tol`. You determine how the distance is
+#' successive time steps is less than `tol`. You determine how the distance is
 #' calculated.
 #'
 #' @inheritParams steady
@@ -107,13 +107,17 @@ projectToSteady <- function(params,
     resource_dynamics_fn <- get(params@resource_dynamics)
     other_dynamics_fns <- lapply(params@other_dynamics, get)
     rates_fns <- lapply(params@rates_funcs, get)
+    r <- rates_fns$Rates(
+        params, n = params@initial_n,
+        n_pp = params@initial_n_pp,
+        n_other = params@initial_n_other,
+        t = 0, 
+        effort = effort, rates_fns = rates_fns, ...)
     
     previous <- list(n = params@initial_n,
                      n_pp = params@initial_n_pp,
                      n_other = params@initial_n_other,
-                     rates = getRates(params, n = params@initial_n,
-                                      n_pp = params@initial_n_pp,
-                                      n_other = params@initial_n_other))
+                     rates = r)
     
     for (i in 2:length(t_dimnames)) {
         # advance shiny progress bar
@@ -259,9 +263,10 @@ steady <- function(params, t_max = 100, t_per = 1.5, dt = 0.1,
 #'
 #' Sets the reproductive efficiency for all species so that the rate of egg
 #' production exactly compensates for the loss from the first size class due
-#' to growth and mortality. Turns off the external density dependence in the
-#' reproduction rate by setting the `RDD` function to
-#' [noRDD()]
+#' to growth and mortality. 
+#' 
+#' Currently works only if the model uses either Beverton-Holt density
+#' dependent reproduction or density-independent reproduction.
 #'
 #' @inheritParams steady
 #' @inheritParams valid_species_arg
@@ -277,22 +282,29 @@ retune_erepro <- function(params, species = species_params(params)$species) {
     mumu <- getMort(params)
     gg <- getEGrowth(params)
     rdi <- getRDI(params)
-    eff <- params@species_params$erepro
+    if (any(rdi == 0)) {
+        stop("Some species have no reproduction.")
+    }
+    rdd_new <- getRDD(params)
     for (i in seq_len(nrow(params@species_params))[species]) {
         gg0 <- gg[i, params@w_min_idx[i]]
         mumu0 <- mumu[i, params@w_min_idx[i]]
         DW <- params@dw[params@w_min_idx[i]]
-        if (!rdi[i] == 0) {
-            eff[i] <- params@species_params$erepro[i] *
-                (params@initial_n[i, params@w_min_idx[i]] *
-                     (gg0 + DW * mumu0)) / rdi[i]
-        }
-        else {
-            eff[i] <- 0.1
-        }
+        n0 <- params@initial_n[i, params@w_min_idx[i]]
+        rdd_new[i] <- n0 * (gg0 + DW * mumu0)
     }
-    params@species_params$erepro <- eff
-    return(setReproduction(params, RDD = "noRDD"))
+    if (params@rates_funcs$RDD == "BevertonHoltRDD") {
+        params@species_params$R_max[species] <- 4 * rdd_new[species]
+        rdi_new <- rdd_new / (1 - rdd_new / params@species_params$R_max)
+        params@species_params$erepro <- params@species_params$erepro *
+            rdi_new / rdi
+    } else if (params@rates_funcs$RDD == "noRDD") {
+        params@species_params$erepro <- rdd_new / rdi
+    } else {
+        stop("Currently mizer can no retune the reproduction when the model is",
+             " using ", params@rates_funcs$RDD)
+    }
+    params
 }
 
 
@@ -337,13 +349,20 @@ valid_species_arg <- function(object, species = NULL, return.logical = FALSE) {
     } else {
         stop("The first argument must be a MizerSim or MizerParams object.")
     }
-    # Set species if missing to list of all non-background species
-    if (is.null(species)) {
-        species <- dimnames(params@initial_n)$sp[!is.na(params@A)]
-    }
     assert_that(is.logical(return.logical))
     all_species <- dimnames(params@initial_n)$sp
     no_sp <- nrow(params@species_params)
+    # Set species if missing to list of all non-background species
+    if (is.null(species)) {
+        species <- dimnames(params@initial_n)$sp[!is.na(params@A)]
+        if (length(species) == 0) {  # There are no non-background species.
+            if (return.logical) {
+                return(rep(FALSE, no_sp))
+            } else {
+                return(NULL)
+            }
+        }
+    }
     if (is.logical(species)) {
         if (length(species) != no_sp) {
             stop("The boolean `species` argument has the wrong length")

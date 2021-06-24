@@ -38,24 +38,45 @@ NULL
 #' Get diet of predator at size, resolved by prey species
 #'
 #' Calculates the rate at which a predator of a particular species and size
-#' consumes biomass of each prey species and resource.
+#' consumes biomass of each prey species and resource. 
+#' The diet has units of grams/year.
+#'
+#' Returns the rates \eqn{D_{ij}(w)} at which a predator of species \eqn{i}
+#' and size \eqn{w} consumes biomass from prey species \eqn{j}. This is
+#' calculated from the predation kernel \eqn{\phi_i(w, w_p)},
+#' the search volume \eqn{\gamma_i(w)}, the feeding level \eqn{f_i(w)}, the
+#' species interaction matrix \eqn{\theta_{ij}} and the prey abundance density
+#' \eqn{N_j(w_p)}:
+#' \deqn{
+#' D_{ij}(w, w_p) = (1-f_i(w)) \gamma_i(w) \theta_{ij}
+#' \int N_j(w_p) \phi_i(w, w_p) w_p dw_p.
+#' }
+#' The prey index \eqn{j} runs over all species and the resource. It also runs
+#' over any extra ecosystem components in your model for which you have
+#' defined an encounter rate function. This encounter rate is multiplied by
+#' \eqn{1-f_i(w)} to give the rate of consumption of biomass from these extra
+#' components.
 #' 
 #' This function performs the same integration as
 #' [getEncounter()] but does not aggregate over prey species, and
-#' multiplies by (1-feeding_level) to get the consumed biomass rather than the
+#' multiplies by \eqn{1-f_i(w)} to get the consumed biomass rather than the
 #' available biomass. Outside the range of sizes for a predator species the
 #' returned rate is zero.
 #'
 #' @inheritParams getEncounter
 #' @param proportion If TRUE (default) the function returns the diet as a
 #'   proportion of the total consumption rate. If FALSE it returns the 
-#'   consumption rate in grams.
+#'   consumption rate in grams per year.
 #' 
 #' @return An array (predator species  x predator size x 
 #'   (prey species + resource + other components) )
 #' @export
 #' @family summary functions
 #' @concept summary_function
+#' @seealso [plotDiet()]
+#' @examples
+#' diet <- getDiet(NS_params)
+#' str(diet)
 getDiet <- function(params,
                     n = initialN(params), 
                     n_pp = initialNResource(params),
@@ -151,7 +172,7 @@ getDiet <- function(params,
 #' 
 #' @param sim An object of class `MizerSim`.
 #'   
-#' @return An array containing the SSB (time x species)
+#' @return An array (time x species) containing the SSB in grams.
 #' @export
 #' @family summary functions
 #' @concept summary_function
@@ -173,16 +194,16 @@ getSSB <- function(sim) {
 #' Calculate the total biomass of each species within a size range at each time 
 #' step.
 #' 
-#' Calculates the total biomass through time of the species in the
-#' `MizerSim` class within user defined size limits. The default option is
-#' to use the whole size range. You can specify minimum and maximum weight or
-#' length range for the species. Lengths take precedence over weights (i.e. if
-#' both min_l and min_w are supplied, only min_l will be used).
+#' Calculates the total biomass through time within user defined size limits.
+#' The default option is to use the whole size range. You can specify minimum
+#' and maximum weight or length range for the species. Lengths take precedence
+#' over weights (i.e. if both min_l and min_w are supplied, only min_l will be
+#' used).
 #' 
 #' @param sim An object of class `MizerSim`.
 #' @inheritDotParams get_size_range_array -params
 #'
-#' @return An array containing the biomass (time x species)
+#' @return An array (time x species) containing the biomass in grams.
 #' @export
 #' @family summary functions
 #' @concept summary_function
@@ -214,7 +235,7 @@ getBiomass <- function(sim, ...) {
 #' @param sim An object of class `MizerSim`.
 #' @inheritDotParams get_size_range_array -params
 #'
-#' @return An array containing the total numbers (time x species)
+#' @return An array (time x species) containing the total numbers.
 #' @export
 #' @family summary functions
 #' @concept summary_function
@@ -235,14 +256,15 @@ getN <- function(sim, ...) {
 }
 
 
-#' Calculate the total yield per gear and species
+#' Calculate the yearly yield per gear and species
 #'
-#' Calculates the total yield per gear and species at each simulation
-#' time step.
+#' Calculates the yearly yield (biomass fished per year) per gear and species at
+#' each simulation time step.
 #'
 #' @param sim An object of class `MizerSim`.
 #'
-#' @return An array containing the total yield (time x gear x species)
+#' @return An array (time x gear x species) containing the yearly yield in
+#'   grams.
 #' @export
 #' @family summary functions
 #' @concept summary_function
@@ -263,14 +285,15 @@ getYieldGear <- function(sim) {
 }
 
 
-#' Calculate the total yield of each species
+#' Calculate the yearly yield for each species
 #'
-#' Calculates the total yield of each species across all gears at each
-#' simulation time step.
+#' Calculates the yearly yield (biomass fished per year) for each species
+#' across all gears at each simulation time step.
 #'
 #' @param sim An object of class `MizerSim`.
 #'
-#' @return An array containing the total yield (time x species)
+#' @return An array (time x species) containing the total yearly yield in 
+#' grams.
 #' @export
 #' @family summary functions
 #' @concept summary_function
@@ -282,9 +305,11 @@ getYieldGear <- function(sim) {
 #' y <- getYield(sim)
 #' }
 getYield <- function(sim) {
-    # biomass less the first time step
-    yield_gear_species <- getYieldGear(sim)
-    return(apply(yield_gear_species, c(1, 3), sum))
+    biomass <- sweep(sim@n, 3, sim@params@w * sim@params@dw, "*")
+    f <- getFMort(sim, drop = FALSE)
+    yield <- apply(f * biomass,
+                   c(1, 2), sum)
+    return(yield)
 }
 
 

@@ -134,7 +134,7 @@ newCommunityParams <- function(max_w = 1e6,
     return(params)
 }
 
-#' Set up parameters for a trait-based model
+#' Set up parameters for a trait-based multispecies model
 #' 
 #' This functions creates a `MizerParams` object describing a trait-based
 #' model. This is a simplification of the general size-based model used in
@@ -219,7 +219,7 @@ newCommunityParams <- function(max_w = 1e6,
 #' @param lambda Exponent of the abundance power law.
 #' @param r_pp Growth rate parameter for the resource spectrum.
 #' @param kappa Coefficient in abundance power law.
-#' @param alpha The assimilation efficiency of the community.
+#' @param alpha The assimilation efficiency.
 #' @param ks Standard metabolism coefficient. If not provided, default will be
 #'   calculated from critical feeding level argument `fc`.
 #' @param fc Critical feeding level. Used to determine `ks` if it is not given
@@ -272,7 +272,7 @@ newTraitParams <- function(no_sp = 11,
                            max_w = max_w_inf,
                            eta = 10^(-0.6),
                            min_w_mat = min_w_inf * eta,
-                           no_w = log10(max_w_inf / min_w) * 20 + 1,
+                           no_w = round(log10(max_w_inf / min_w) * 20 + 1),
                            min_w_pp = 1e-10,
                            w_pp_cutoff = min_w_mat,
                            n = 2 / 3,
@@ -345,6 +345,9 @@ newTraitParams <- function(no_sp = 11,
     if (!is.na(fc) && (fc < 0 || fc > f0)) {
         stop("The critical feeding level must lie between 0 and f0")
     }
+    if (!is.na(gamma)) {  # If gamma is supplied, f0 is ignored
+        f0 <- NA
+    }
     # Check gears
     if (length(knife_edge_size) > no_sp) {
         stop("knife_edge_size needs to be no longer than the number of species in the model")
@@ -409,6 +412,7 @@ newTraitParams <- function(no_sp = 11,
         w_mat = w_mat,
         w_min_idx = w_min_idx,
         h = h,
+        gamma = gamma,
         ks = ks,
         f0 = f0,
         fc = fc,
@@ -447,6 +451,7 @@ newTraitParams <- function(no_sp = 11,
     dw <- params@dw
     w_full <- params@w_full
     ks <- params@species_params$ks[[1]]
+    f0 <- get_f0_default(params)[[1]]
     
     ## Construct steady state solution ----
     
@@ -548,21 +553,9 @@ newTraitParams <- function(no_sp = 11,
     }
     
     
-    ## Set erepro to meet boundary condition ----
-    rdi <- getRDI(params)
-    gg <- getEGrowth(params)
-    mumu <- getMort(params)
-    erepro_final <- 1:no_sp  # set up vector of right dimension
-    for (i in (1:no_sp)) {
-        gg0 <- gg[i, params@w_min_idx[i]]
-        mumu0 <- mumu[i, params@w_min_idx[i]]
-        DW <- params@dw[params@w_min_idx[i]]
-        erepro_final[i] <- erepro * 
-            (initial_n[i, params@w_min_idx[i]] *
-                 (gg0 + DW * mumu0)) / rdi[i]
-    }
-    params@species_params$erepro <- erepro_final
-    
+    ## Set reproduction to meet boundary condition ----
+    params@species_params$erepro <- params@species_params$erepro *
+        get_required_reproduction(params) / getRDI(params) 
     params <- setBevertonHolt(params, R_factor = R_factor)
 
     return(params)
@@ -570,7 +563,7 @@ newTraitParams <- function(no_sp = 11,
 
 
 # Helper function to calculate the coefficient of the death rate created by
-# a Sheldon spectrum of predators, assuming they have the same predation 
+# a power-law spectrum of predators, assuming they have the same predation 
 # parameters as the first species.
 get_power_law_mort <- function(params) {
     params@interaction[] <- 0

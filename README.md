@@ -27,25 +27,20 @@ mizer contains many default options that can be easily changed by the
 user.
 
 <!-- Mizer can also be used to create web apps that allow users to explore models -->
-
 <!-- without the need to install R. An [example of such an -->
-
 <!-- app](https://mizer.shinyapps.io/selectivity/) investigates the effect of -->
-
 <!-- switching to a gear with a T90 extension net to reduce the catches of undersize -->
-
 <!-- hake and red mullet -->
 
 Mizer has been supporting research in marine ecology and fisheries
 science since 2014 ([see
 publications](https://sizespectrum.org/mizer/articles/publications.html)).
-It is still under active development. The new version 2.0 has increased
-the user-friendliness and the flexibility of the framework.
-Contributions from the user community are very welcome. There is a
-sister package called
-[mizerExperimental](https://sizespectrum.org/mizerExperimental/) where
-user contributions can be checked out and receive feedback from the
-community. Example mizer models can be contributed to
+Mizer is still under active development. Version 2.0 has increased the
+user-friendliness and the flexibility of the framework. Contributions
+from the user community are very welcome. There is a sister package
+called [mizerExperimental](https://sizespectrum.org/mizerExperimental/)
+where user contributions can be checked out and receive feedback from
+the community. Example mizer models can be contributed to
 [mizerExamples](https://sizespectrum.org/mizerExamples/).
 
 Does your project or publication use mizer? If so, we would love to
@@ -119,11 +114,11 @@ because it uses allometric scaling relations and size-based feeding
 rules to choose sensible defaults for unknown parameters.
 
 Setting up a new multi-species mizer model is a two-step process,
-similar to what may be familiar from Ecopath with Ecosym: First one
+similar to what may be familiar from Ecopath with Ecosim: First one
 calibrates the model to describe a steady state that is in agreement
 with current observations (as in Ecopath), then one chooses the
 additional parameters that determine the dynamics away from the steady
-state (as in Ecosym). This model can then be used to investigate future
+state (as in Ecosim). This model can then be used to investigate future
 effects of changes in fishing policy or of environmental stressors.
 
 ## Modelling environmental change
@@ -143,6 +138,8 @@ consume. Each fish that grows up from egg size to maturity by eating
 smaller individuals is like a car on this biomass highway. The yield of
 our fisheries depend on this traffic flowing smoothly and without
 traffic jams.
+
+An analogy with road traffic may be helpful:
 
 In road traffic, if traffic density gets too high in a section of the
 highway, drivers slow down, which leads to a pile-up producing even

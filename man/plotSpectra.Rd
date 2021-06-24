@@ -17,6 +17,7 @@ plotSpectra(
   resource = TRUE,
   background = TRUE,
   highlight = NULL,
+  return_data = FALSE,
   ...
 )
 
@@ -61,7 +62,8 @@ raised to \code{power}. The default \code{power = 1} gives the biomass
 density, whereas \code{power = 2} gives the biomass density with respect
 to logarithmic size bins.}
 
-\item{biomass}{Obsolete. Only used if \code{power} argument is missing. Then
+\item{biomass}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+Only used if \code{power} argument is missing. Then
 \code{biomass = TRUE} is equivalent to \code{power=1} and
 \code{biomass = FALSE} is equivalent to \code{power=0}}
 
@@ -76,6 +78,9 @@ are included. Ignored if the model does not contain background species.
 Default is TRUE.}
 
 \item{highlight}{Name or vector of names of the species to be highlighted.}
+
+\item{return_data}{A boolean value that determines whether the formatted data
+used for the plot is returned instead of the plot itself. Default value is FALSE}
 
 \item{...}{Other arguments (currently unused)}
 }
@@ -101,12 +106,16 @@ plotSpectra(sim, wlim = c(1e-6, NA))
 plotSpectra(sim, time_range = 10:20)
 plotSpectra(sim, time_range = 10:20, power = 0)
 plotSpectra(sim, species = c("Cod", "Herring"), power = 1)
+
+# Returning the data frame
+plotSpectra(sim, return_data = TRUE)
 }
 }
 \seealso{
 \link{plotting_functions}
 
 Other plotting functions: 
+\code{\link{animateSpectra}()},
 \code{\link{plot,MizerSim,missing-method}},
 \code{\link{plotBiomass}()},
 \code{\link{plotDiet}()},

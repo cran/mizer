@@ -203,10 +203,16 @@ getBiomassFrame <- function(sim,
 #' plotBiomass(sim, min_w = 10, max_w = 1000)
 #' plotBiomass(sim, start_time = 10, end_time = 15)
 #' plotBiomass(sim, y_ticks = 3)
+#' 
+#' # Returning the data frame
+#' plotBiomass(sim, return_data = TRUE)
 #' }
-plotBiomass <- function(sim, species = NULL, start_time, end_time, y_ticks = 6,
-            ylim = c(NA, NA), total = FALSE, background = TRUE, 
-            highlight = NULL, ...) {
+plotBiomass <- function(sim, species = NULL, 
+                        start_time, end_time, 
+                        y_ticks = 6, ylim = c(NA, NA), 
+                        total = FALSE, background = TRUE, 
+                        highlight = NULL, return_data = FALSE,
+                        ...) {
     species <- valid_species_arg(sim, species)
     if (missing(start_time)) start_time <- as.numeric(dimnames(sim@n)[[1]][1])
     if (missing(end_time)) end_time <- as.numeric(dimnames(sim@n)[[1]][dim(sim@n)[1]])
@@ -225,7 +231,7 @@ plotBiomass <- function(sim, species = NULL, start_time, end_time, y_ticks = 6,
         scale_x_continuous(name = x_label) +
         scale_colour_manual(values = sim@params@linecolour) +
         scale_linetype_manual(values = sim@params@linetype)
-
+    
     if (background) {
         # Add background species in light grey
         back_sp <- dimnames(sim@n)$sp[is.na(sim@params@A)]
@@ -242,8 +248,8 @@ plotBiomass <- function(sim, species = NULL, start_time, end_time, y_ticks = 6,
     linesize[highlight] <- 1.6
     p <- p + scale_size_manual(values = linesize) +
         geom_line(aes(colour = Species, linetype = Species, size = Species))
-
-    return(p)
+    
+   if (return_data) return(list(spec_bm, back_bm)) else return(p)
 }
 
 #' @rdname plotBiomass
@@ -290,11 +296,15 @@ plotlyBiomass <- function(sim,
 #' # Comparing with yield from twice the effort
 #' sim2 <- project(params, effort=2, t_max=20, t_save = 0.2, progress_bar = FALSE)
 #' plotYield(sim, sim2, species = c("Cod", "Herring"), log = FALSE)
+#' 
+#' # Returning the data frame
+#' plotYield(sim, return_data = TRUE)
 #' }
 plotYield <- function(sim, sim2,
                       species = NULL,
                       total = FALSE, log = TRUE,
-                      highlight = NULL, ...) {
+                      highlight = NULL, return_data = FALSE,
+                      ...) {
     species <- valid_species_arg(sim, species)
     # Need to keep species in order for legend
     species_levels <- c(dimnames(sim@n)$sp, "Background", "Resource", "Total")
@@ -311,6 +321,8 @@ plotYield <- function(sim, sim2,
                              value.name = "Yield")
         ym$Species <- factor(ym$Species, levels = species_levels)
         ym <- subset(ym, ym$Yield > 0)
+        if (return_data) return(ym) else
+        
         p <- ggplot(ym) +
                 geom_line(aes(x = Year, y = Yield,
                               colour = Species, linetype = Species,
@@ -358,6 +370,8 @@ plotYield <- function(sim, sim2,
         ym$Species <- factor(ym$Species, levels = species_levels)
         ym$Simulation <- as.factor(ym$Simulation)
         ym <- subset(ym, ym$Yield > 0)
+        if (return_data) return(ym)
+        
         p <- ggplot(ym) +
                 geom_line(aes(x = Year, y = Yield, colour = Species,
                               linetype = Species))
@@ -406,11 +420,15 @@ plotlyYield <- function(sim, sim2,
 #' sim <- project(params, effort=1, t_max=20, t_save = 0.2, progress_bar = FALSE)
 #' plotYieldGear(sim)
 #' plotYieldGear(sim, species = c("Cod", "Herring"), total = TRUE)
+#'
+#' # Returning the data frame
+#' plotYieldGear(sim, return_data = TRUE)
 #' }
 plotYieldGear <- function(sim,
                           species = NULL,
                           total = FALSE,
-                          highlight = NULL, ...) {
+                          highlight = NULL, return_data = FALSE,
+                          ...) {
     species <- valid_species_arg(sim, species)
     # Need to keep species in order for legend
     species_levels <- c(dimnames(sim@n)$sp, "Background", "Resource", "Total")
@@ -427,6 +445,8 @@ plotYieldGear <- function(sim,
         ym <- rbind(ym, yt)
     }
     ym <- subset(ym, ym$value > 0)
+    if (return_data) return(ym)
+    
     p <- ggplot(ym) +
             geom_line(aes(x = time, y = value, colour = Species, 
                           linetype = gear, size = Species))
@@ -475,7 +495,8 @@ plotlyYieldGear <- function(sim, species = NULL,
 #' raised to `power`. The default \code{power = 1} gives the biomass 
 #' density, whereas \code{power = 2} gives the biomass density with respect
 #' to logarithmic size bins.
-#' @param biomass Obsolete. Only used if `power` argument is missing. Then
+#' @param biomass `r lifecycle::badge("deprecated")`
+#'  Only used if `power` argument is missing. Then
 #'   \code{biomass = TRUE} is equivalent to \code{power=1} and 
 #'   \code{biomass = FALSE} is equivalent to \code{power=0}
 #' @param total A boolean value that determines whether the total over all
@@ -486,6 +507,8 @@ plotlyYieldGear <- function(sim, species = NULL,
 #'   are included. Ignored if the model does not contain background species.
 #'   Default is TRUE.
 #' @param highlight Name or vector of names of the species to be highlighted.
+#' @param return_data A boolean value that determines whether the formatted data
+#' used for the plot is returned instead of the plot itself. Default value is FALSE
 #' @param ... Other arguments (currently unused)
 #'   
 #' @return A ggplot2 object
@@ -501,6 +524,9 @@ plotlyYieldGear <- function(sim, species = NULL,
 #' plotSpectra(sim, time_range = 10:20)
 #' plotSpectra(sim, time_range = 10:20, power = 0)
 #' plotSpectra(sim, species = c("Cod", "Herring"), power = 1)
+#' 
+#' # Returning the data frame
+#' plotSpectra(sim, return_data = TRUE)
 #' }
 plotSpectra <- function(object, species = NULL,
                         time_range,
@@ -508,7 +534,7 @@ plotSpectra <- function(object, species = NULL,
                         power = 1, biomass = TRUE,
                         total = FALSE, resource = TRUE, 
                         background = TRUE,
-                        highlight = NULL, ...) {
+                        highlight = NULL, return_data = FALSE, ...) {
     # to deal with old-type biomass argument
     if (missing(power)) {
         power <- as.numeric(biomass)
@@ -523,17 +549,17 @@ plotSpectra <- function(object, species = NULL,
         n_pp <- apply(object@n_pp[time_elements, , drop = FALSE], 2, mean)
         ps <- plot_spectra(object@params, n = n, n_pp = n_pp,
                            species = species, wlim = wlim, ylim = ylim,
-                           power = power,
-                           total = total, resource = resource,
-                           background = background, highlight = highlight)
+                           power = power, total = total, resource = resource,
+                           background = background, highlight = highlight, 
+                           return_data = return_data)
         return(ps)
     } else {
         ps <- plot_spectra(object, n = object@initial_n,
                            n_pp = object@initial_n_pp,
                            species = species, wlim = wlim, ylim = ylim,
-                           power = power,
-                           total = total, resource = resource,
-                           background = background, highlight = highlight)
+                           power = power, total = total, resource = resource,
+                           background = background, highlight = highlight, 
+                           return_data = return_data)
         return(ps)
     }
 }
@@ -541,7 +567,8 @@ plotSpectra <- function(object, species = NULL,
 
 plot_spectra <- function(params, n, n_pp,
                          species, wlim, ylim, power,
-                         total, resource, background, highlight) {
+                         total, resource, background, 
+                         highlight, return_data) {
     params <- validParams(params)
     if (is.na(wlim[1])) {
         wlim[1] <- min(params@w) / 100
@@ -645,7 +672,7 @@ plot_spectra <- function(params, n, n_pp,
     linesize[highlight] <- 1.6
     p <- p + scale_size_manual(values = linesize) + 
         geom_line(aes(colour = Species, linetype = Species, size = Species))
-    return(p)
+    if (return_data) return(list(plot_dat, plot_back)) else return(p)
 }
 
 #' @rdname plotSpectra
@@ -695,13 +722,14 @@ plotlySpectra <- function(object, species = NULL,
 #' plotFeedingLevel(sim)
 #' plotFeedingLevel(sim, time_range = 10:20, species = c("Cod", "Herring"),
 #'                  include_critical = TRUE)
+#' 
+#' # Returning the data frame
+#' plotFeedingLevel(sim, return_data = TRUE)
 #' }
-plotFeedingLevel <- function(object,
-            species = NULL,
-            time_range,
-            highlight = NULL,
-            all.sizes = FALSE,
-            include_critical = FALSE, ...) {
+plotFeedingLevel <- function(object, species = NULL,
+            time_range, highlight = NULL,
+            all.sizes = FALSE, include_critical = FALSE,
+            return_data = FALSE, ...) {
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -737,6 +765,8 @@ plotFeedingLevel <- function(object,
         }
         plot_dat <- plot_dat[complete.cases(plot_dat), ]
     }
+    if (return_data) return(plot_dat) else 
+    
     if (include_critical) {
         feed_crit <- getCriticalFeedingLevel(params)[sel_sp, , drop = FALSE]
         plot_dat_crit <- data.frame(
@@ -817,11 +847,14 @@ plotlyFeedingLevel <- function(object,
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotPredMort(sim)
 #' plotPredMort(sim, time_range = 10:20)
+#' 
+#' # Returning the data frame
+#' plotPredMort(sim, return_data = TRUE)
 #' }
 plotPredMort <- function(object, species = NULL,
-                         time_range,
-                         all.sizes = FALSE,
-                         highlight = NULL, ...) {
+                         time_range, all.sizes = FALSE,
+                         highlight = NULL, return_data = FALSE,
+                         ...) {
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -855,6 +888,7 @@ plotPredMort <- function(object, species = NULL,
         }
         plot_dat <- plot_dat[complete.cases(plot_dat), ]
     }
+    if (return_data) return(plot_dat)
     
     p <- ggplot(plot_dat) +
             geom_line(aes(x = w, y = value, colour = Species, 
@@ -873,7 +907,7 @@ plotPredMort <- function(object, species = NULL,
     return(p)
 }
 
-#' Alias for plotPredMort
+#' Alias for `plotPredMort()`
 #' 
 #' `r lifecycle::badge("deprecated")`
 #' An alias provided for backward compatibility with mizer version <= 1.0
@@ -911,11 +945,14 @@ plotlyPredMort <- function(object, species = NULL,
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotFMort(sim)
 #' plotFMort(sim, highlight = c("Cod", "Haddock"))
+#'  
+#' # Returning the data frame
+#' plotFMort(sim, return_data = TRUE)
 #' }
 plotFMort <- function(object, species = NULL,
-                      time_range,
-                      all.sizes = FALSE,
-                      highlight = NULL, ...) {
+                      time_range, all.sizes = FALSE,
+                      highlight = NULL, return_data = FALSE,
+                      ...) {
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -948,6 +985,7 @@ plotFMort <- function(object, species = NULL,
         }
         plot_dat <- plot_dat[complete.cases(plot_dat), ]
     }
+    if (return_data) return(plot_dat)
     
     linesize <- rep(0.8, length(params@linetype))
     names(linesize) <- names(params@linetype)
@@ -963,7 +1001,9 @@ plotFMort <- function(object, species = NULL,
         scale_colour_manual(values = params@linecolour) +
         scale_linetype_manual(values = params@linetype) + 
         scale_size_manual(values = linesize)
+    
     return(p)
+    
 }
 
 #' @rdname plotFMort
@@ -1001,13 +1041,14 @@ plotlyFMort <- function(object, species = NULL,
 #' plotGrowthCurves(sim, percentage = TRUE)
 #' plotGrowthCurves(sim, species = "Cod", max_age = 24)
 #' plotGrowthCurves(sim, species_panel = TRUE)
+#'  
+#' # Returning the data frame
+#' plotGrowthCurves(sim, return_data = TRUE)
 #' }
-plotGrowthCurves <- function(object, 
-                             species = NULL, 
-                             max_age = 20, 
-                             percentage = FALSE, 
-                             species_panel = FALSE,
-                             highlight = NULL) {
+plotGrowthCurves <- function(object, species = NULL, 
+                             max_age = 20, percentage = FALSE, 
+                             species_panel = FALSE, highlight = NULL,
+                             return_data = FALSE, ...) {
     if (is(object, "MizerSim")) {
         params <- object@params
         t <- dim(object@n)[1]
@@ -1049,6 +1090,7 @@ plotGrowthCurves <- function(object,
         plot_dat2$legend <- "von Bertalanffy"
         plot_dat <- rbind(plot_dat,plot_dat2)
     }
+    if (return_data) return(plot_dat)
     
     p <- ggplot(filter(plot_dat, legend == "model")) + 
         geom_line(aes(x = Age, y = value, 
@@ -1101,6 +1143,7 @@ plotGrowthCurves <- function(object,
         }
     }
     return(p)
+    
 }
 
 #' @rdname plotGrowthCurves
@@ -1115,16 +1158,29 @@ plotlyGrowthCurves <- function(object, species = NULL,
 }
 
 
-#' Plot diet
+#' Plot diet, resolved by prey species, as function of predator at size.
 #' 
 #' `r lifecycle::badge("experimental")`
+#' Plots the proportions with which each prey species contributes to the total
+#' biomass consumed by the specified predator species, as a function of the
+#' predator's size. These proportions are obtained with `getDiet()`.
 #' 
 #' @inheritParams plotSpectra
+#' @param species The name of the predator species for which to plot the diet.
 #'
 #' @return A ggplot2 object
 #' @export
+#' @seealso [getDiet()]
 #' @family plotting functions
-plotDiet <- function(object, species = NULL) {
+#' @examples 
+#' \donttest{
+#' plotDiet(NS_params, species = "Cod")
+#' 
+#' # Returning the data frame
+#' fr <- plotDiet(NS_params, species = "Cod", return_data = TRUE)
+#' str(fr)
+#' }
+plotDiet <- function(object, species = NULL, return_data = FALSE) {
     params <- validParams(object)
     species <- valid_species_arg(object, species, return.logical = TRUE)
     diet <- getDiet(params)[species, , ]
@@ -1135,6 +1191,8 @@ plotDiet <- function(object, species = NULL) {
         w = params@w,
         Prey = rep(prey, each = length(params@w)))
     plot_dat <- plot_dat[plot_dat$Proportion > 0, ]
+    if (return_data) return(plot_dat)
+    
     ggplot(plot_dat) +
         geom_area(aes(x = w, y = Proportion, fill = Prey)) +
         scale_x_log10() +

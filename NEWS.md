@@ -1,4 +1,46 @@
-# mizer 2.1
+# mizer 2.2
+
+## New functionality
+
+* New function `newSingleSpeciesParams()` for creating a single species in a 
+  power-law background.
+* New function `animateSpectra()` creating an animated plot of a simulation.
+* New functions `addSpecies()`, `removeSpecies()` and `renameSpecies()`.
+* The parameters for an ecosystem component added with `setComponent()` can
+  now take any form, they no longer have to be a named list.
+* New argument `return_data` in the plot's functions allows to return the 
+  data frame used for the ggplot instead of the plot.
+  
+## Breaking changes
+
+* `steady()` no longer switches off the Beverton-Holt density dependence.
+  You can do this manually with `setBevertonHolt()` with `R_factor = Inf`.
+
+## Bug fixes
+
+* `getYield()` now also works with density-dependent fishing mortality.
+  Thanks to James Roger for discovering the problem.
+* The `gamma` argument now is no longer ignored in `newTraitParams()` but
+  correctly overrides the `f0` argument. #188
+* `getFMort()` again works correctly when called with a MizerSim object.
+* `resource_semichemostat()` no longer fail when at some sizes both the 
+  resource growth rate and the resource mortality rate are both zero.
+* The default for `no_w` in `newTraitParams()` is now always an integer.
+* Problems with different machine precision no longer prompts the error
+  "The `w_min_idx` should point to the start of the size bin containing 
+  the egg size `w_min`".
+* `addSpecies() no longer extends grid due to rounding errors.
+* If `valid_species_arg()` is called with `species = NULL` and there are no
+  background species then it returns `NULL`.
+
+## Documentation
+
+* New tutorial about single-species sizes-spectrum dynamics.
+* Improved documentation of `getDiet()` and `plotDiet()`.
+* More info on units added to documentation of summary functions.
+
+
+# mizer 2.1.0
 
 ## New functionality
 
@@ -28,7 +70,7 @@
 
 ## Code improvements
 
-* Using lifecycle package to indicate status of some functions and arguments as
+* Using `lifecycle` package to indicate status of some functions and arguments as
   'experimental' or 'deprecated'.
 * Improved error handling in `setFishing()`. #172
 * Made use of vdiffr conditional, as required by §1.1.3.1 of
@@ -79,7 +121,7 @@
 * Old MizerParams objects are updated automatically when used in plot functions,
   rate functions, summary functions or in `project()` or `steady()`, #163.
 * New function `getRates()` to calculates all rates and collects them in a list.
-* `steady()` with `return_sim = TRUE` now creates the sim object the same way 
+* `steady()` with `return_sim = TRUE` now creates the MizerSim object the same way 
   as `project()`, namely with the original values in the first time slot.
 * Added documentation for `species_params()`, `gear_params()` and
   `resource_params()`.
@@ -97,7 +139,7 @@
 * Consistently passing the time argument to the rate functions. This will
   allow extensions to implement time-dependent rates.
 * Passing growth and mortality rate to RDI function.
-* Simplified the getRates functions by removing the arguments that passed in
+* Simplified the `getRates()` functions by removing the arguments that passed in
   other rates. Instead the required rates are now always calculated within 
   these functions.
 * Improved documentation of rate functions and of how to register your own rate 
@@ -290,7 +332,7 @@ gain experience in writing extensions for mizer.
 * All plot functions that are not time-resolved now accept also a MizerParams
   object as an alternative to the MizerSim object to plot the initial state.
 * New `plot()` method for MizerParams object to plot the initial state.
-* Avoiding duplicate graphs in rmarkdown documents.
+* Avoiding duplicate graphs in R Markdown documents.
 * New argument `include_critical` in `plotFeedingLevel()` allows to show also
   the critical feeding level.
 * New `wlim` argument to `plotSpectra()` in analogy to the existing `ylim`
@@ -415,7 +457,7 @@ species. The information is set up via a new `gear_params()` data frame. See
   + `MizerParams()` -> `emptyParams()` or `set_multispecies_model()`
 * Renamed maximum reproductive rate from `r_max` to `R_max`.
 * Updated list of publications (@Kenhasteandersen)
-* Using Rmarkdown in all roxygen comments
+* Using R Markdown in all roxygen comments.
 
 ## Bug fixes
 
