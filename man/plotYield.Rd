@@ -38,7 +38,9 @@ numeric vector with the species indices, or a logical vector indicating for
 each species whether it is to be selected (TRUE) or not.}
 
 \item{total}{A boolean value that determines whether the total over all
-species in the system is plotted as well. Default is FALSE}
+species in the system is plotted as well. Note that even if the plot
+only shows a selection of species, the total is including all species.
+Default is FALSE.}
 
 \item{log}{Boolean whether yield should be plotted on a logarithmic axis.
 Defaults to true.}
@@ -51,7 +53,8 @@ used for the plot is returned instead of the plot itself. Default value is FALSE
 \item{...}{Other arguments (currently unused)}
 }
 \value{
-A ggplot2 object
+A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
+frame with the three variables 'Year', 'Yield', 'Species' is returned.
 }
 \description{
 After running a projection, the total yield of each species across all
@@ -70,7 +73,8 @@ sim2 <- project(params, effort=2, t_max=20, t_save = 0.2, progress_bar = FALSE)
 plotYield(sim, sim2, species = c("Cod", "Herring"), log = FALSE)
 
 # Returning the data frame
-plotYield(sim, return_data = TRUE)
+fr <- plotYield(sim, return_data = TRUE)
+str(fr)
 }
 }
 \seealso{

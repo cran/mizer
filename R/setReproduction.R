@@ -191,6 +191,8 @@ setReproduction <- function(params, maturity = NULL,
             species_params$w_mat[missing] <- species_params$w_inf[missing] / 4
         }
         assert_that(all(species_params$w_mat > species_params$w_min))
+        assert_that(all(species_params$w_mat < species_params$w_inf))
+        params@species_params$w_mat <- species_params$w_mat
         
         # Set defaults for w_mat25
         species_params <- set_species_param_default(
@@ -253,6 +255,9 @@ setReproduction <- function(params, maturity = NULL,
     } else {
         # Set defaults for m
         params <- set_species_param_default(params, "m", 1)
+        if (any(params@species_params$m < params@species_params$n)) {
+            stop("The exponent `m` must not be smaller than the exponent `n`.")
+        }
         
         repro_prop <- array(
             unlist(

@@ -42,7 +42,8 @@ used for the plot is returned instead of the plot itself. Default value is FALSE
 \item{...}{Other arguments (currently unused)}
 }
 \value{
-A ggplot2 object
+A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
+frame with the three variables 'w', 'value', 'Species' is returned.
 }
 \description{
 After running a projection, plot the total fishing mortality of each species
@@ -58,7 +59,8 @@ plotFMort(sim)
 plotFMort(sim, highlight = c("Cod", "Haddock"))
  
 # Returning the data frame
-plotFMort(sim, return_data = TRUE)
+fr <- plotFMort(sim, return_data = TRUE)
+str(fr)
 }
 }
 \seealso{
