@@ -70,9 +70,17 @@ see "Predation encounter" section in the help for \code{\link[=getEncounter]{get
 invested into reproduction that is converted to egg biomass, see
 \code{\link[=getRDI]{getRDI()}}.
 \item \code{Rmax} is the parameter in the Beverton-Holt density dependence added to
-the reproduction, see \code{\link[=BevertonHoltRDD]{BevertonHoltRDD()}}. There will be other such
+the reproduction, see \code{\link[=setBevertonHolt]{setBevertonHolt()}}. There will be other such
 parameters if you use other density dependence functions, see the
 "Density dependence" section in the help for \code{\link[=setReproduction]{setReproduction()}}.
+}
+
+Finally there are two species parameters that control the way the species are
+represented in plots:
+\itemize{
+\item \code{linecolour} specifies the colour and can be any valid R colour value.
+\item \code{linetype} specifies the line type ("solid", "dashed", "dotted", "dotdash",
+"longdash", "twodash" or "blank")
 }
 
 When you set up a MizerParams object with \code{\link[=newMultispeciesParams]{newMultispeciesParams()}} you

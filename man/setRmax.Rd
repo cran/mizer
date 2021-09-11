@@ -73,13 +73,19 @@ through that point. This parameter can be \code{erepro} or \code{R_max}. Instead
 ratio between the density-dependent reproduction rate \eqn{R_{dd}}{R_dd} and
 the maximal reproduction rate  \eqn{R_{max}}{R_max}.
 
-The parameter you provide can be either a vector with one value for each
+If you do not provide a value for any of the reproduction parameter
+arguments, then \code{erepro} will be set to the value it has in the current
+species parameter data frame. If you do provide one of the reproduction
+parameters, this can be either a vector with one value for each
 species, or a named vector where the names determine which species are
 affected, or a single unnamed value that is then used for all species. Any
 species for which the given value is \code{NA} will remain unaffected.
 
 The values for \code{R_max} must be larger than \eqn{R_{dd}}{R_dd} and can range
-up to \code{Inf}. The values for the \code{reproduction_level} must be positive and
+up to \code{Inf}. If a smaller value is requested a warning is issued and the
+value is increased to the value required for a reproduction level of 0.99.
+
+The values for the \code{reproduction_level} must be positive and
 less than 1. The values for \code{erepro} must be large enough to allow the
 required reproduction rate. If a smaller value is requested a warning is
 issued and the value is increased to the smallest possible value. The values

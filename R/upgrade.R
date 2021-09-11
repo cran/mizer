@@ -176,7 +176,7 @@ upgradeParams <- function(params) {
         search_vol = params@search_vol,
         intake_max = params@intake_max,
         metab = metab,
-        z0 = mu_b,
+        ext_mort = mu_b,
         maturity = maturity,
         repro_prop = repro_prop,
         RDD = RDD,
@@ -261,6 +261,19 @@ upgradeParams <- function(params) {
     
     if (.hasSlot(params, "A")) {
         pnew@A <- params@A
+    }
+    
+    if (.hasSlot(params, "metadata")) {
+        pnew@metadata <- params@metadata
+        pnew@time_created <- params@time_created
+        pnew@extensions <- params@extensions
+        pnew@mizer_version <- params@mizer_version
+    }
+    
+    # renaming catch_observed to yield_observed in mizer 2.3
+    if ("catch_observed" %in% names(pnew@species_params)) {
+        pnew@species_params$yield_observed <- pnew@species_params$catch_observed
+        pnew@species_params$catch_observed <- NULL
     }
     
     # Copy over all comments

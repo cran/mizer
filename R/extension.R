@@ -72,6 +72,8 @@ setRateFunction <- function(params, rate, fun) {
     params@rates_funcs[[rate]] <- fun
     
     validObject(params)
+    
+    params@time_modified <- lubridate::now()
     params
 }
 
@@ -113,6 +115,8 @@ other_params <- function(params) {
     # We save the value in the $other slot in order to make it impossible for
     # the user to overwrite component parameters by mistake.
     params@other_params$other <- value
+    
+    params@time_modified <- lubridate::now()
     params
 }
 
@@ -170,6 +174,8 @@ setComponent <- function(params, component, initial_value,
     if (!missing(component_params)) {
         params@other_params[[component]] <- component_params
     }
+    
+    params@time_modified <- lubridate::now()
     params
 }
 
@@ -184,6 +190,8 @@ removeComponent <- function(params, component) {
     params@other_mort[[component]] <- NULL
     params@other_params[[component]] <- NULL
     params@initial_n_other[[component]] <- NULL
+    
+    params@time_modified <- lubridate::now()
     params
 }
 
@@ -194,10 +202,13 @@ removeComponent <- function(params, component) {
 #' @param component Name of the component of interest. If missing, a list of
 #'   all components will be returned.
 #' @return A list with the entries `initial_value`, `dynamics_fun`,
-#'   `encounter_fun`, `mort_fun`, `component_params`. If `component` is
-#'   missing, then a list of lists for all components is returned.
+#'   `encounter_fun`, `mort_fun`, `component_params` for the requested
+#'   component. If the requested component does not exist, `NULL` is returned.
+#'   If no `component` argument is given, then a list of lists for all
+#'   components is returned.
 #' @export
 getComponent <- function(params, component) {
+    assert_that(is(params, "MizerParams"))
     if (missing(component)) {
         l <- lapply(names(params@other_dynamics),
                     function(x) getComponent(params, x))
@@ -205,7 +216,7 @@ getComponent <- function(params, component) {
         return(l)
     }
     if (!component %in% names(params@other_dynamics)) {
-        stop("There is no component named ", component)
+        return(NULL)
     }
     list(initial_value = initialNOther(params)[[component]],
          dynamics_fun = params@other_dynamics[[component]],
@@ -237,6 +248,8 @@ getComponent <- function(params, component) {
         stop("Missing values for components ", components[extra])
     }
     params@initial_n_other <- value
+    
+    params@time_modified <- lubridate::now()
     params
 }
 

@@ -41,10 +41,11 @@ test_that("projectToSteady() works", {
 
 # steady ----
 test_that("steady works", {
-    expect_message(params <- newTraitParams(no_sp = 4, no_w = 30, R_factor = Inf,
+    expect_message(params <- newTraitParams(no_sp = 4, no_w = 30,
                                             n = 2/3, lambda = 2 + 3/4 - 2/3,
                                             max_w_inf = 1e3, min_w = 1e-4,
-                                            w_pp_cutoff = 10, ks = 4),
+                                            w_pp_cutoff = 10, ks = 4,
+                                            reproduction_level = 0),
                    "Increased no_w to 36")
     params@species_params$gamma[2] <- 2000
     params <- setSearchVolume(params)
@@ -56,52 +57,41 @@ test_that("steady works", {
     expect_known_value(getRDD(sim@params), "values/steady")
 })
 
-# retune_erepro ----
-test_that("retune_erepro works", {
+test_that("steady() preserves erepro", {
     params <- NS_params
-    params1 <- retune_erepro(params, species = "Cod")
-    expect_equal(params1@species_params$erepro[-11],
-                 params@species_params$erepro[-11])
-    expect_identical(params1@rates_funcs$RDD, "BevertonHoltRDD")
+    species_params(params)$R_max <- 1.01 * species_params(params)$R_max
+    p2 <- steady(params, t_per = 1, preserve = "erepro")
+    expect_equal(p2@species_params$erepro, params@species_params$erepro)
 })
-
-# retuneReproductiveEfficiency ----
-test_that("retuneReproductiveEfficiency works", {
-    p <- newTraitParams(R_factor = 4)
-    no_sp <- nrow(p@species_params)
-    erepro <- p@species_params$erepro
-    p@species_params$erepro[5] <- 15
-    ps <- retune_erepro(p)
-    expect_equal(ps@species_params$erepro, erepro)
-    # can also select species in various ways
-    ps <- retune_erepro(p, species = p@species_params$species[5])
-    expect_equal(ps@species_params$erepro, erepro)
-    p@species_params$erepro[3] <- 15
-    species <- (1:no_sp) %in% c(3,5)
-    ps <- retune_erepro(p, species = species)
-    expect_equal(ps@species_params$erepro, erepro)
+test_that("steady() preserves reproduction level", {
+    params <- NS_params
+    species_params(params)$R_max <- 1.01 * species_params(params)$R_max
+    p2 <- steady(params, t_per = 1, preserve = "reproduction_level")
+    expect_equal(getReproductionLevel(p2), getReproductionLevel(params))
+})
+test_that("steady() preserves R_max", {
+    params <- NS_params
+    species_params(params)$erepro <- 1.01 * species_params(params)$erepro
+    expect_warning(p2 <- steady(params, t_per = 1, preserve = "R_max"),
+                   "The following species require an unrealistic reproductive")
+    expect_equal(p2@species_params$R_max, params@species_params$R_max)
 })
 
 # valid_species_arg ----
 test_that("valid_species_arg works", {
-    expect_warning(valid_species_arg(NS_params, c("Cod", "non", "sense")),
+    expect_warning(s <- valid_species_arg(NS_params, c("non", "sense")),
                    "The following species do not exist: non, sense")
-    suppressWarnings(
-        expect_error(valid_species_arg(NS_params, c("non", "sense")),
-                   "The species argument matches none of the species in the params object")
-    )
+    expect_identical(s, vector(mode = "character"))
+
     expect_identical(valid_species_arg(NS_params, c("Cod", "Sandeel")),
                      c("Cod", "Sandeel"))
     expect_identical(valid_species_arg(NS_params, c("Sprat", "Sandeel"),
                                        return.logical = TRUE),
                      c(TRUE, TRUE, rep(FALSE, 10)))
     # numeric species argument
-    expect_warning(valid_species_arg(NS_params, c(2.5, 3)),
+    expect_warning(s <- valid_species_arg(NS_params, c(2.5, 13)),
                  "A numeric 'species' argument should only contain the integers 1 to 12")
-    suppressWarnings(
-        expect_error(valid_species_arg(NS_params, c(2.5, 13)),
-                     "None of the numbers in the species argument are valid species indices.")
-    )
+    expect_identical(s, vector(mode = "character"))
     expect_identical(valid_species_arg(NS_params, c(3, 1)),
                      c("N.pout", "Sprat"))
     expect_identical(valid_species_arg(NS_params, c(1, 3)),

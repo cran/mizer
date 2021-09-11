@@ -31,15 +31,13 @@ A MizerParams object
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 Takes a MizerParams object \code{params} with arbitrary density dependence and
-returns a MizerParams object with Beverton-Holt density-dependence with your
-chosen reproductive efficiency or your chosen maximal reproduction rate.
-If you have tuned your \code{params} object to describe a particular steady state,
-then setting the Beverton-Holt density dependence with this function will
-leave you with the exact same steady state, because it only allows you to
-choose among those Beverton-Holt reproduction curves that have the property
-that the energy invested into reproduction by the mature individuals leads to
-the reproduction rate that is required to maintain the given egg abundance.
-By specifying one of the parameters \code{erepro}, \code{R_max} or \code{reproduction_level}
+returns a MizerParams object with Beverton-Holt density-dependence in such a
+way that the energy invested into reproduction by the mature individuals
+leads to the reproduction rate that is required to maintain the given egg
+abundance. Hence if you have tuned your \code{params} object to describe a
+particular steady state, then setting the Beverton-Holt density dependence
+with this function will leave you with the exact same steady state. By
+specifying one of the parameters \code{erepro}, \code{R_max} or \code{reproduction_level}
 you pick the desired reproduction curve. More details of these parameters are
 provided below.
 }
@@ -89,13 +87,19 @@ through that point. This parameter can be \code{erepro} or \code{R_max}. Instead
 ratio between the density-dependent reproduction rate \eqn{R_{dd}}{R_dd} and
 the maximal reproduction rate  \eqn{R_{max}}{R_max}.
 
-The parameter you provide can be either a vector with one value for each
+If you do not provide a value for any of the reproduction parameter
+arguments, then \code{erepro} will be set to the value it has in the current
+species parameter data frame. If you do provide one of the reproduction
+parameters, this can be either a vector with one value for each
 species, or a named vector where the names determine which species are
 affected, or a single unnamed value that is then used for all species. Any
 species for which the given value is \code{NA} will remain unaffected.
 
 The values for \code{R_max} must be larger than \eqn{R_{dd}}{R_dd} and can range
-up to \code{Inf}. The values for the \code{reproduction_level} must be positive and
+up to \code{Inf}. If a smaller value is requested a warning is issued and the
+value is increased to the value required for a reproduction level of 0.99.
+
+The values for the \code{reproduction_level} must be positive and
 less than 1. The values for \code{erepro} must be large enough to allow the
 required reproduction rate. If a smaller value is requested a warning is
 issued and the value is increased to the smallest possible value. The values

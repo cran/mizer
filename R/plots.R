@@ -245,7 +245,11 @@ plotBiomass <- function(sim, species = NULL,
                         total = FALSE, background = TRUE, 
                         highlight = NULL, return_data = FALSE,
                         ...) {
-    assert_that(is(sim, "MizerSim"))
+    assert_that(is(sim, "MizerSim"),
+                is.flag(total),
+                is.flag(background),
+                is.flag(return_data),
+                length(ylim) == 2)
     params <- sim@params
     species <- valid_species_arg(sim, species)
     if (missing(start_time)) start_time <- 
@@ -337,8 +341,8 @@ plotlyBiomass <- function(sim,
 #' @seealso [plotting_functions],  [getYield()]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
-#' sim <- project(params, effort=1, t_max=20, t_save = 0.2, progress_bar = FALSE)
+#' params <- NS_params
+#' sim <- project(params, effort = 1, t_max = 20, t_save = 0.2, progress_bar = FALSE)
 #' plotYield(sim)
 #' plotYield(sim, species = c("Cod", "Herring"), total = TRUE)
 #' 
@@ -355,7 +359,10 @@ plotYield <- function(sim, sim2,
                       total = FALSE, log = TRUE,
                       highlight = NULL, return_data = FALSE,
                       ...) {
-    assert_that(is(sim, "MizerSim"))
+    assert_that(is(sim, "MizerSim"),
+                is.flag(total),
+                is.flag(log),
+                is.flag(return_data))
     params <- sim@params
     species <- valid_species_arg(sim, species)
     if (missing(sim2)) {
@@ -440,7 +447,7 @@ plotlyYield <- function(sim, sim2,
 #' @seealso [plotting_functions],  [getYieldGear()]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 0.2, progress_bar = FALSE)
 #' plotYieldGear(sim)
 #' plotYieldGear(sim, species = c("Cod", "Herring"), total = TRUE)
@@ -454,7 +461,9 @@ plotYieldGear <- function(sim,
                           total = FALSE,
                           highlight = NULL, return_data = FALSE,
                           ...) {
-    assert_that(is(sim, "MizerSim"))
+    assert_that(is(sim, "MizerSim"),
+                is.flag(total),
+                is.flag(return_data))
     params <- sim@params
     species <- valid_species_arg(sim, species)
     
@@ -552,7 +561,7 @@ plotlyYieldGear <- function(sim, species = NULL,
 #' @seealso [plotting_functions]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotSpectra(sim)
 #' plotSpectra(sim, wlim = c(1e-6, NA))
@@ -575,6 +584,11 @@ plotSpectra <- function(object, species = NULL,
     if (missing(power)) {
         power <- as.numeric(biomass)
     }
+    assert_that(is.flag(total), is.flag(resource),
+                is.flag(background),
+                is.number(power), 
+                length(wlim) == 2,
+                length(ylim) == 2)
     species <- valid_species_arg(object, species)
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
@@ -740,7 +754,7 @@ plotlySpectra <- function(object, species = NULL,
 #' @seealso [plotting_functions], [getFeedingLevel()]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotFeedingLevel(sim)
 #' plotFeedingLevel(sim, time_range = 10:20, species = c("Cod", "Herring"),
@@ -754,6 +768,9 @@ plotFeedingLevel <- function(object, species = NULL,
             time_range, highlight = NULL,
             all.sizes = FALSE, include_critical = FALSE,
             return_data = FALSE, ...) {
+    assert_that(is.flag(all.sizes),
+                is.flag(include_critical),
+                is.flag(return_data))
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -862,7 +879,7 @@ plotlyFeedingLevel <- function(object,
 #' @seealso [plotting_functions],  [getPredMort()]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotPredMort(sim)
 #' plotPredMort(sim, time_range = 10:20)
@@ -875,6 +892,8 @@ plotPredMort <- function(object, species = NULL,
                          time_range, all.sizes = FALSE,
                          highlight = NULL, return_data = FALSE,
                          ...) {
+    assert_that(is.flag(all.sizes),
+                is.flag(return_data))
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -953,7 +972,7 @@ plotlyPredMort <- function(object, species = NULL,
 #' @seealso [plotting_functions], [getFMort()]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotFMort(sim)
 #' plotFMort(sim, highlight = c("Cod", "Haddock"))
@@ -966,6 +985,8 @@ plotFMort <- function(object, species = NULL,
                       time_range, all.sizes = FALSE,
                       highlight = NULL, return_data = FALSE,
                       ...) {
+    assert_that(is.flag(all.sizes),
+                is.flag(return_data))
     if (is(object, "MizerSim")) {
         if (missing(time_range)) {
             time_range  <- max(as.numeric(dimnames(object@n)$time))
@@ -1032,7 +1053,7 @@ plotlyFMort <- function(object, species = NULL,
 #' @seealso [plotting_functions]
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plotGrowthCurves(sim, percentage = TRUE)
 #' plotGrowthCurves(sim, species = "Cod", max_age = 24)
@@ -1046,16 +1067,18 @@ plotGrowthCurves <- function(object, species = NULL,
                              max_age = 20, percentage = FALSE, 
                              species_panel = FALSE, highlight = NULL,
                              return_data = FALSE, ...) {
+    assert_that(is.flag(percentage),
+                is.flag(species_panel),
+                is.flag(return_data),
+                is.number(max_age))
     if (is(object, "MizerSim")) {
         params <- object@params
-        t <- dim(object@n)[1]
-        params@initial_n[] <- object@n[t, , ] # Designed to work also
-                                              # with single species
-        params@initial_n_pp <- object@n_pp[t, ]
+        params <- setInitialValues(params, object)
     } else if (is(object, "MizerParams")) {
         params <- validParams(object)
     }
     species <- valid_species_arg(params, species)
+    sp_sel <- params@species_params$species %in% species
     ws <- getGrowthCurves(params, species, max_age, percentage)
     plot_dat <- reshape2::melt(ws)
     plot_dat$Species <- factor(plot_dat$Species, params@species_params$species)
@@ -1086,7 +1109,7 @@ plotGrowthCurves <- function(object, species = NULL,
                       VBdf$a[sel] * length ^ VBdf$b[sel]
                   })
         plot_dat2$Legend <- "von Bertalanffy"
-        plot_dat <- rbind(plot_dat,plot_dat2)
+        plot_dat <- rbind(plot_dat, plot_dat2)
     }
     if (return_data) return(plot_dat)
     
@@ -1133,13 +1156,13 @@ plotGrowthCurves <- function(object, species = NULL,
                 scale_x_continuous(name = "Age [years]") +
                 scale_y_continuous(name = "Size [g]") +
                 geom_hline(aes(yintercept = w_mat),
-                           data = tibble(Species = object@params@species_params$species[],
-                                         w_mat = object@params@species_params$w_mat[]),
+                           data = tibble(Species = factor(legend_levels),
+                                         w_mat = params@species_params$w_mat[sp_sel]),
                            linetype = "dashed",
                            colour = "grey") +
                 geom_hline(aes(yintercept = w_inf),
-                           data = tibble(Species = object@params@species_params$species[],
-                                         w_inf = object@params@species_params$w_inf[]),
+                           data = tibble(Species = factor(legend_levels),
+                                         w_inf = params@species_params$w_inf[sp_sel]),
                            linetype = "solid",
                            colour = "grey") +
                 facet_wrap(~Species, scales = "free_y")
@@ -1190,6 +1213,7 @@ plotlyGrowthCurves <- function(object, species = NULL,
 #' str(fr)
 #' }
 plotDiet <- function(object, species = NULL, return_data = FALSE) {
+    assert_that(is.flag(return_data))
     params <- validParams(object)
     species <- valid_species_arg(object, species, return.logical = TRUE)
     diet <- getDiet(params)[species, , ]
@@ -1234,7 +1258,7 @@ plotDiet <- function(object, species = NULL, return_data = FALSE) {
 #' @rdname plotMizerSim
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plot(sim)
 #' plot(sim, time_range = 10:20) # change time period for size-based plots
@@ -1276,7 +1300,7 @@ setMethod("plot", signature(x = "MizerSim", y = "missing"),
 #' @rdname plotMizerSim
 #' @examples
 #' \donttest{
-#' params <- suppressMessages(newMultispeciesParams(NS_species_params_gears, inter))
+#' params <-  NS_params
 #' plot(params)
 #' plot(params, min_w = 10, max_w = 1000) # change size range for biomass plot
 #' }

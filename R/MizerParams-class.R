@@ -266,6 +266,15 @@ validMizerParams <- function(object) {
 #' abundances or harvest effort through time. These are held in
 #' \linkS4class{MizerSim} objects.
 #' 
+#' @slot metadata A list with metadata information. See [setMetadata()].
+#' @slot mizer_version The package version of mizer (as returned by
+#'   `packageVersion("mizer")`) that created or last saved the model.
+#' @slot extensions A named vector of strings where each name is the name of
+#'    and extension package needed to run the model and each value is a string 
+#'    giving the information that the remotes package needs to install the 
+#'    correct version of the extension package, see https://remotes.r-lib.org/.
+#' @slot time_created A POSIXct date-time object with the creation time.
+#' @slot time_modified A POSIXct date-time object with the last modified time.
 #' @slot w The size grid for the fish part of the spectrum. An increasing
 #'   vector of weights (in grams) running from the smallest egg size to the
 #'   largest asymptotic size.
@@ -292,7 +301,7 @@ validMizerParams <- function(object) {
 #' @slot metab An array (species x size) that holds the metabolism
 #'   for each species at size. Changed with [setMetabolicRate()].
 #' @slot mu_b An array (species x size) that holds the external mortality rate
-#'   \eqn{\mu_{b.i}(w)}. Changed with [setExtMort()].
+#'   \eqn{\mu_{ext.i}(w)}. Changed with [setExtMort()].
 #' @slot pred_kernel An array (species x predator size x prey size) that holds
 #'   the predation coefficient of each predator at size on each prey size. If
 #'   this is NA then the following two slots will be used. Changed with 
@@ -371,6 +380,11 @@ validMizerParams <- function(object) {
 setClass(
     "MizerParams",
     slots = c(
+        metadata = "list",
+        mizer_version = "ANY",
+        extensions = "character",
+        time_created = "POSIXct",
+        time_modified = "POSIXct",
         w = "numeric",
         dw = "numeric",
         w_full = "numeric",
@@ -430,7 +444,8 @@ remove(validMizerParams)
 #' A size grid is created so that
 #' the log-sizes are equally spaced. The spacing is chosen so that there will be
 #' `no_w` fish size bins, with the smallest starting at `min_w` and the largest
-#' starting at `max_w`. For `w_full` additional size bins are added below
+#' starting at `max_w`. For the resource spectrum there is a larger set of
+#' bins containing additional bins below
 #' `min_w`, with the same log size. The number of extra bins is such that
 #' `min_w_pp` comes to lie within the smallest bin. 
 #' 
@@ -639,6 +654,11 @@ emptyParams <- function(species_params,
     # Should Z0, rrPP and ccPP have names (species names etc)?
     params <- new(
         "MizerParams",
+        metadata = list(),
+        mizer_version = packageVersion("mizer"),
+        extensions = vector(mode = "character"),
+        time_created = lubridate::now(),
+        time_modified = lubridate::now(),
         w = w,
         dw = dw,
         w_full = w_full,
@@ -692,75 +712,6 @@ emptyParams <- function(species_params,
     
     return(params)
 }
-
-
-
-
-
-#' Set line colours to be used in mizer plots
-#' 
-#' Colours for names that already had a colour set will be overwritten by
-#' the colour you specify. Colours for names that did not yet have a colour
-#' will be appended to the list of colours.
-#' @param params A MizerParams object
-#' @param colours A named list or named vector of line colours.
-#' 
-#' @return The MizerParams object with updated line colours
-#' @export
-#' @examples
-#' params <- NS_params
-#' params <- setColours(params, list("Cod" = "red", "Haddock" = "#00ff00"))
-#' plotSpectra(params)
-#' getColours(params)
-setColours <- function(params, colours) {
-    assert_that(is(params, "MizerParams"),
-                all(validColour(colours)))
-    params@linecolour <- unlist(
-        modifyList(as.list(params@linecolour), as.list(colours)))
-    params
-}
-
-#' @rdname setColours
-#' @export
-getColours <- function(params) {
-    params@linecolour
-}
-
-validColour <- function(colour) {
-    sapply(colour, function(X) {
-        tryCatch(is.matrix(col2rgb(X)), 
-                 error = function(e) FALSE)
-    })
-}
-
-#' Set linetypes to be used in mizer plots
-#' 
-#' Linetypes for names that already had a linetype set will be overwritten by
-#' the linetype you specify. Linetypes for names that did not yet have a 
-#' linetype will be appended to the list of linetypes.
-#' @param params A MizerParams object
-#' @param linetypes A named list or named vector of linetypes.
-#' 
-#' @return The MizerParams object with updated linetypes
-#' @export
-#' @examples
-#' params <- NS_params
-#' params <- setLinetypes(params, list("Cod" = "solid"))
-#' plotSpectra(params)
-#' getLinetypes(params)
-setLinetypes <- function(params, linetypes) {
-    assert_that(is(params, "MizerParams"))
-    params@linetype <- unlist(
-        modifyList(as.list(params@linetype), as.list(linetypes)))
-    params
-}
-
-#' @rdname setLinetypes
-#' @export
-getLinetypes <- function(params) {
-    as.list(params@linetype)
-}
-
 
 #' Size bins
 #' 
@@ -861,9 +812,7 @@ validParams <- function(params) {
     # because `slotnames()` just looks at the class definition. 
     has_slot <- sapply(slotNames(mizer::NS_params),
                       function(name) .hasSlot(params, name))
-    if (!all(has_slot) ||
-        "interaction_p" %in% names(params@species_params) ||
-        "r_max" %in% names(params@species_params)) {
+    if (!.hasSlot(params, "metadata")) {
         params <- upgradeParams(params)
         warning("You need to upgrade your MizerParams object with `upgradeParams()`.")
     }

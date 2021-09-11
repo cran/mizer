@@ -17,17 +17,20 @@ species x prey species). Entries should be numbers between 0 and 1. By
 default all entries are 1. See "Setting interactions" section below.}
 }
 \value{
-MizerParams object with updated interaction matrix. Because of the
-way the R language works, \code{setInteraction()} does not make the changes to
-the params object that you pass to it but instead returns a new params
-object. So to affect the change you call the function in the form
-\code{params <- setInteraction(params, ...)}.
+\code{setInteraction}: A MizerParams object with updated interaction matrix
+
+\code{getInteraction()}: The interaction matrix (predator species x prey
+species)
 }
 \description{
 Set species interaction matrix
 }
-\section{Setting interactions}{
+\section{Setting interaction matrix}{
 
+
+You do not need to specify an interaction matrix. If you do not, then the
+predator-prey interactions are purely determined by the size of predator
+and prey and totally independent of the species of predator and prey.
 
 The interaction matrix \eqn{\theta_{ij}} describes the interaction of each
 pair of species in the model. This can be viewed as a proxy for spatial
@@ -47,8 +50,7 @@ If all the values in the interaction matrix are set to 1 then predator-prey
 interactions are determined entirely by size-preference.
 
 This function checks that the supplied interaction matrix is valid and then
-stores it in the \code{interaction} slot of the params object before returning
-that object.
+stores it in the \code{interaction} slot of the \code{params} object.
 
 The order of the columns and rows of the \code{interaction} argument should be the
 same as the order in the species params data frame in the \code{params} object. If
@@ -63,12 +65,11 @@ be numbers between 0 and 1. By default this column is set to all 1s.
 }
 
 \examples{
-\dontrun{
-params <- newTraitParams()
-interaction <- getInteraction(params)
-interaction[1, 3] <- 0
-params <- setInteraction(params, interaction)
-}
+params <- newTraitParams(no_sp = 3)
+inter <- getInteraction(params)
+inter[1, 2:3] <- 0
+params <- setInteraction(params, interaction = inter)
+getInteraction(params)
 }
 \seealso{
 Other functions for setting parameters: 

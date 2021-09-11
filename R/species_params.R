@@ -52,10 +52,17 @@
 #'   invested into reproduction that is converted to egg biomass, see
 #'   [getRDI()].
 #' * `Rmax` is the parameter in the Beverton-Holt density dependence added to
-#'   the reproduction, see [BevertonHoltRDD()]. There will be other such
+#'   the reproduction, see [setBevertonHolt()]. There will be other such
 #'   parameters if you use other density dependence functions, see the
 #'   "Density dependence" section in the help for [setReproduction()].
-#' 
+#'
+#' Finally there are two species parameters that control the way the species are
+#' represented in plots:
+#'
+#' * `linecolour` specifies the colour and can be any valid R colour value.
+#' * `linetype` specifies the line type ("solid", "dashed", "dotted", "dotdash",
+#'    "longdash", "twodash" or "blank") 
+#'
 #' When you set up a MizerParams object with [newMultispeciesParams()] you 
 #' need to specify a species parameter data frame, but you do not need to 
 #' give values for all of the species parameters described above. The only
@@ -116,7 +123,8 @@ set_species_param_default <- function(object, parname, default,
     assert_that(length(default) == no_sp)
     if (!(parname %in% colnames(species_params))) {
         if (!missing(message)) {
-            message(message)
+            signal(message,
+                    class = "info_about_default", var = parname, level = 3)
         }
         species_params <- data.frame(species_params, default,
                                      stringsAsFactors = FALSE)
@@ -167,7 +175,8 @@ get_h_default <- function(params) {
         assert_that(is.numeric(species_params$f0),
                     noNA(species_params$alpha),
                     "alpha" %in% names(species_params))
-        message("Note: No h provided for some species, so using f0 and k_vb to calculate it.")
+        signal("No h provided for some species, so using f0 and k_vb to calculate it.",
+               class = "info_about_default", var = "h", level = 3)
         if (!("k_vb" %in% colnames(species_params))) {
             stop("Except I can't because there is no k_vb column in the species data frame")
         }
@@ -176,7 +185,8 @@ get_h_default <- function(params) {
         }
         if (!isTRUE(all.equal(species_params$n[missing], species_params$p[missing],
                               check.attributes = FALSE))) {
-            message("Note: Because you have n != p, the default value is not very good.")
+            signal("Because you have n != p, the default value for `h` is not very good.",
+                   class = "info_about_default", var = "h", level = 1)
         }
         species_params <- species_params %>% 
             set_species_param_default("b", 3) %>% 
@@ -224,7 +234,8 @@ get_gamma_default <- function(params) {
         assert_that(is.number(params@resource_params$lambda),
                     is.number(params@resource_params$kappa),
                     is.numeric(species_params$f0))
-        message("Note: Using f0, h, lambda, kappa and the predation kernel to calculate gamma.")
+        signal("Using f0, h, lambda, kappa and the predation kernel to calculate gamma.",
+                class = "info_about_default", var = "h", level = 1)
         if (!"h" %in% names(params@species_params) || 
             any(is.na(species_params$h))) {
             species_params$h <- get_h_default(params)
@@ -327,7 +338,7 @@ get_ks_default <- function(params) {
     sp <- params@species_params
     ks_default <- sp$fc * sp$alpha * sp$h * sp$w_mat^(sp$n - sp$p)
     
-    message <- ("Note: No ks column so calculating from critical feeding level.")
+    message <- ("No ks column so calculating from critical feeding level.")
     params <- set_species_param_default(params, "ks", ks_default, message)
     if (any(is.na(params@species_params$ks) | 
             is.infinite(params@species_params$ks))) {
@@ -361,6 +372,7 @@ get_ks_default <- function(params) {
 #' Any `w_mat25` that is given that is not smaller than `w_mat` is set to
 #' `w_mat * 3^(-0.1)`.
 #' 
+#' The row names of the returned data frame will be the species names.
 #' If `species_params` was provided as a tibble it is converted back to an
 #' ordinary data frame.
 #' 
