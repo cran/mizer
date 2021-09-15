@@ -1,4 +1,4 @@
-2f317b16914f4aa1604aa5d7973d4fe5 *DESCRIPTION
+3f32336ae8ed6b9775e00017b58f88c2 *DESCRIPTION
 d1f2f6422c1e8c0a80db98a5bcd64bef *NAMESPACE
 1d4a9bdef1ee1eed8bf628bb5007f719 *NEWS.md
 dd72ca7b8c81a80fe1a13cd6bdedb555 *R/MizerParams-class.R
@@ -16,7 +16,7 @@ a1cd87c54979f66c7117755a8b7287b4 *R/helpers.R
 b4a8ca50a41aac9552c0de81da299053 *R/manipulate_species.R
 e6858132de06abdc3a9c6a6576553809 *R/match.R
 e3f9b6a97af91f4472464f4a1a0ab5b0 *R/mizer-package.R
-2a37259e457c82bddb3f15c679b204c0 *R/newMultispeciesParams.R
+aa97b7ab8e6c2b85d4d37a380ce6c745 *R/newMultispeciesParams.R
 876af26d13613d260a6c573d2b8451c5 *R/newSingleSpeciesParams.R
 6ae00897eef950403f0e50ff56dd2589 *R/plotBiomassObservedVsModel.R
 ecc347410bdececb3d9c1947cecc1847 *R/plotYieldObservedVsModel.R
@@ -34,7 +34,7 @@ ec7a5a50e52d7c069d71beead18eda2a *R/setBevertonHolt.R
 4346ec41cafa3d41df932e8a26832447 *R/setExtMort.R
 6045af82e87093eafeebf644789cbe6c *R/setFishing.R
 7b5c8ebe20b778dca62b014f2872bbd2 *R/setInitialValues.R
-5f75c7af11521af7715252dd1ba239e4 *R/setInteraction.R
+09e2c4541c21c210e67f5c783a7bb98c *R/setInteraction.R
 c9eeee51f0cab032fd8f10546e292f2d *R/setMaxIntakeRate.R
 ea2b41314f3e0676631be5d28f316cac *R/setMetabolicRate.R
 69369b9587ddb10ae7896b0cbf140c63 *R/setMetadata.R
@@ -42,7 +42,7 @@ ea2b41314f3e0676631be5d28f316cac *R/setMetabolicRate.R
 fa59c2170a4c1a3ada72114fe65e9caa *R/setReproduction.R
 5d2b94e3a7ba95bf654e9c7502593bc8 *R/setResource.R
 4b7bb04c8a2c1cbfb3c444facdd95c1e *R/setSearchVolume.R
-3a43b8b560b68713b17e91969a585ca4 *R/species_params.R
+8630426874dd6d13c7865b509cff85e2 *R/species_params.R
 8a7661561ab873baf56335c72e9c6638 *R/steady.R
 21936bc9ef5ed63645125869fd386386 *R/summary_methods.R
 9ab7c392c166cbefa92e03da8e3b75b8 *R/test-helpers.R
@@ -66,7 +66,7 @@ cf27a337d99972ded2045aaf233ea4c2 *inst/shiny/selectivity_effects/hake_mullet.RDS
 272990d5e960f8a1e1d6936bf0fb9ec3 *inst/shiny/selectivity_effects/www/logo_minouw_blue.png
 16cdd173684829f55acefbd6a4082c59 *man/BevertonHoltRDD.Rd
 5886c5af4635623e3d49ddf92b6ff598 *man/MizerParams-class.Rd
-d0470a45109c8b3f151db8b67ccf6797 *man/MizerParams.Rd
+1a5a1c34df675e27a78eff2a685e9790 *man/MizerParams.Rd
 72e5dd4205f18500d781cf5fd917b31e *man/MizerSim-class.Rd
 4ed00c0b85f577be66ed885d9eaf1333 *man/MizerSim.Rd
 4e0cdf7d83329c7e4fa4ce0882253d78 *man/N.Rd
@@ -183,7 +183,7 @@ c7e5bd896a21c12ea1e9a35353b4dfd1 *man/mizerPredRate.Rd
 f47a8d6430a66c68ffa06f18b1875cc8 *man/mizerRates.Rd
 9eec5055dbcedfb20c9b06a4e4b1199c *man/mizerResourceMort.Rd
 d4a60bc8a17185b05e5657be7176c2ba *man/newCommunityParams.Rd
-90952332e6e7dad6fd9afd57422f26c3 *man/newMultispeciesParams.Rd
+d45eb23fbaed48fc0eeca7f5cf7ef151 *man/newMultispeciesParams.Rd
 d3c392cc4bf131a133b8f875ecbc97a6 *man/newSingleSpeciesParams.Rd
 e5915ef7558d202e612178b9c73453e8 *man/newTraitParams.Rd
 bcde18dee353917ef6ed2d4114778472 *man/noRDD.Rd
@@ -220,11 +220,11 @@ a676f40aa19b877ae087a32dae2aa422 *man/setColours.Rd
 9912800a3fb9226363b22877d8087258 *man/setExtMort.Rd
 8d9ab79bd539f1b07d91615b9669992b *man/setFishing.Rd
 8d0bef3488e02f23288823beb99d80d9 *man/setInitialValues.Rd
-4a9a992f6b7646596f114f62833a8f86 *man/setInteraction.Rd
+4cb008509ee41186fdc8f3107fd758bb *man/setInteraction.Rd
 59d54387f04f38f3e948db34dc389b19 *man/setMaxIntakeRate.Rd
 942e50d5008de4d7e2a6f1d0290bb433 *man/setMetabolicRate.Rd
 16bb6965da63bd90ad958abd471cb5a2 *man/setMetadata.Rd
-39956ddc656c148ad4750fe6aa3112cf *man/setParams.Rd
+601c5a96bfa02a16639943f2b902f172 *man/setParams.Rd
 98a232311e48933c17891903fa28ef4e *man/setPredKernel.Rd
 2adb4f4168228785657369962b32d464 *man/setRateFunction.Rd
 74a3ae1cfcfb48d5edb2f472c016b1fb *man/setReproduction.Rd
@@ -232,12 +232,12 @@ a676f40aa19b877ae087a32dae2aa422 *man/setColours.Rd
 af8058edb6dc52b8b5c81bf514eaafdd *man/setRmax.Rd
 8a7b4bdae13a0c919376edf31f548e5a *man/setSearchVolume.Rd
 ea686dee43415ea031ece01ab4d68fb2 *man/set_community_model.Rd
-8c8478f434eb62fbaecb06f1ebce0d32 *man/set_multispecies_model.Rd
+c92486be6ffa0f48ca7a2fc3409c1b98 *man/set_multispecies_model.Rd
 1c3f21334910d8520667a000504615be *man/set_species_param_default.Rd
 cacee060648e927ebdab99a3588458f2 *man/set_trait_model.Rd
 3b15700ef4023715a709f1e03342e9ae *man/sigmoid_length.Rd
 ab86fc04e9cf3979afc9998e219fca2f *man/sigmoid_weight.Rd
-6fb93eac40163f74c14d029f88213d66 *man/species_params.Rd
+10dda7fa431e39e59c7d1d260764f9bd *man/species_params.Rd
 f79c39f9b865c027c6e988a6f4c1a607 *man/steady.Rd
 d32e95df3278c3e9da15d20c70808a0e *man/summary-MizerParams-method.Rd
 2d2a0906a9774d6bdacb495dfb6fc0b8 *man/summary-MizerSim-method.Rd
@@ -254,6 +254,7 @@ dba4a2c5281feda3842e5fa722b60aa1 *src/RcppExports.cpp
 9165db01d89abff57b4df6e440cb7b82 *src/inner_project_loop.cpp
 0622a97a2aaa3c342f09636052c2d7f5 *tests/spelling.R
 757bd7fa8c6a199800eb1bfc67a076d7 *tests/testthat.R
+e1d502071126473292f8919da91fab67 *tests/testthat/Rplots.pdf
 1b7d44238b4a5045c9086c987ebcf657 *tests/testthat/_snaps/plotBiomassObservedVsModel/plotbiomassobservedvsmodel.svg
 cfa4a6edecb01b4f61ccc68f77bbb191 *tests/testthat/_snaps/plotYieldObservedVsModel/plotyieldobservedvsmodel.svg
 c7fd4629d1aa127d1cecd682e082c7a8 *tests/testthat/_snaps/plots/plot-biomass.svg
@@ -306,7 +307,7 @@ fd782d0e5bb4ada8c130d99279729340 *tests/testthat/test-setInteraction.R
 48cdd89c9bf018ea927b347293bd63e8 *tests/testthat/test-setMetadata.R
 662dc596a5484da5b731984b6d247e45 *tests/testthat/test-setPredKernel.R
 d9bac98ea15ffd850e4ed6ee298bcac5 *tests/testthat/test-setReproduction.R
-b199b009e41ecf31567ad0d3a9174914 *tests/testthat/test-setResource.R
+c80b486be29fb93a52cdec19f963bf0a *tests/testthat/test-setResource.R
 668eff799422791113a847851778c830 *tests/testthat/test-setSearchVolume.R
 80485fa1047b3ee3d0d878c9d18f45ce *tests/testthat/test-single_species.R
 effb491fa07354d4660dd59d613e9f07 *tests/testthat/test-species_params.R
