@@ -26,7 +26,6 @@ most of them have sensible default values. The only required columns are
 \code{species} for the species name and \code{w_inf} for its asymptotic size. However
 if you have information about the values of other parameters then you should
 include them in the \code{species_params} data frame.
-\subsection{Species parameters for setting up size-dependent parameters}{
 
 There are some species parameters that are used to set up the
 size-dependent parameters that are used in the mizer model:
@@ -51,9 +50,6 @@ MizerParams object using \code{\link[=species_params<-]{species_params<-()}}, th
 used to update the corresponding size-dependent rates automatically, unless
 you have set those size-dependent rates manually, in which case the
 corresponding species parameters will be ignored.
-}
-
-\subsection{Species parameters used in model directly}{
 
 There are some species parameters that are used directly in the model
 rather than being used for setting up size-dependent parameters:
@@ -79,9 +75,6 @@ weight and length:
 \item \code{a} and \code{b} are the parameters in the allometric weight-length
 relationship \eqn{w = a l ^ b}.
 }
-}
-
-\subsection{Species parameters to calculate defaults for others}{
 
 Not all of species parameters have to be specified by the user. If they are
 missing, \code{\link[=newMultispeciesParams]{newMultispeciesParams()}} will give them default values, sometimes
@@ -100,13 +93,11 @@ maintain itself. This is used to get a default value for the coefficient
 of the metabolic rate \code{ks}, see \code{\link[=get_ks_default]{get_ks_default()}}.
 }
 
-Note that these parameters
-will only be used when setting up a new model with
+Note that these parameters are ignored if the parameters for which they allow
+defaults to be calculated have instead been set explicitly. Also, these
+parameters will only be used when setting up a new model with
 \code{\link[=newMultispeciesParams]{newMultispeciesParams()}}. Changing them later will have no effect
 because the default for the other parameters will not be recalculated.
-}
-
-\subsection{Species parameters containing observations}{
 
 There are other species parameters that are used in tuning the model to
 observations:
@@ -118,9 +109,6 @@ used by \code{\link[=calibrateBiomass]{calibrateBiomass()}} and \code{\link[=mat
 species the total annual fisheries yield. This is
 used by \code{\link[=calibrateYield]{calibrateYield()}} and \code{\link[=matchYields]{matchYields()}}.
 }
-}
-
-\subsection{Species parameters influencing plots}{
 
 Finally there are two species parameters that control the way the species are
 represented in plots:
@@ -129,9 +117,6 @@ represented in plots:
 \item \code{linetype} specifies the line type ("solid", "dashed", "dotted", "dotdash",
 "longdash", "twodash" or "blank")
 }
-}
-
-\subsection{Species parameters related to fishing gears}{
 
 Other species-specific information that is related to how the species is
 fished is specified in a gear parameter data frame, see \code{\link[=gear_params]{gear_params()}}.
@@ -140,14 +125,10 @@ this information can also optionally be provided as columns in the
 \code{species_params} data frame and \code{\link[=newMultispeciesParams]{newMultispeciesParams()}} will transfer
 them to the \code{gear_params} data frame. However changing these parameters later
 in the species parameter data frame will have no effect.
-}
-
-\subsection{Your own species parameters}{
 
 You are allowed to include additional columns in the \code{species_params}
 data frame. They will simply be ignored by mizer but will be stored in the
 MizerParams object, in case your own code makes use of them.
-}
 }
 \seealso{
 \code{\link[=validSpeciesParams]{validSpeciesParams()}}

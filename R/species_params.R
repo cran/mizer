@@ -11,7 +11,6 @@
 #' if you have information about the values of other parameters then you should
 #' include them in the `species_params` data frame.
 #' 
-#' ## Species parameters for setting up size-dependent parameters
 #' There are some species parameters that are used to set up the
 #' size-dependent parameters that are used in the mizer model:
 #' 
@@ -35,7 +34,6 @@
 #' you have set those size-dependent rates manually, in which case the
 #' corresponding species parameters will be ignored.
 #' 
-#' ## Species parameters used in model directly
 #' There are some species parameters that are used directly in the model
 #' rather than being used for setting up size-dependent parameters:
 #' 
@@ -58,8 +56,7 @@
 #' 
 #' * `a` and `b` are the parameters in the allometric weight-length
 #'   relationship \eqn{w = a l ^ b}.
-#' 
-#' ## Species parameters to calculate defaults for others
+#'   
 #' Not all of species parameters have to be specified by the user. If they are
 #' missing, [newMultispeciesParams()] will give them default values, sometimes
 #' by using other species parameters. The parameters that are only used to
@@ -76,12 +73,12 @@
 #'   maintain itself. This is used to get a default value for the coefficient
 #'   of the metabolic rate `ks`, see [get_ks_default()].
 #'   
-#' Note that these parameters 
-#' will only be used when setting up a new model with 
+#' Note that these parameters are ignored if the parameters for which they allow
+#' defaults to be calculated have instead been set explicitly. Also, these
+#' parameters will only be used when setting up a new model with 
 #' [newMultispeciesParams()]. Changing them later will have no effect 
 #' because the default for the other parameters will not be recalculated.
 #' 
-#' ## Species parameters containing observations
 #' There are other species parameters that are used in tuning the model to
 #' observations:
 #' 
@@ -92,7 +89,6 @@
 #'   species the total annual fisheries yield. This is
 #'   used by [calibrateYield()] and [matchYields()].
 #' 
-#' ## Species parameters influencing plots
 #' Finally there are two species parameters that control the way the species are
 #' represented in plots:
 #'
@@ -100,7 +96,6 @@
 #' * `linetype` specifies the line type ("solid", "dashed", "dotted", "dotdash",
 #'    "longdash", "twodash" or "blank") 
 #' 
-#' ## Species parameters related to fishing gears
 #' Other species-specific information that is related to how the species is
 #' fished is specified in a gear parameter data frame, see [gear_params()].
 #' However in the case where each species is caught by only a single gear, 
@@ -109,7 +104,6 @@
 #' them to the `gear_params` data frame. However changing these parameters later
 #' in the species parameter data frame will have no effect.
 #' 
-#' ## Your own species parameters
 #' You are allowed to include additional columns in the `species_params`
 #' data frame. They will simply be ignored by mizer but will be stored in the
 #' MizerParams object, in case your own code makes use of them.

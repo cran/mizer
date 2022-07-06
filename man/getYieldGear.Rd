@@ -2,20 +2,26 @@
 % Please edit documentation in R/summary_methods.R
 \name{getYieldGear}
 \alias{getYieldGear}
-\title{Calculate the yearly yield per gear and species}
+\title{Calculate the rate at which biomass of each species is fished by each gear}
 \usage{
-getYieldGear(sim)
+getYieldGear(object)
 }
 \arguments{
-\item{sim}{An object of class \code{MizerSim}.}
+\item{object}{An object of class \code{MizerParams} or \code{MizerSim}.}
 }
 \value{
-An array (time x gear x species) containing the yearly yield in
-grams.
+If called with a MizerParams object, an array (gear x species) with
+the yield rate in grams per year from each gear for each species in the
+model. If called with a MizerSim object, an array (time x gear x species)
+containing the yield rate at each time step.
 }
 \description{
-Calculates the yearly yield (biomass fished per year) per gear and species at
-each simulation time step.
+This yield rate is given in grams per year. It is calculated at each time
+step saved in the MizerSim object.
+}
+\details{
+For details of how the yield rate is defined see the help page of
+\code{\link[=getYield]{getYield()}}.
 }
 \examples{
 yield <- getYieldGear(NS_sim)

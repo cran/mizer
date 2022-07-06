@@ -64,9 +64,7 @@ test_that("We can set and get resource parameters", {
 })
 
 test_that("Comment works on resource_rate", {
-  # We need to re-set the resource becaue different architectures give
-  # different results
-  params <- setResource(NS_params)
+  params <- NS_params
   # if no comment, it is set automatically
   resource_rate <- params@rr_pp
   params <- setResource(params, resource_rate = resource_rate)
