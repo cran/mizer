@@ -4,7 +4,7 @@ params <- NS_params
 test_that("validGearParams works", {
     sp <- validSpeciesParams(
         data.frame(species = c("species1", "species2"),
-                   w_inf = c(100, 1000),
+                   w_max = c(100, 1000),
                    stringsAsFactors = FALSE))
     # gear_params is allowed to have zero rows
     gp <- validGearParams(data.frame(), sp)
@@ -58,6 +58,11 @@ test_that("validEffort works", {
     # A scrambled vector is put in the right order
     ies <- ie[c(2,3,1,4)]
     expect_identical(validEffortVector(ies, params), ie)
+    # NA's are replaced by default
+    ie[2] <- 0
+    iesn <- ie
+    iesn[2] <- NA
+    expect_identical(validEffortVector(iesn, params), ie)
     # A single number is converted into a constant vector
     ie[] <- 2
     expect_identical(validEffortVector(2, params), ie)
