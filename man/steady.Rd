@@ -43,6 +43,9 @@ of the \code{reproduction_level}.}
 \item{progress_bar}{A shiny progress object to implement a progress bar in a
 shiny app. Default FALSE.}
 }
+\value{
+A MizerParams or a MizerSim object
+}
 \description{
 The steady state is found by running the dynamics while keeping reproduction,
 resource and other components constant until the size spectra no longer
@@ -55,7 +58,7 @@ steady state. The \code{preserve} argument can be used to specify which of the
 reproduction parameters should be preserved.
 }
 \examples{
-\dontrun{
+\donttest{
 params <- newTraitParams()
 species_params(params)$gamma[5] <- 3000
 params <- steady(params)

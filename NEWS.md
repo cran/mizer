@@ -1,7 +1,14 @@
+# mizer 2.4.1
+
+This minor release was made necessary to keep mizer on CRAN after a unit test
+failed on macOS 13.3 with version 14.3 of the CLT toolchain.
+
 # mizer 2.4.0
 
 This release introduces a change that requires you to upgrade your old 
-MizerParams and MizerSim objects with `upgradeParams()` or `upgradeSim()`:
+MizerParams and MizerSim objects with `upgradeParams()` or `upgradeSim()`.
+
+See [mizer 2.4.0 blog post](https://blog.mizer.sizespectrum.org/posts/2022-12-23-mizer-240/)
 
 ## Avoid confusion between maximum size and von Bertalanffy asymptotic size
 
