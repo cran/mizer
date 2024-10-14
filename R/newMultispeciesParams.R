@@ -155,9 +155,9 @@ newMultispeciesParams <- function(
     
     species_params <- set_species_param_default(species_params, "n", n)
     species_params <- set_species_param_default(species_params, "p", p)
-    given_species_params <- validSpeciesParams(species_params)
+    given_species_params <- validGivenSpeciesParams(species_params)
     
-    species_params <- completeSpeciesParams(species_params)
+    species_params <- validSpeciesParams(species_params)
     gear_params <- validGearParams(gear_params, species_params)
     
     ## Create MizerParams object ----
@@ -236,6 +236,7 @@ newMultispeciesParams <- function(
 #' \item [setMaxIntakeRate()]
 #' \item [setMetabolicRate()]
 #' \item [setExtMort()]
+#' \item [setExtEncounter()]
 #' \item [setReproduction()]
 #' \item [setFishing()]
 #' \item [setResource()]
@@ -327,6 +328,18 @@ newMultispeciesParams <- function(
 # The reason we list `interaction` explicitly rather than including it in
 # the `...` is for backwards compatibility. It used to be the second argument.
 setParams <- function(params, interaction = NULL, ...) {
+    # Check w_max
+    # This wasn't checked by `validSpeciesParams()` because that function does
+    # not have access to the full weight grid.
+    w_max <- max(params@w) + 1e-6 # The 1e-6 is to avoid rounding errors
+    if (any(params@species_params$w_max > w_max)) {
+        stop("The maximum weight of a species is larger than the maximum ",
+             "weight of the model. ")
+    }
+    # Recalculate ft_mask in case w_max has changed
+    params@ft_mask <- t(sapply(params@species_params$w_max, 
+                               function(x) params@w_full < x))
+    
     params <- suppressWarnings(validParams(params))
     params <- setInteraction(params, interaction)
     params <- setPredKernel(params, ...)

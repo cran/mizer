@@ -2,7 +2,7 @@ params <- NS_params
 
 # validGearParams ----
 test_that("validGearParams works", {
-    sp <- completeSpeciesParams(
+    sp <- validSpeciesParams(
         data.frame(species = c("species1", "species2"),
                    w_max = c(100, 1000),
                    stringsAsFactors = FALSE))
@@ -76,7 +76,7 @@ test_that("validEffort works", {
 })
 test_that("validEffortParams works when no gears are set up", {
     params <- newMultispeciesParams(NS_species_params,
-                                    gear_params = data.frame())
+                                    gear_params = data.frame(), info_level = 0)
     expect_length(validEffortVector(1, params), 0)
     expect_length(validEffortVector(NULL, params), 0)
 })
@@ -88,6 +88,8 @@ test_that("Set Fishing works", {
     expect_unchanged(params, setFishing(params))
     gear_params(params) <- params@gear_params
     expect_unchanged(params, params1)
+    # has updated time_modified
+    expect_false(identical(params@time_modified, params1@time_modified))
 })
 
 test_that("Setting selectivity works", {
@@ -134,8 +136,7 @@ test_that("Comment works on selectivity", {
     expect_message(setFishing(params),  "has been commented")
     # Can reset
     p <- setFishing(params, reset = TRUE)
-    expect_equal(p@selectivity[1, 1, 1], 1,
-                 check.attributes = FALSE)
+    expect_equal(p@selectivity[1, 1, 1], 1, ignore_attr = TRUE)
     expect_warning(setFishing(params, selectivity = selectivity,
                                     reset = TRUE),
                    "Because you set `reset = TRUE`, the")
@@ -165,8 +166,7 @@ test_that("Comment works on catchability", {
     expect_message(setFishing(params),  "has been commented")
     # Can reset
     p <- setFishing(params, reset = TRUE)
-    expect_equal(p@catchability[1, 1], 2,
-                 check.attributes = FALSE)
+    expect_equal(p@catchability[1, 1], 2, ignore_attr = TRUE)
     expect_warning(setFishing(params, catchability = catchability,
                                     reset = TRUE),
                    "Because you set `reset = TRUE`, the")

@@ -66,8 +66,8 @@ addSpecies <- function(params, species_params,
                        interaction) {
     # check validity of parameters ----
     params <- validParams(params)
-    given_species_params <- validSpeciesParams(species_params)
-    species_params <- completeSpeciesParams(species_params)
+    given_species_params <- validGivenSpeciesParams(species_params)
+    species_params <- validSpeciesParams(species_params)
     gear_params <- validGearParams(gear_params, species_params)
     if (any(species_params$species %in% params@species_params$species)) {
         stop("You can not add species that are already there.")
@@ -85,7 +85,7 @@ addSpecies <- function(params, species_params,
              "has its catchability array protected by a comment.")
     }
     
-    # set interaction
+    # set interaction ----
     no_old_sp <- nrow(params@species_params)
     old_sp <- 1:no_old_sp
     no_new_sp <- nrow(species_params)
@@ -112,9 +112,9 @@ addSpecies <- function(params, species_params,
     # combine species params ----
     
     # Move linecolour and linetype into species_params
-    params@given_species_params$linetype <-
+    params@species_params$linetype <-
         params@linetype[as.character(params@species_params$species)]
-    params@given_species_params$linecolour <-
+    params@species_params$linecolour <-
         params@linecolour[as.character(params@species_params$species)]
     
     # Make sure that all columns exist in both data frames
@@ -123,9 +123,16 @@ addSpecies <- function(params, species_params,
     missing <- setdiff(names(given_species_params), names(params@given_species_params))
     params@given_species_params[missing] <- NA
     
+    missing <- setdiff(names(params@species_params), names(species_params))
+    species_params[missing] <- NA
+    missing <- setdiff(names(species_params), names(params@species_params))
+    params@species_params[missing] <- NA
+    
     # add the new species (with parameters described by species_params),
     # to make a larger species_params dataframe.
-    combi_species_params <- rbind(params@given_species_params, given_species_params,
+    combi_species_params <- rbind(params@species_params, species_params,
+                                  stringsAsFactors = FALSE)
+    combi_given_species_params <- rbind(params@given_species_params, given_species_params,
                                   stringsAsFactors = FALSE)
     
     # combine gear params ----
@@ -194,6 +201,7 @@ addSpecies <- function(params, species_params,
         lambda = params@resource_params$lambda,
         w_pp_cutoff = params@resource_params$w_pp_cutoff
     )
+    p@given_species_params <- combi_given_species_params
     
     # Set effort ----
     new_gear <- setdiff(unique(gear_params$gear),
@@ -259,24 +267,12 @@ addSpecies <- function(params, species_params,
     # Turn off self-interaction among the new species, so we can determine the
     # growth rates, and death rates induced upon them by the pre-existing species
     p@interaction[new_sp, new_sp] <- 0
-    mumu <- getMort(p)
-    gg <- getEGrowth(p)
     
     # Compute solution for new species
+    p <- steadySingleSpecies(p, species = new_sp)
+    
+    # set low abundance ----
     for (i in new_sp) {
-        g <- gg[i, ]
-        mu <- mumu[i, ]
-        w_max_idx <- sum(p@w < p@species_params$w_max[i])
-        idx <- p@w_min_idx[i]:(w_max_idx - 1)
-        if (any(g[idx] == 0)) {
-            stop("Can not compute steady state due to zero growth rates for ",
-                 p@species_params$species[i])
-        }
-        p@initial_n[i, ] <- 0
-        p@initial_n[i, p@w_min_idx[i]:w_max_idx] <-
-            c(1, cumprod(g[idx] / ((g + mu * p@dw)[idx + 1])))
-        
-        # set low abundance ----
         # Normalise solution so that it is never more than 1/100th of the
         # Sheldon spectrum.
         # We look at the maximum of abundance times w^lambda
@@ -385,6 +381,12 @@ removeSpecies <- function(params, species) {
     p@gear_params <- p@gear_params[p@gear_params$species %in%
                                        p@species_params$species, ]
     p@gear_params <- validGearParams(p@gear_params, p@species_params)
+    
+    # Drop species parameters with all values NA
+    keep <- colSums(is.na(p@species_params)) < nrow(p@species_params)
+    p@species_params <- p@species_params[, keep]
+    keep <- colSums(is.na(p@given_species_params)) < nrow(p@given_species_params)
+    p@given_species_params <- p@given_species_params[, keep]
     
     # Preserve comments
     for (slot in (slotNames(p))) {

@@ -60,7 +60,7 @@ size-dependent parameters that are used in the mizer model:
 \item \code{k}, \code{ks} and \code{p} are used to set activity and basic metabolic rate,
 see \code{\link[=setMetabolicRate]{setMetabolicRate()}}.
 \item \code{z0} is used to set the external mortality rate, see \code{\link[=setExtMort]{setExtMort()}}.
-\item \code{w_mat}, \code{w_mat25}, \code{w_max} and \code{m} are used to set the allocation to
+\item \code{w_mat}, \code{w_mat25}, \code{w_repro_max} and \code{m} are used to set the allocation to
 reproduction, see \code{\link[=setReproduction]{setReproduction()}}.
 \item \code{pred_kernel_type} specifies the shape of the predation kernel. The default
 is a "lognormal", for other options see the "Setting predation kernel"
@@ -102,8 +102,9 @@ relationship \eqn{w = a l ^ b}.
 }
 
 If you have supplied the \code{a} and \code{b} parameters, then you can replace weight
-parameters like \code{w_max}, \code{w_mat}, \code{w_mat25} and \code{w_min} by their
-corresponding length parameters \code{l_max}, \code{l_mat}, \code{l_mat25} and \code{l_min}.
+parameters like \code{w_max}, \code{w_mat}, \code{w_mat25}, \code{w_repro_max} and \code{w_min} by
+their corresponding length parameters \code{l_max}, \code{l_mat}, \code{l_mat25},
+\code{l_repro_max} and \code{l_min}.
 
 The parameters that are only used to calculate default values for other
 parameters are:
@@ -121,7 +122,7 @@ Note that setting these parameters with \verb{species_params<-()} will have no
 effect. You need to set them with \verb{given_species_params<-()} in order to
 trigger a re-calculation of the other species parameters.
 
-In the past mizer also used the von Bertalanffy parameters \code{k_vb}, \code{w_inf}
+In the past, mizer also used the von Bertalanffy parameters \code{k_vb}, \code{w_inf}
 and \code{t0} to determine a default for \code{h}. This is unreliable and is therefore
 now deprecated.
 
@@ -157,7 +158,7 @@ data frames. They will simply be ignored by mizer but will be stored in the
 MizerParams object, in case your own code makes use of them.
 }
 \seealso{
-\code{\link[=validSpeciesParams]{validSpeciesParams()}}, \code{\link[=completeSpeciesParams]{completeSpeciesParams()}}
+\code{\link[=validSpeciesParams]{validSpeciesParams()}}, \code{\link[=setParams]{setParams()}}
 
 Other functions for setting parameters: 
 \code{\link{gear_params}()},

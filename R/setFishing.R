@@ -51,6 +51,13 @@
 #' is the default selectivity function, the `knife_edge_size` argument has a
 #' default value = `w_mat`.
 #' 
+#' The most commonly-used selectivity function is `sigmoid_length()`. It has a
+#' smooth transition from 0 to 1 at a certain size. The `sigmoid_length()`
+#' function has the two parameters `l50` and `l25` that are the lengths in cm at
+#' which 50% or 25% of the fish are selected by the gear. If you choose this
+#' selectivity function then the `l50` and `l25` columns must be included in the
+#' gear parameters data.frame.
+#' 
 #' In case each species is only selected by one gear, the columns of the
 #' `gear_params` data frame can alternatively be provided as columns of the
 #' `species_params` data frame, if this is more convenient for the user to set
@@ -195,37 +202,7 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
                                       w = w_names)
         params@selectivity <- selectivity
     } else {
-        selectivity <- 
-            array(0, dim = c(no_gears, no_sp, no_w),
-                  dimnames = list(gear = gear_names, 
-                                  sp = sp_names,
-                                  w = w_names
-                  )
-            )
-        for (g in seq_len(nrow(gear_params))) {
-            # These as.characters are annoying - but factors everywhere
-            species <- as.character(gear_params[g, "species"])
-            gear <- as.character(gear_params[g, "gear"])
-            sel_func <- as.character(gear_params[g, "sel_func"])
-            # get args
-            arg <- names(formals(sel_func))
-            # lop off the arguments that we will supply
-            arg <- arg[!(arg %in% c("w", "species_params", "..."))]
-            if (!all(arg %in% colnames(gear_params))) {
-                stop("Some arguments needed for the selectivity function are ",
-                     "missing in the gear_params dataframe.")
-            }
-            # Check that there are no missing values for selectivity parameters
-            if (any(is.na(as.list(gear_params[g, arg])))) {
-                stop("Some selectivity parameters are NA.")
-            }
-            # Call selectivity function with selectivity parameters
-            par <- c(list(w = params@w, 
-                          species_params = as.list(species_params[species, ])),
-                     as.list(gear_params[g, arg]))
-            sel <- do.call(sel_func, args = par)
-            selectivity[gear, species, ] <- sel
-        }
+        selectivity <- calc_selectivity(params)
         if (!is.null(comment(params@selectivity)) &&
             different(selectivity, params@selectivity)) {
             message("The selectivity has been commented and therefore will ",
@@ -310,8 +287,7 @@ setFishing <- function(params, selectivity = NULL, catchability = NULL,
 #' For the details see [setFishing()]. 
 #' 
 #' There can optionally also be a column `yield_observed` that allows you to
-#' specify for each gear and species the total annual fisheries yield. This is
-#' used by [calibrateYield()] and [matchYields()].
+#' specify for each gear and species the total annual fisheries yield. 
 #' 
 #' The fishing effort, which is also needed to determine the fishing mortality
 #' exerted by a gear is not set via the `gear_params` data frame but is set
@@ -503,7 +479,7 @@ validGearParams <- function(gear_params, species_params) {
                        stringsAsFactors = FALSE) # for old versions of R
     }
     
-    species_params <- completeSpeciesParams(species_params)
+    species_params <- validSpeciesParams(species_params)
     no_sp <- nrow(species_params)
     
     # If no gear_params are supplied, but there is either a gear or sel_func
@@ -686,4 +662,63 @@ validEffortVector <- function(effort, params) {
     effort <- effort[gear_names]
     
     return(effort)
+}
+
+#' Calculate selectivity from gear parameters
+#' 
+#' This function calculates the selectivity for each gear, species and size from
+#' the gear parameters. It is called by [setFishing()] when the `selectivity` is
+#' not set by the user.
+#' 
+#' @param params A MizerParams object
+#' @return An array (gear x species x size) with the selectivity values
+#' @concept helper
+#' @export
+#' @examples
+#' params <- NS_params
+#' calc_selectivity(params)["Pelagic", "Herring", ]
+calc_selectivity <- function(params) {
+    
+    assert_that(is(params, "MizerParams"))
+    species_params <- params@species_params
+    gear_params <- params@gear_params
+    sp_names <- as.character(species_params$species)
+    no_sp <- length(sp_names)
+    w_names <- dimnames(params@selectivity)[[3]]
+    no_w <- length(params@w)
+    gear_names <- as.character(unique(gear_params$gear))
+    no_gears <- length(gear_names)
+    
+    selectivity <- 
+        array(0, dim = c(no_gears, no_sp, no_w),
+              dimnames = list(gear = gear_names, 
+                              sp = sp_names,
+                              w = w_names
+              )
+        )
+    for (g in seq_len(nrow(gear_params))) {
+        # These as.characters are annoying - but factors everywhere
+        species <- as.character(gear_params[g, "species"])
+        gear <- as.character(gear_params[g, "gear"])
+        sel_func <- as.character(gear_params[g, "sel_func"])
+        # get args
+        arg <- names(formals(sel_func))
+        # lop off the arguments that we will supply
+        arg <- arg[!(arg %in% c("w", "species_params", "..."))]
+        if (!all(arg %in% colnames(gear_params))) {
+            stop("Some arguments needed for the selectivity function are ",
+                 "missing in the gear_params dataframe.")
+        }
+        # Check that there are no missing values for selectivity parameters
+        if (any(is.na(as.list(gear_params[g, arg])))) {
+            stop("Some selectivity parameters are NA.")
+        }
+        # Call selectivity function with selectivity parameters
+        par <- c(list(w = params@w, 
+                      species_params = as.list(species_params[species, ])),
+                 as.list(gear_params[g, arg]))
+        sel <- do.call(sel_func, args = par)
+        selectivity[gear, species, ] <- sel
+    }
+    return(selectivity)
 }

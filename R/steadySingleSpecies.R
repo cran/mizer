@@ -43,9 +43,10 @@ steadySingleSpecies <- function(params, species = NULL,
         w_max_idx <- sum(params@w <= params@species_params[sp, "w_max"])
         idx <- w_min_idx:(w_max_idx - 1)
         
-        if (any(growth[idx] == 0)) {
-            stop("With these parameter values the ", sp,
-                 " does not have enough food to cover its metabolic cost")
+        # Check that species can grow to maturity at least
+        w_mat_idx <- sum(params@w <= params@species_params[sp, "w_mat"])
+        if (any(growth[w_min_idx:w_mat_idx] == 0)) {
+            stop(sp, " cannot grow to maturity")
         }
         
         # Keep egg density constant
@@ -73,5 +74,6 @@ steadySingleSpecies <- function(params, species = NULL,
         params@initial_n <- params@initial_n * factor
     }
     
+    params@time_modified <- lubridate::now()
     params
 }

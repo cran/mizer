@@ -14,7 +14,11 @@ test_that("setExtMort works", {
     p2 <- setExtMort(params, 3 * params@mu_b)
     comment(p2@mu_b) <- NULL
     expect_equal(p2@mu_b, 3 * params@mu_b)
+    
+    # has updated time_modified
+    expect_false(identical(params@time_modified, p2@time_modified))
 })
+
 test_that("Comment works on mu_b", {
     params <- NS_params
     # if no comment, it is set automatically
@@ -39,8 +43,7 @@ test_that("Comment works on mu_b", {
     expect_message(setExtMort(params),  "has been commented")
     # Can reset
     p <- setExtMort(params, reset = TRUE)
-    expect_equal(p@mu_b[1, 1], 1,
-                 check.attributes = FALSE)
+    expect_equal(p@mu_b[1, 1], 1, ignore_attr = TRUE)
     expect_warning(setExtMort(params, ext_mort = ext_mort,
                                     reset = TRUE),
                    "Because you set `reset = TRUE`, the")

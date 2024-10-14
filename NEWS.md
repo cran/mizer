@@ -1,3 +1,42 @@
+# mizer 2.5.2
+
+- Fixed bug that had led `newCommunityParams()` to set up resource parameters
+  differently since version 2.4.0 (#293)
+- `addSpecies()` now correctly preserves all `species_params` of the existing
+  model.
+- `addSpecies()` no longer requires new species to grow to maximum size, only
+  maturity size is required.
+- Now `validGivenSpeciesParams()` validates the given species parameters without
+  adding defaults and `validSpeciesParams()` validates and returns a completed
+  species parameter dataframe.
+- New species parameter `w_repro_max` giving the size at which a species 
+  invests 100% of its energy into reproduction. Set to `w_max` by default.
+- `removeSpecies()` now also removes species parameters that are not set for
+  any of the remaining species.
+- Changing `w_max` now also correctly updates `ft_mask` (#296).
+- `compareParams()` now also spells out differences in given species parameters.
+- `getDiet()` now also includes the contribution of the external encounter rate
+  to the diet.
+- `setPredKernel()` now throws an error if some of the required predation kernel
+  parameters are NA.
+- In `plotYieldGear()` one can select a subset of gears with new `gears` 
+  argument.
+- New helper function `valid_gears_arg()` to check the `gears` argument in 
+  functions that take a `gears` argument.
+- Improved scaling of the y-axis in `plotGrowthCurves()`.
+- `steadySingleSpecies()` no longer requires species to grow to `w_max`.
+- `matchGrowth()` now also rescales the external encounter rate.
+- `setExtEncounter()` no longer resets the external encounter rate to zero when
+  called without the `ext_encounter` argument.
+- The function `plotBiomassObservedVsModel()` now plots the ratio of modelled
+  to observed biomass as default (`ratio = T`), as this is more useful visually
+  to see how far off modelled biomass is from observed biomass.
+- The `time_modified` field is now updated correctly by `steadySingleSpecies()`,
+  `setColours()` and `setLinetypes()`.
+- Deprecated `matchYields()` and `calibrateYield()`.
+- Improved some unit tests.
+- Some improvements to documentation.
+
 # mizer 2.5.1
 
 This is a patch release made necessary by a change in CRAN's requirement

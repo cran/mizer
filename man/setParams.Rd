@@ -75,6 +75,7 @@ functions
 \item \code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}}
 \item \code{\link[=setMetabolicRate]{setMetabolicRate()}}
 \item \code{\link[=setExtMort]{setExtMort()}}
+\item \code{\link[=setExtEncounter]{setExtEncounter()}}
 \item \code{\link[=setReproduction]{setReproduction()}}
 \item \code{\link[=setFishing]{setFishing()}}
 \item \code{\link[=setResource]{setResource()}}
@@ -336,11 +337,15 @@ available energy
 that is invested into reproduction is the product of two factors: the
 proportion \code{maturity} of individuals that are mature and the proportion
 \code{repro_prop} of the energy available to a mature individual that is
-invested into reproduction.
+invested into reproduction. There is a size \code{w_repro_max} at which all the
+energy is invested into reproduction and therefore all growth stops. There
+can be no fish larger than \code{w_repro_max}. If you have not specified the
+\code{w_repro_max} column in the species parameter data frame, then the maximum size
+\code{w_max} is used instead.
 
 \subsection{Maturity ogive}{
 If the the proportion of individuals that are mature is not supplied via
-the \code{maturity} argument , then it is set to a sigmoidal
+the \code{maturity} argument, then it is set to a sigmoidal
 maturity ogive that changes from 0 to 1 at around the maturity size:
 \deqn{{\tt maturity}(w) = \left[1+\left(\frac{w}{w_{mat}}\right)^{-U}\right]^{-1}.}{
   maturity(w) = [1+(w/w_mat)^(-U)]^(-1)}
@@ -354,29 +359,30 @@ The exponent \eqn{U} determines the steepness of the maturity ogive. By
 default it is chosen as \eqn{U = 10}, however this can be overridden by
 including a column \code{w_mat25} in the species parameter dataframe that
 specifies the weight at which 25\% of individuals are mature, which sets
-\eqn{U = \log(3) / \log(w_{mat} / w_{25}).}{U = log(3) / log(w_mat / w_25).}
+\eqn{U = \log(3) / \log(w_{mat} / w_{mat25}).}{U = log(3) / log(w_mat /
+w_mat25).}
 
-The sigmoidal function given above would strictly reach 1 only asymptotically.
-Mizer instead sets the function equal to 1 already at the species'
-maximum size, taken from the compulsory \code{w_max} column in the
-species parameter data frame. Also, for computational simplicity, any
-proportion smaller than \code{1e-8} is set to \code{0}.
+The sigmoidal function given above would strictly reach 1 only
+asymptotically. Mizer instead sets the function equal to 1 already at a size
+taken from the \code{w_repro_max} column in the species parameter data frame, if it
+exists, or otherwise from the \code{w_max} column. Also, for computational
+simplicity, any proportion smaller than \code{1e-8} is set to \code{0}.
 }
 
 \subsection{Investment into reproduction}{
 If the the energy available to a mature individual that is
 invested into reproduction is not supplied via the \code{repro_prop} argument,
 it is set to the allometric form
-\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{max}}\right)^{m-n}.}{
-  repro_prop(w) = (w/w_max)^(m - n).}
+\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{mat_max}}\right)^{m-n}.}{
+  repro_prop(w) = (w/w_repro_max)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
 reproduction for mature individuals. By default it is chosen to be
 \eqn{m = 1} so that the rate at which energy is invested into reproduction
 scales linearly with the size. This default can be overridden by including a
-column \code{m} in the species parameter dataframe. The maximum sizes
-are taken from the compulsory \code{w_max} column in the species parameter
-data frame.
+column \code{m} in the species parameter dataframe. The maximum sizes are taken
+from the \code{w_repro_max} column in the species parameter data frame, if it
+exists, or otherwise from the \code{w_max} column.
 
 The total proportion of energy invested into reproduction of an individual
 of size \eqn{w} is then
@@ -468,6 +474,13 @@ be found in the gear parameters data.frame. So for the \code{knife_edge()}
 function there should be a \code{knife_edge_size} column. Because \code{knife_edge()}
 is the default selectivity function, the \code{knife_edge_size} argument has a
 default value = \code{w_mat}.
+
+The most commonly-used selectivity function is \code{sigmoid_length()}. It has a
+smooth transition from 0 to 1 at a certain size. The \code{sigmoid_length()}
+function has the two parameters \code{l50} and \code{l25} that are the lengths in cm at
+which 50\% or 25\% of the fish are selected by the gear. If you choose this
+selectivity function then the \code{l50} and \code{l25} columns must be included in the
+gear parameters data.frame.
 
 In case each species is only selected by one gear, the columns of the
 \code{gear_params} data frame can alternatively be provided as columns of the
