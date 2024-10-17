@@ -1,13 +1,13 @@
 #' Validate species parameter data frame
 #' 
 #' These functions check the validity of a species parameter frame and, where
-#' necessary, make corrections. `validateGivenSpeciesParams()` only checks and
+#' necessary, make corrections. `validGivenSpeciesParams()` only checks and
 #' corrects the given species parameters but does not add default values for
 #' species parameters that were not provided. `validSpeciesParams()` first calls
-#' `validateGivenSpeciesParams()` but then goes further by adding default values
+#' `validGivenSpeciesParams()` but then goes further by adding default values
 #' for species parameters that were not provided.
 #' 
-#' `validateGivenSpeciesParams()` checks the validity of the given species
+#' `validGivenSpeciesParams()` checks the validity of the given species
 #' parameter It throws an error if
 #' * the `species` column does not exist or contains duplicates
 #' * the maximum size is not specified for all species
@@ -24,11 +24,11 @@
 #' asymptotic size of an average individual.
 #' 
 #' Some inconsistencies in the size parameters are resolved as follows:
-#' * Any `w_max` that is larger than `w_repro_max` is set to `w_repro_max`.
 #' * Any `w_mat` that is not smaller than `w_max` is set to `w_max / 4`.
 #' * Any `w_mat25` that is not smaller than `w_mat` is set to NA.
 #' * Any `w_min` that is not smaller than `w_mat` is set to `0.001` or 
 #'   `w_mat /10`, whichever is smaller.
+#' * Any `w_repro_max` that is not larger than `w_mat` is set to `4 * w_mat`.
 #' 
 #' The row names of the returned data frame will be the species names.
 #' If `species_params` was provided as a tibble it is converted back to an
@@ -55,10 +55,10 @@
 #' list of these functions).
 #' 
 #' @param species_params The user-supplied species parameter data frame
-#' @return A valid species parameter data frame with additional parameters
-#'   with default values.
+#' @return For `validSpeciesParams()`: A valid species parameter data frame with
+#'   additional parameters with default values.
 #' 
-#' @seealso [species_params()], [validGearParams()], [validParams()]
+#' @seealso [species_params()], [validGearParams()], [validParams()], [validSim()]
 #' @concept helper
 #' @export
 validSpeciesParams <- function(species_params) {
@@ -73,13 +73,15 @@ validSpeciesParams <- function(species_params) {
 }
 
 #' @rdname validSpeciesParams
-#' @return A valid species parameter data frame without additional parameters.
+#' @return For `validGivenSpeciesParams()`: A valid species parameter data frame
+#'   without additional parameters.
 #' @export
 validGivenSpeciesParams <- function(species_params) {
     assert_that(is.data.frame(species_params))
     # Convert a tibble back to an ordinary data frame
     sp <- as.data.frame(species_params,
                         stringsAsFactors = FALSE) # for old versions of R
+    sp$species <- as.character(sp$species)
     
     # Check for misspellings ----
     misspellings <- c("wmin", "wmax", "wmat", "wmat25", "w_mat_25", "Rmax",
@@ -140,18 +142,6 @@ validGivenSpeciesParams <- function(species_params) {
         stop("`w_max` contains non-numeric values.")
     }
     
-    # check w_repro_max ----
-    if ("w_repro_max" %in% names(sp)) {
-        wrong <- !is.na(sp$w_repro_max) & sp$w_repro_max < sp$w_max
-        if (any(wrong)) {
-            warning("For the species ", 
-                    paste(sp$species[wrong], collapse = ", "),
-                    " the value for `w_max` is smaller than that of `w_repro_max`.",
-                    " I have corrected that by setting `w_max` equal to `w_repro_max`.")
-            sp$w_max[wrong] <- sp$w_repro_max[wrong]
-        }
-    }
-    
     # check w_mat ----
     if ("w_mat" %in% names(sp)) {
         wrong <- !is.na(sp$w_mat) & sp$w_mat >= sp$w_max
@@ -187,6 +177,22 @@ validGivenSpeciesParams <- function(species_params) {
             }
         }
     }
+    
+    # check w_repro_max ----
+    if ("w_repro_max" %in% names(sp) &&
+        "w_mat" %in% names(sp) &&
+        "w_mat" %in% names(sp)) {
+        wrong <- !is.na(sp$w_repro_max) &
+            !is.na(sp$w_mat) &
+            sp$w_repro_max <= sp$w_mat
+        if (any(wrong)) {
+            warning("For the species ", 
+                    paste(sp$species[wrong], collapse = ", "),
+                    " the value for `w_repro_max` is smaller than that of `w_mat`.",
+                    " I have corrected that by setting it to 4 times `w_mat.")
+            sp$w_repro_max[wrong] <- 4 * sp$w_mat[wrong]
+        }
+    }
     sp
 }
 
@@ -212,7 +218,7 @@ set_species_param_from_length <- function(sp, pw, pl) {
     sp
 }
 
-#' Alias for `validateSpeciesParams()`
+#' Alias for `validSpeciesParams()`
 #' 
 #' @description
 #' `r lifecycle::badge("deprecated")`

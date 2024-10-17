@@ -1372,8 +1372,6 @@ plotDiet <- function(object, species = NULL, return_data = FALSE) {
 #' params <-  NS_params
 #' sim <- project(params, effort=1, t_max=20, t_save = 2, progress_bar = FALSE)
 #' plot(sim)
-#' plot(sim, time_range = 10:20) # change time period for size-based plots
-#' plot(sim, min_w = 10, max_w = 1000) # change size range for biomass plot
 #' }
 setMethod("plot", signature(x = "MizerSim", y = "missing"),
           function(x, ...) {
@@ -1405,16 +1403,18 @@ setMethod("plot", signature(x = "MizerSim", y = "missing"),
 #' level and predation mortality of each species through time. This method just
 #' uses the other plotting functions and puts them all in one window.
 #' 
+#' @param x An object of class \linkS4class{MizerParams}
+#' @param y Not used
+#' @param ...  For additional arguments see the documentation for
+#'   [plotFeedingLevel()],[plotSpectra()],[plotPredMort()]
 #' @return A viewport object
 #' @export
 #' @family plotting functions
 #' @seealso [plotting_functions]
-#' @rdname plotMizerSim
 #' @examples
 #' \donttest{
 #' params <-  NS_params
 #' plot(params)
-#' plot(params, min_w = 10, max_w = 1000) # change size range for biomass plot
 #' }
 setMethod("plot", signature(x = "MizerParams", y = "missing"),
           function(x, ...) {

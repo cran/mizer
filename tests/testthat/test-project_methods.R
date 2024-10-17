@@ -482,7 +482,7 @@ test_that("getRDI", {
     rdi <- getRDI(params, n, n_full)
     # test dim
     expect_length(rdi, no_sp)
-    expect_named(rdi, as.character(params@species_params$species))
+    expect_named(rdi, params@species_params$species)
     # test values
     e_repro <- getERepro(params, n = n, n_pp = n_full)
     e_repro_pop <- apply(sweep(e_repro * n, 2, params@dw, "*"), 1, sum)
@@ -506,7 +506,7 @@ test_that("getRDI is proportional to volume", {
 test_that("getRDD", {
     rdd <- getRDD(params, n, n_full)
     expect_length(rdd, no_sp)
-    expect_named(rdd, as.character(params@species_params$species))
+    expect_named(rdd, params@species_params$species)
     rdi <- getRDI(params, n, n_full)
     rdd2 <- getRDD(params, n, n_full, rdi = rdi)
     expect_identical(rdd, rdd2)
@@ -562,6 +562,8 @@ test_that("Test that fft based integrator gives similar result as old code", {
     # Test available energy integral
     prfft <- getPredRate(params, params@initial_n, params@initial_n_pp)
     pr <- getPredRate(params2, params@initial_n, params@initial_n_pp)
+    # Due to problem with fft on M1mac, skip this test on CRAN
+    skip_on_cran()
     expect_equal(prfft, pr, tolerance = 1e-15, ignore_attr = TRUE)
 })
 

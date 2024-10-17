@@ -1,3 +1,14 @@
+# mizer 2.5.3
+
+A patch update so that users who had changed `w_max` manually in their model
+will not get unhelpful error messages when trying to use their model in the
+new version. General checking of parameters is made more robust. In particular
+
+- `validSpeciesParams()` has extra checks on consistency of species parameters
+- `validParams()` checks that rate arrays contain finite numeric values
+- `validSim()` checks that simulation results are finite and truncates the
+  simulation if they are not.
+
 # mizer 2.5.2
 
 - Fixed bug that had led `newCommunityParams()` to set up resource parameters

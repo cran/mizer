@@ -47,6 +47,14 @@ test_that("validGearParams works", {
     gp$gear <- c("g1", "g2")
     expect_identical(rownames(validGearParams(gp, sp)), 
                      c("species1, g1", "species1, g2"))
+    
+    # Factors are converted to strings
+    gp <- data.frame(species = factor("species1"), gear = factor("g"),
+                     stringsAsFactors = TRUE)
+    sp <- data.frame(species = "species1", w_max = 100)
+    gp <- validGearParams(gp, sp)
+    expect_identical(gp$species, "species1")
+    expect_identical(gp$gear, "g")
 })
 
 # validEffortVector ----
@@ -252,7 +260,6 @@ test_that("Duplicate gear-species pairs give error", {
 
 test_that("Non-existing species give error", {
     gp <- NS_params@gear_params
-    gp$species <- as.character(gp$species)
     gp$species[[1]] <- "test"
     expect_error(gear_params(params) <- gp,
                  "The gear_params dataframe contains species that do not exist in the model.")
