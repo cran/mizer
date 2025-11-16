@@ -1,3 +1,41 @@
+# mizer 2.5.4
+
+- New function `renameGear()` to rename gears in a MizerParams object, similar 
+  to `renameSpecies()`.
+- `addSpecies()` now proceeds with a warning instead of an error when species
+  growth stops after maturity (#315).
+- `matchBiomasses()` and `matchNumbers()` now provide more informative error
+  messages.
+- `plotDiet()` now restricts the plot to size ranges with meaningful biomass
+  density (#317).
+- The `wlim` and `ylim` arguments in plotting functions now set the actual axis
+  limits instead of just zooming (#320).
+- The legend in `plotlyFeedingLevel()` is improved when critical feeding level
+  is included.
+- `species` and `gears` columns are now never factors, so no longer need to
+  call `as.character()` so often.
+- `validParams()` also calls `validGearParams()`.
+- `validParams()` checks that `w_min` is valid for all species and increases it
+  if necessary.
+- `validSpeciesParams()` now also sets default for `p` to be equal to `n`.
+- `species_params<-()` and `given_species_params<-()` now check that species
+  names match.
+- The `params` argument in `l2w()` and `w2l()` has been renamed to `species_params`
+  to follow mizer's convention that `params` refers to a MizerParams object.
+
+## Bug fixes
+
+- `animateSpectra()` now uses consistent colours and preserves colour identity
+  across frames (#321).
+- `getReproductionProportion()` no longer returns incorrect proportions > 1 (#299)
+- `setResource()` now correctly applies the `w_pp_cutoff` parameter to the 
+  carrying capacity and initial resource abundance when changed without 
+  providing `resource_capacity`(#306).
+- Predation kernels are now truncated as documented.
+- `given_species_params()` no longer makes unwanted changes to the species
+  parameters.
+- `steadySingleSpecies()` no longer changes `time_modified`.
+
 # mizer 2.5.3
 
 A patch update so that users who had changed `w_max` manually in their model

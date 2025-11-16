@@ -113,19 +113,25 @@ reproduction rate from the density-independent rate. Defaults to
 \item{n}{The allometric growth exponent. This can be overruled for individual
 species by including a \code{n} column in the \code{species_params}.}
 
-\item{resource_rate}{Optional. Vector of resource intrinsic birth rates or
-coefficient in the power-law for the birth rate, see Details. Must be
-strictly positive.}
+\item{resource_rate}{Optional. A vector of per-capita resource birth
+rate for each size class or a single number giving the coefficient in the
+power-law for this rate, see "Setting resource dynamics" below.
+Must be strictly positive.}
 
 \item{resource_capacity}{Optional. Vector of resource intrinsic carrying
-capacities or coefficient in the power-law for the capacity, see Details.
+capacities or coefficient in the power-law for the capacity, see
+"Setting resource dynamics" below.
 The resource capacity must be larger than the resource abundance.}
 
 \item{lambda}{Used to set power-law exponent for resource capacity if the
 \code{resource_capacity} argument is given as a single number.}
 
 \item{w_pp_cutoff}{The upper cut off size of the resource spectrum power law
-used only if \code{resource_capacity} is given as a single number.}
+used when \code{resource_capacity} is given as a single number. When changing
+\code{w_pp_cutoff} without providing \code{resource_capacity}, the cutoff can only
+be decreased. In that case, both the carrying capacity and the initial
+resource abundance will be cut off at the new value. To increase the cutoff,
+you must also provide the \code{resource_capacity} for the extended range.}
 
 \item{resource_dynamics}{Optional. Name of the function that determines the
 resource dynamics by calculating the resource spectrum at the next time
@@ -481,7 +487,7 @@ simplicity, any proportion smaller than \code{1e-8} is set to \code{0}.
 If the the energy available to a mature individual that is
 invested into reproduction is not supplied via the \code{repro_prop} argument,
 it is set to the allometric form
-\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{mat_max}}\right)^{m-n}.}{
+\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
   repro_prop(w) = (w/w_repro_max)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
@@ -626,13 +632,6 @@ an effort that varies through time.
 
 \section{Setting resource dynamics}{
 
-You would usually set the resource dynamics only after having finished the
-calibration of the steady state. Then setting the resource dynamics with
-this function will preserve that steady state, unless you explicitly
-choose to set \code{balance = FALSE}. Your choice of the resource dynamics only
-affects the dynamics around the steady state. The higher the resource rate
-or the lower the resource capacity the less sensitive the model will be to
-changes in the competition for resource.
 
 The \code{resource_dynamics} argument allows you to choose the resource dynamics
 function. By default, mizer uses a semichemostat model to describe the
@@ -643,31 +642,31 @@ you can use \code{\link[=resource_constant]{resource_constant()}} which keeps th
 can write your own function.
 
 Both the \code{\link[=resource_semichemostat]{resource_semichemostat()}} and the \code{\link[=resource_logistic]{resource_logistic()}} dynamics
-are parametrised in terms of a size-dependent rate \eqn{r_R(w)} and a
+are parametrised in terms of a size-dependent birth rate \eqn{r_R(w)} and a
 size-dependent capacity \eqn{c_R}. The help pages of these functions give
 the details.
 
 The \code{resource_rate} argument can be a vector (with the same length as
-\code{w_full(params)}) specifying the intrinsic resource growth rate for each size
-class. Alternatively it can be a single number, which is then used as the
-coefficient in a power law: then the intrinsic growth rate \eqn{r_R(w)} at
+\code{w_full(params)}) specifying the intrinsic resource birth rate for each size
+class. Alternatively it can be a single number that is used as the
+coefficient in a power law: then the intrinsic birth rate \eqn{r_R(w)} at
 size \eqn{w} is set to
 \deqn{r_R(w) = r_R w^{n-1}.}
 The power-law exponent \eqn{n} is taken from the \code{n} argument.
 
 The \code{resource_capacity} argument can be a vector specifying the intrinsic
 resource carrying capacity for each size class. Alternatively it can be a
-single number, which is then used as the coefficient in a truncated power
-law: then the intrinsic growth rate \eqn{c_R(w)} at size \eqn{w} is set to
-\deqn{c(w) = \kappa\, w^{-\lambda}}{c(w) = \kappa w^{-\lambda}}
+single number that is used as the coefficient in a truncated power
+law: then the intrinsic carrying capacity \eqn{c_R(w)} at size \eqn{w}
+is set to
+\deqn{c_R(w) = c_R\, w^{-\lambda}}{c_R(w) = c_R w^{-\lambda}}
 for all \eqn{w} less than \code{w_pp_cutoff} and zero for larger sizes.
 The power-law exponent \eqn{\lambda} is taken from the \code{lambda} argument.
 
-The values for \code{lambda}, \code{n} and \code{w_pp_cutoff} are stored in a list in the
-\code{resource_params} slot of the MizerParams object so that they can be re-used
-automatically in the future. That list can be accessed with
-\code{\link[=resource_params]{resource_params()}}. It also holds the coefficient \code{kappa} that describes the
-steady-state resource abundance.
+The values for \code{lambda}, \code{n} and \code{w_pp_cutoff} are stored in a list
+in the \code{resource_params} slot of the MizerParams object so that they can be
+re-used automatically in the future. That list can be accessed with
+\code{\link[=resource_params]{resource_params()}}.
 }
 
 \examples{

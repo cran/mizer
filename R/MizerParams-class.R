@@ -561,7 +561,7 @@ emptyParams <- function(species_params,
     
     # Basic arrays for templates ----
     no_sp <- nrow(species_params)
-    species_names <- as.character(species_params$species)
+    species_names <- species_params$species
     gear_names <- unique(gear_params$gear)
     mat1 <- array(0, dim = c(no_sp, no_w), 
                   dimnames = list(sp = species_names, w = signif(w, 3)))
@@ -638,7 +638,7 @@ emptyParams <- function(species_params,
     } else {
         linecolour <- rep(colour_palette, length.out = no_sp)
     }
-    names(linecolour) <- as.character(species_names)
+    names(linecolour) <- species_names
     linecolour <- c(linecolour, "Resource" = "green", "Total" = "black",
                     "Background" = "grey", "Fishing" = "red", 
                     "External" = "grey")
@@ -649,7 +649,7 @@ emptyParams <- function(species_params,
     } else {
         linetype <- rep(type_palette, length.out = no_sp)
     }
-    names(linetype) <- as.character(species_names)
+    names(linetype) <- species_names
     linetype <- c(linetype, "Resource" = "solid", "Total" = "solid",
                   "Background" = "solid", "Fishing" = "solid", 
                   "External" = "solid")
@@ -831,10 +831,6 @@ dw_full <- function(params) {
 #' MizerParams object using the parameters extracted from the old MizerParams
 #' object.
 #' 
-#' Besides upgrading, if necessary, the only changes that may be made to the
-#' given MizerParams object is that the `w_min_idx` and `ft_mask` slots are
-#' recalculated.
-#' 
 #' @section Backwards compatibility:
 #' The internal numerics in mizer have changed over time, so there may be small
 #' discrepancies between the results obtained with the upgraded object
@@ -867,12 +863,26 @@ validParams <- function(params) {
         warning("Your MizerParams object was created with an earlier version of mizer. You can upgrade it with `params <- validParams(params)` where you should replace `params` by the name of the variable that holds your MizerParams object.")
     }
     
+    params@given_species_params <- 
+        validGivenSpeciesParams(params@given_species_params)
     params@species_params <- validSpeciesParams(params@species_params)
-    params@w_min_idx <- get_w_min_idx(params@species_params, params@w)
     
-    # Check w_max
+    # Check w_max and w_min
     # This isn't checked by `validSpeciesParams()` because that function does
     # not have access to the full weight grid.
+    # w_min should not be smaller than the minimum weight of the model
+    # However no harm is done if it is, so we just issue a warning
+    w_min <- params@w[1] 
+    wrong <- params@species_params$w_min < w_min * (1 - 1e-6) # The 1e-6 is to avoid rounding errors
+    if (any(wrong)) {
+        params@species_params$w_min[wrong] <- w_min
+        warning("The minimum weight of some species was smaller than the ",
+                "minimum weight of the model: ", 
+                paste(params@species_params$species[wrong], collapse = ", "),
+                ". I have increased it to ", w_min, ".")
+    }
+    params@w_min_idx <- get_w_min_idx(params@species_params, params@w)
+    # w_max should not be larger than the maximum weight of the model
     w_max <- max(params@w) + 1e-6 # The 1e-6 is to avoid rounding errors
     if (any(params@species_params$w_max > w_max)) {
         warning("The maximum weight of a species is larger than the maximum ",
@@ -939,6 +949,6 @@ get_w_min_idx <- function(species_params, w) {
                function(w_min, wx) max(which(wx <= w_min)), wx = w)))
     # Due to rounding errors this might happen:
     w_min_idx[w_min_idx == -Inf] <- 1
-    names(w_min_idx) <- as.character(species_params$species)
+    names(w_min_idx) <- species_params$species
     w_min_idx
 }

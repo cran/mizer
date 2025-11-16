@@ -508,7 +508,7 @@ getFMortGear <- function(object, effort, time_range) {
 #' how fishing gears are set up.
 #' 
 #' The total fishing mortality is just the sum of the fishing mortalities
-#' imposed by each gear, \eqn{\mu_{f.i}(w)=\sum_g F_{g,i,w}}.
+#' imposed by each gear, \eqn{F_i(w)=\sum_g F_{g,i,w}}.
 #' The fishing mortality for each gear is obtained as catchability x 
 #' selectivity x effort.
 #' 
@@ -835,7 +835,7 @@ getRDI <- function(params, n = initialN(params),
                                    n_other = n_other, t = t), 
              mort = getMort(params, n = n, n_pp = n_pp, 
                             n_other = n_other, t = t))
-    names(rdi) <- as.character(params@species_params$species)
+    names(rdi) <- params@species_params$species
     rdi
 }
 
@@ -882,7 +882,7 @@ getRDD <- function(params, n = initialN(params),
     f <- get(params@rates_funcs$RDD)
     rdd <- f(rdi = rdi, species_params = params@species_params, 
              params = params, t = t)
-    names(rdd) <- as.character(params@species_params$species)
+    names(rdd) <- params@species_params$species
     rdd
 }
 

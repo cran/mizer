@@ -33,10 +33,12 @@
 #' @param resource_rate Resource replenishment rate
 #' @param resource_capacity Resource carrying capacity
 #' @param ... Unused
-#'   
-#' @return Vector containing resource spectrum at next timestep
+#'
+#' @return Vector containing the resource number density in each size class at
+#'   the next timestep
 #' @export
-#' @family resource dynamics
+#' @family resource dynamics functions
+#' @seealso [setResource()]
 resource_semichemostat <- function(params, n, n_pp, n_other, rates, t, dt,
                                    resource_rate, resource_capacity, ...) {
     # We use the exact solution under the assumption of constant mortality 
@@ -66,7 +68,7 @@ resource_semichemostat <- function(params, n, n_pp, n_other, rates, t, dt,
 #' to determine the values of the resource parameters that are needed to make
 #' the replenishment rate at each size equal the consumption rate at that size,
 #' as calculated by [getResourceMort()]. It should be called with only one of
-#' `resource_rate` or `resource_capacity` should and will return a named list
+#' `resource_rate` or `resource_capacity` and will return a named list
 #' with the values for both.
 #' @export
 balance_resource_semichemostat <- function(params,

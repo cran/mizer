@@ -1,12 +1,14 @@
 #' Set resource dynamics
 #' 
-#' Sets the intrinsic resource growth rate and the intrinsic resource carrying
+#' Sets the intrinsic resource birth rate and the intrinsic resource carrying
 #' capacity as well as the name of the function used to simulate the resource
-#' dynamics. By default this function changes both the rate and the capacity
+#' dynamics. By default, the birth rate and the carrying capacity are changed
 #' together in such a way that the resource replenishes at the same rate at
-#' which it is consumed.
+#' which it is consumed. So you should only provide either the 
+#' `resource_rate` or the `resource_capacity` (or `resource_level`) because
+#' the other is determined by the requirement that the resource replenishes
+#' at the same rate at which it is consumed.
 #' 
-#' @section Setting resource dynamics:
 #' You would usually set the resource dynamics only after having finished the 
 #' calibration of the steady state. Then setting the resource dynamics with
 #' this function will preserve that steady state, unless you explicitly 
@@ -14,6 +16,15 @@
 #' affects the dynamics around the steady state. The higher the resource rate
 #' or the lower the resource capacity the less sensitive the model will be to
 #' changes in the competition for resource.
+#' 
+#' If you provide the `resource_level` then that sets the `resource_capacity`
+#' to the current resource number density divided by the resource level. So
+#' in that case you should not specify `resource_capacity` as well.
+#' 
+#' If you provide none of the arguments `resource_level`, `resource_rate` or
+#' `resource_capacity` then the resource rate is kept at its previous value.
+#' 
+#' @section Setting resource dynamics:
 #' 
 #' The `resource_dynamics` argument allows you to choose the resource dynamics
 #' function. By default, mizer uses a semichemostat model to describe the
@@ -24,38 +35,40 @@
 #' can write your own function.
 #' 
 #' Both the [resource_semichemostat()] and the [resource_logistic()] dynamics
-#' are parametrised in terms of a size-dependent rate \eqn{r_R(w)} and a 
+#' are parametrised in terms of a size-dependent birth rate \eqn{r_R(w)} and a 
 #' size-dependent capacity \eqn{c_R}. The help pages of these functions give
 #' the details.
 #' 
 #' The `resource_rate` argument can be a vector (with the same length as
-#' `w_full(params)`) specifying the intrinsic resource growth rate for each size
-#' class. Alternatively it can be a single number, which is then used as the
-#' coefficient in a power law: then the intrinsic growth rate \eqn{r_R(w)} at
+#' `w_full(params)`) specifying the intrinsic resource birth rate for each size
+#' class. Alternatively it can be a single number that is used as the
+#' coefficient in a power law: then the intrinsic birth rate \eqn{r_R(w)} at
 #' size \eqn{w} is set to
 #' \deqn{r_R(w) = r_R w^{n-1}.}
 #' The power-law exponent \eqn{n} is taken from the `n` argument.
 #' 
 #' The `resource_capacity` argument can be a vector specifying the intrinsic
 #' resource carrying capacity for each size class. Alternatively it can be a
-#' single number, which is then used as the coefficient in a truncated power
-#' law: then the intrinsic growth rate \eqn{c_R(w)} at size \eqn{w} is set to
-#' \deqn{c(w) = \kappa\, w^{-\lambda}}{c(w) = \kappa w^{-\lambda}}
+#' single number that is used as the coefficient in a truncated power
+#' law: then the intrinsic carrying capacity \eqn{c_R(w)} at size \eqn{w}
+#' is set to
+#' \deqn{c_R(w) = c_R\, w^{-\lambda}}{c_R(w) = c_R w^{-\lambda}}
 #' for all \eqn{w} less than `w_pp_cutoff` and zero for larger sizes.
 #' The power-law exponent \eqn{\lambda} is taken from the `lambda` argument.
 #'
-#' The values for `lambda`, `n` and `w_pp_cutoff` are stored in a list in the
-#' `resource_params` slot of the MizerParams object so that they can be re-used
-#' automatically in the future. That list can be accessed with
-#' [resource_params()]. It also holds the coefficient `kappa` that describes the
-#' steady-state resource abundance.
+#' The values for `lambda`, `n` and `w_pp_cutoff` are stored in a list
+#' in the `resource_params` slot of the MizerParams object so that they can be
+#' re-used automatically in the future. That list can be accessed with
+#' [resource_params()].
 #' 
 #' @param params A MizerParams object
-#' @param resource_rate Optional. Vector of resource intrinsic birth rates or
-#'   coefficient in the power-law for the birth rate, see Details. Must be
-#'   strictly positive.
+#' @param resource_rate Optional. A vector of per-capita resource birth
+#'   rate for each size class or a single number giving the coefficient in the
+#'   power-law for this rate, see "Setting resource dynamics" below.
+#'   Must be strictly positive.
 #' @param resource_capacity Optional. Vector of resource intrinsic carrying
-#'   capacities or coefficient in the power-law for the capacity, see Details.
+#'   capacities or coefficient in the power-law for the capacity, see 
+#'   "Setting resource dynamics" below.
 #'   The resource capacity must be larger than the resource abundance.
 #' @param resource_level Optional. The ratio between the current resource number
 #'   density and the resource capacity. Either a number used at all sizes or a
@@ -65,7 +78,7 @@
 #'   `resource_capacity`.
 #' @param resource_dynamics Optional. Name of the function that determines the
 #'   resource dynamics by calculating the resource spectrum at the next time
-#'   step from the current state.
+#'   step from the current state. 
 #' @param balance By default, if possible, the resource parameters are 
 #'   set so that the resource replenishes at the same rate at which it is 
 #'   consumed. In this case you should only specify either the resource rate
@@ -76,7 +89,11 @@
 #' @param lambda Used to set power-law exponent for resource capacity if the
 #'   `resource_capacity` argument is given as a single number.
 #' @param w_pp_cutoff The upper cut off size of the resource spectrum power law
-#'   used only if `resource_capacity` is given as a single number.
+#'   used when `resource_capacity` is given as a single number. When changing
+#'   `w_pp_cutoff` without providing `resource_capacity`, the cutoff can only
+#'   be decreased. In that case, both the carrying capacity and the initial
+#'   resource abundance will be cut off at the new value. To increase the cutoff,
+#'   you must also provide the `resource_capacity` for the extended range.
 #' @param r_pp `r lifecycle::badge("deprecated")`. Use `resource_rate` argument
 #'   instead.
 #' @param kappa `r lifecycle::badge("deprecated")`. Use `resource_capacity`
@@ -84,7 +101,7 @@
 #' @param ... Unused
 #' 
 #' @return `setResource`: A MizerParams object with updated resource parameters
-#' @family resource parameters
+#' @seealso [setParams()]
 #' @export
 setResource <- function(params,
                         resource_rate = NULL,
@@ -113,6 +130,10 @@ setResource <- function(params,
                 is.number(lambda),
                 is.number(w_pp_cutoff), w_pp_cutoff > 0,
                 is.number(n))
+    
+    # Store the old w_pp_cutoff before updating
+    old_w_pp_cutoff <- params@resource_params[["w_pp_cutoff"]]
+    
     params@resource_params[["lambda"]] <- lambda
     params@resource_params[["n"]] <- n
     params@resource_params[["w_pp_cutoff"]] <- w_pp_cutoff
@@ -188,6 +209,22 @@ setResource <- function(params,
         }
     }
     
+    # Handle w_pp_cutoff change when capacity is not explicitly provided ----
+    if (is.null(resource_capacity) && is.null(resource_level) && 
+        !is.null(old_w_pp_cutoff) && w_pp_cutoff != old_w_pp_cutoff) {
+        if (w_pp_cutoff > old_w_pp_cutoff) {
+            stop("You cannot increase w_pp_cutoff without also providing the resource_capacity for the extended range.")
+        }
+        # New cutoff is smaller, so we need to cut off both carrying capacity
+        # and initial resource abundance at the new cutoff
+        # Cut off the carrying capacity at the new cutoff
+        params@cc_pp[w_full >= w_pp_cutoff] <- 0
+        # Cut off the initial resource abundance at the new cutoff
+        params@initial_n_pp[w_full >= w_pp_cutoff] <- 0
+        # Update NR for consistency
+        NR <- params@initial_n_pp
+    }
+    
     # Balance ----
     balance_fn <- get0(paste0("balance_", params@resource_dynamics))
     if (is.null(balance)) {
@@ -240,6 +277,7 @@ setResource <- function(params,
 }
 
 #' @rdname setResource
+#' @return A vector with the intrinsic resource birth rate for each size class.
 #' @export
 resource_rate <- function(params) {
     params@rr_pp
@@ -253,6 +291,7 @@ resource_rate <- function(params) {
 }
 
 #' @rdname setResource
+#' @return A vector with the intrinsic resource capacity for each size class.
 #' @export
 resource_capacity <- function(params) {
     params@cc_pp
@@ -266,6 +305,8 @@ resource_capacity <- function(params) {
 
 
 #' @rdname setResource
+#' @return A vector with the ratio between the current resource number density
+#'   and the resource capacity for each size class.
 #' @export
 resource_level <- function(params) {
     params@initial_n_pp / params@cc_pp
@@ -279,6 +320,7 @@ resource_level <- function(params) {
 
 
 #' @rdname setResource
+#' @return The name of the function that determines the resource dynamics.
 #' @export
 resource_dynamics <- function(params) {
     params@resource_dynamics

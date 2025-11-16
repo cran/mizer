@@ -121,7 +121,7 @@ simplicity, any proportion smaller than \code{1e-8} is set to \code{0}.
 If the the energy available to a mature individual that is
 invested into reproduction is not supplied via the \code{repro_prop} argument,
 it is set to the allometric form
-\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{mat_max}}\right)^{m-n}.}{
+\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
   repro_prop(w) = (w/w_repro_max)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
@@ -176,12 +176,12 @@ these as models for writing your own functions.
 # Plot maturity and reproduction ogives for Cod in North Sea model
 maturity <- getMaturityProportion(NS_params)["Cod", ]
 repro_prop <- getReproductionProportion(NS_params)["Cod", ]
-df <- data.frame(Size = w(NS_params), 
-                 Reproduction = repro_prop, 
-                 Maturity = maturity, 
+df <- data.frame(Size = w(NS_params),
+                 Reproduction = repro_prop,
+                 Maturity = maturity,
                  Total = maturity * repro_prop)
-dff <- melt(df, id.vars = "Size", 
-            variable.name = "Type", 
+dff <- melt(df, id.vars = "Size",
+            variable.name = "Type",
             value.name = "Proportion")
 library(ggplot2)
 ggplot(dff) + geom_line(aes(x = Size, y = Proportion, colour = Type))

@@ -1,14 +1,14 @@
 ## ----eval=FALSE---------------------------------------------------------------
-#  install.packages("mizer")
+# install.packages("mizer")
 
 ## -----------------------------------------------------------------------------
 library(mizer)
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  install.packages("devtools")
+# install.packages("devtools")
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  devtools::install_github("sizespectrum/mizer")
+# devtools::install_github("sizespectrum/mizer")
 
 ## -----------------------------------------------------------------------------
 params <- newCommunityParams()
