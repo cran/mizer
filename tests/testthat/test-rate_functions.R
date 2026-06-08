@@ -1,6 +1,6 @@
 test_that("get_time_elements", {
-    params <- NS_params
-    sim <- project(params, effort = 1, t_max = 10, dt = 0.5, t_save = 0.5)
+    params <- NS_params_small
+    sim <- project(params, effort = 1, t_max = 4, dt = 0.5, t_save = 0.5)
     expect_error(get_time_elements(sim, time_range = 0.1),
                  "The time range does not contain any simulation results.")
     expect_identical(get_time_elements(sim, as.character(3:4)),
@@ -13,10 +13,10 @@ test_that("get_time_elements", {
     expect_equal(which(get_time_elements(sim, seq(3, 4, by = 0.1))), 
                       c(7, 8, 9), ignore_attr = TRUE)
     # What if real years are used
-    effort <- array(1, dim = c(19, 4),
+    effort <- array(1, dim = c(19, 3),
                     dimnames = list(year = seq(1960, 1969, by = 0.5), 
                                     gear = c("Industrial", "Pelagic",
-                                             "Otter", "Beam")
+                                             "Otter")
                                     )
                     )
     sim <- project(params, effort = effort, t_save = 0.5)

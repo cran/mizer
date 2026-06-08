@@ -1,62 +1,173 @@
-#' Animation of the abundance spectra
+#' Animate size-dependent quantities through time
 #'
-#' `r lifecycle::badge("experimental")`
+#' Creates an interactive plotly animation in which a play button steps through
+#' time, drawing one line per species at each frame.
 #'
-#' @param sim A MizerSim object
-#' @param species Name or vector of names of the species to be plotted. By 
+#' The function dispatches on the class of `x`:
+#'
+#' * **`MizerSim`** — animates the community abundance spectra (number density
+#'   or biomass density vs body size). Resource, background species, and a
+#'   community total can be added via the `resource`, `background`, and `total`
+#'   arguments. The `power` argument controls whether the y-axis shows number
+#'   density (`power = 0`), biomass density (`power = 1`, default), or biomass
+#'   density in logarithmic size bins (`power = 2`). Both axes are log10 by
+#'   default and can each be switched to linear with `log_x = FALSE` or
+#'   `log_y = FALSE`.
+#'
+#' * **`ArrayTimeBySpeciesBySize`** — animates any per-species, size-resolved
+#'   quantity returned by a `MizerSim` accessor, such as [getFMort()],
+#'   [getFeedingLevel()], or [getPredMort()]. Both axes are log10 by default
+#'   and can each be switched to linear with `log_x = FALSE` or `log_y = FALSE`.
+#'   Background species and a species total can be added via the `background`
+#'   and `total` arguments.
+#'
+#' Species linecolours and linetypes follow `params@linecolour` and
+#' `params@linetype`.
+#'
+#' `animateSpectra()` is retained as a backward-compatible alias.
+#'
+#' @param x A `MizerSim` or `ArrayTimeBySpeciesBySize` object.
+#' @param species Name or vector of names of the species to be plotted. By
 #'   default all species are plotted.
-#' @param time_range The time range to animate over. Either a vector of values
-#'   or a vector of min and max time. Default is the entire time range of the
-#'   simulation.
-#' @param wlim A numeric vector of length two providing lower and upper limits
-#'   for the w axis. Use NA to refer to the existing minimum or maximum.
-#' @param ylim A numeric vector of length two providing lower and upper limits
-#'   for the y axis. Use NA to refer to the existing minimum or maximum. Any
-#'   values below 1e-20 are always cut off.
-#' @param power The abundance is plotted as the number density times the weight
-#' raised to \code{power}. The default \code{power = 1} gives the biomass
-#' density, whereas \code{power = 2} gives the biomass density with respect
-#' to logarithmic size bins.
+#' @param tlim A numeric vector of length two providing lower and upper limits
+#'   for the animated time window, e.g. `c(1997, 2007)`. Use `NA` to apply no
+#'   limit at that end. Default is `c(NA, NA)`.
+#' @param log_x If `TRUE` (default), use a log10 x-axis for body size.
+#' @param log_y If `TRUE` (default), use a log10 y-axis.
+#' @param log A character string specifying which axes to log-transform:
+#'   `"x"`, `"y"`, `"xy"` or `""`. If supplied, this overrides `log_x`
+#'   and `log_y`.
+#' @param size_axis Whether to plot size as weight (`"w"`, default) or length
+#'   (`"l"`), using the allometric weight-length relationship.
 #' @param total A boolean value that determines whether the total over all
-#'   species in the system is plotted as well. Default is FALSE.
-#' @param resource A boolean value that determines whether resource is included.
-#'   Default is TRUE.
-#' 
-#' @return A plotly object
+#'   selected species is plotted as an additional trace called `"Total"`.
+#'   Default is `FALSE`.
+#' @param background A boolean value that determines whether background species
+#'   are included. Ignored if the model does not contain background species.
+#'   Default is `TRUE`.
+#' @param wlim A numeric vector of length two providing lower and upper limits
+#'   for the body-size (x) axis. Use `NA` to refer to the existing minimum or
+#'   maximum.
+#' @param llim A numeric vector of length two providing lower and upper limits
+#'   for the length (x) axis when `size_axis = "l"`. Use `NA` to refer to the
+#'   existing minimum or maximum.
+#' @param ylim A numeric vector of length two providing lower and upper limits
+#'   for the value (y) axis. Use `NA` to refer to the existing minimum or
+#'   maximum. Limits are applied as Plotly axis ranges, so points outside the
+#'   limits are clipped by the viewport rather than removed from the animation
+#'   frames.
+#' @param frame_duration Duration in milliseconds for which each saved frame is
+#'   displayed. Default is 500.
+#' @param transition_duration Duration in milliseconds of the interpolation
+#'   between frames. Use `transition_duration = 0` to step directly from one
+#'   saved frame to the next. Default is `frame_duration`.
+#' @param easing The Plotly easing function to use when interpolating between
+#'   frames. Default is `"linear"`. Available options are `"linear"`, `"quad"`,
+#'   `"cubic"`, `"sin"`, `"exp"`, `"circle"`, `"elastic"`, `"back"`,
+#'   `"bounce"`, and each of those with suffix `"-in"`, `"-out"`, or
+#'   `"-in-out"` appended, for example `"cubic-in-out"`.
+#' @param ... Further arguments used by only some of the methods:
+#'
+#'   **For `MizerSim` methods:**
+#'   \describe{
+#'     \item{`power`}{The abundance is plotted as the number density times the
+#'       weight raised to \code{power}. The default \code{power = 1} gives the
+#'       biomass density, whereas \code{power = 2} gives the biomass density
+#'       with respect to logarithmic size bins.}
+#'     \item{`resource`}{A boolean value that determines whether resource is
+#'       included. If `TRUE`, the resource spectrum is plotted as an additional
+#'       trace called `"Resource"`. Default is `TRUE`.}
+#'   }
+#'
+#' @return A plotly object with one animated line trace per plotted group. Use
+#'   the play button or the slider to step through time.
 #' @export
 #' @family plotting functions
 #' @examples
 #' \donttest{
-#' animateSpectra(NS_sim, power = 2, wlim = c(0.1, NA), time_range = 1997:2007)
+#' # Animate biomass density spectra, showing only sizes above 0.1 g
+#' animate(NS_sim, power = 2, wlim = c(0.1, NA), tlim = c(1997, 2007))
+#'
+#' # Animate fishing mortality through time
+#' animate(getFMort(NS_sim))
+#'
+#' # Animate feeding level for two species only
+#' animate(getFeedingLevel(NS_sim), species = c("Cod", "Herring"))
 #' }
-animateSpectra <- function(sim,
-                           species = NULL,
-                           time_range,
-                           wlim = c(NA, NA),
-                           ylim = c(NA, NA),
-                           power = 1,
-                           total = FALSE,
-                           resource = TRUE) {
-    assert_that(is.flag(total), is.flag(resource),
-                is.number(power), 
+animate <- function(x, species = NULL, log_x = TRUE, log_y = TRUE,
+                    log = NULL, wlim = c(NA, NA), llim = c(NA, NA),
+                    ylim = c(NA, NA), tlim = c(NA, NA),
+                    size_axis = c("w", "l"), total = FALSE,
+                    background = TRUE, frame_duration = 500,
+                    transition_duration = frame_duration,
+                    easing = "linear", ...) {
+    UseMethod("animate")
+}
+
+#' @rdname animate
+#' @usage NULL
+#' @export
+animate.MizerSim <- function(x, species = NULL,
+                              log_x = TRUE, log_y = TRUE,
+                              log = NULL,
+                              wlim = c(NA, NA), llim = c(NA, NA),
+                              ylim = c(NA, NA),
+                              tlim = c(NA, NA),
+                              size_axis = c("w", "l"),
+                              total = FALSE,
+                              background = TRUE,
+                              frame_duration = 500,
+                              transition_duration = frame_duration,
+                              easing = "linear",
+                              time_range = lifecycle::deprecated(),
+                              power = 1,
+                              resource = TRUE, ...) {
+    if (lifecycle::is_present(time_range)) {
+        lifecycle::deprecate_warn("2.6.0", "animate(time_range)", "animate(tlim)")
+        tlim <- c(min(time_range), max(time_range))
+    }
+    sim <- x
+    size_axis <- plot_size_axis(size_axis)
+    log_axes <- parsePlotLog(log, log_x = log_x, log_y = log_y)
+    log_x <- log_axes$log_x
+    log_y <- log_axes$log_y
+    assert_that(is.flag(total), is.flag(resource), is.flag(background),
+                is.number(power),
+                is.number(frame_duration), frame_duration >= 0,
+                is.number(transition_duration), transition_duration >= 0,
+                is.string(easing),
                 length(wlim) == 2,
+                length(llim) == 2,
                 length(ylim) == 2)
 
     species <- valid_species_arg(sim, species)
-    if (missing(time_range)) {
-        time_range  <- as.numeric(dimnames(sim@n)$time)
-    }
-    time_elements <- get_time_elements(sim, time_range)
-    
+    all_times <- as.numeric(dimnames(sim@n)$time)
+    if (!is.na(tlim[1])) all_times <- all_times[all_times >= tlim[1]]
+    if (!is.na(tlim[2])) all_times <- all_times[all_times <= tlim[2]]
+    time_elements <- get_time_elements(sim, all_times)
+
     nf <- melt(sim@n[time_elements,
                      as.character(dimnames(sim@n)$sp) %in% species,
                                , drop = FALSE])
+    names(nf)[names(nf) == "sp"] <- "Species"
+    nf$legend_name <- as.character(nf$Species)
 
     # Add resource ----
     if (resource) {
         nf_pp <- melt(sim@n_pp[time_elements, , drop = FALSE])
-        nf_pp$sp <- "Resource"
+        nf_pp$Species <- "Resource"
+        nf_pp$legend_name <- "Resource"
         nf <- rbind(nf, nf_pp)
+    }
+    # Add background ----
+    # Keep each background species as its own trace (avoids oscillation from
+    # interleaved data points) but label them all as "Background" in the legend.
+    if (background && any(sim@params@species_params$is_background)) {
+        back_n <- sim@n[time_elements, sim@params@species_params$is_background, , drop = FALSE]
+        nf_back <- melt(back_n)
+        names(nf_back)[names(nf_back) == "sp"] <- "Species"
+        nf_back$legend_name <- "Background"
+        nf <- rbind(nf, nf_back)
     }
     # Add total ----
     if (total) {
@@ -67,7 +178,8 @@ animateSpectra <- function(sim,
         total_n[, fish_idx] <- total_n[, fish_idx] +
             rowSums(aperm(sim@n, c(1, 3, 2)), dims = 2)
         nf_total <- melt(total_n[time_elements, , drop = FALSE])
-        nf_total$sp <- "Total"
+        nf_total$Species <- "Total"
+        nf_total$legend_name <- "Total"
         nf <- rbind(nf, nf_total)
     }
 
@@ -80,43 +192,108 @@ animateSpectra <- function(sim,
     }
     nf <- mutate(nf, value = value * w^power)
 
-    # Impose limits ----
-    if (is.na(wlim[1])) wlim[1] <- min(sim@params@w) / 100
-    if (is.na(wlim[2])) wlim[2] <- max(sim@params@w_full)
-    if (is.na(ylim[1])) ylim[1] <- 10^-20
-    if (is.na(ylim[2])) ylim[2] <- 10^20
-    nf <- nf %>%
-        filter(value >= ylim[1],
-               value <= ylim[2],
-               w >= wlim[1],
-               w <= wlim[2])
-    
-    # Order legend to follow params@species_params$species via linecolour order ----
-    # Keep only groups present in data, but preserve the order given by
-    # names(sim@params@linecolour) which follows params@species_params$species.
-    species_in_data <- unique(nf$sp)
-    legend_levels <- intersect(names(sim@params@linecolour), species_in_data)
-    nf$sp <- factor(nf$sp, levels = legend_levels)
+    animate_plotly(nf, sim@params, log_x, log_y, y_label, wlim, llim,
+                   ylim,
+                   size_axis = size_axis,
+                   frame_duration = frame_duration,
+                   transition_duration = transition_duration,
+                   easing = easing)
+}
 
-    # Build traces in desired legend order to avoid alphabetical reordering ----
+# Build a plotly animation from a prepared long-format data frame.
+# df must have columns: Species, legend_name, w, time, value.
+# Traces are ordered by legend_name first (following params@linecolour), then
+# by individual Species within each legend group — so background species always
+# appear together and share a single legend entry.
+animate_plotly <- function(df, params, log_x, log_y, y_label,
+                           wlim = c(NA, NA), llim = c(NA, NA),
+                           ylim = c(NA, NA),
+                           size_axis = "w",
+                           frame_duration = 500, transition_duration = 500,
+                           easing = "linear") {
+    size_axis <- plot_size_axis(size_axis)
+    df <- convert_plot_size_axis(df, params, size_axis)
+    x_var <- plot_size_x_var(size_axis)
+    legend_name_order <- intersect(names(params@linecolour),
+                                   unique(df$legend_name))
+    sp_order <- unlist(lapply(legend_name_order, function(ln) {
+        intersect(names(params@linecolour),
+                  unique(df$Species[df$legend_name == ln]))
+    }))
     p <- plotly::plot_ly()
-    for (lev in legend_levels) {
-        df_lev <- nf[nf$sp == lev, , drop = FALSE]
+    shown_legend_names <- character(0)
+    for (sp in sp_order) {
+        df_sp <- df[df$Species == sp, , drop = FALSE]
+        ln <- unique(df_sp$legend_name)
+        col <- params@linecolour[[ln]]
+        showlegend <- !(ln %in% shown_legend_names)
+        shown_legend_names <- c(shown_legend_names, ln)
         p <- plotly::add_lines(
             p,
-            data = df_lev,
-            x = ~w, y = ~value,
+            data = df_sp,
+            x = stats::as.formula(paste0("~", x_var)), y = ~value,
             frame = ~time,
-            name = lev,
-            line = list(color = sim@params@linecolour[[lev]],
-                        simplify = FALSE),
-            showlegend = TRUE
+            name = ln,
+            legendgroup = ln,
+            line = list(color = col, simplify = FALSE),
+            showlegend = showlegend
         )
     }
-    plotly::layout(p,
-                   xaxis = list(type = "log", exponentformat = "power",
-                                title = "Size [g]"),
-                   yaxis = list(type = "log", exponentformat = "power",
-                                title = y_label),
-                   legend = list(traceorder = "normal"))
+    p <- plotly::layout(p,
+                        xaxis = plotly_axis(
+                            df[[x_var]],
+                            plot_size_xlim(wlim, size_axis, llim),
+                            log_x, plot_size_xlab(size_axis)),
+                        yaxis = plotly_axis(df$value, ylim, log_y, y_label),
+                        legend = list(traceorder = "normal"))
+    plotly::animation_opts(p, frame = frame_duration,
+                           transition = transition_duration,
+                           easing = easing)
 }
+
+plotly_axis <- function(values, limits, log_axis, title) {
+    axis <- list(type = if (log_axis) "log" else "-",
+                 exponentformat = "power",
+                 title = title)
+    range <- plotly_axis_range(values, limits, log_axis)
+    if (!is.null(range)) axis$range <- range
+    axis
+}
+
+plotly_axis_range <- function(values, limits, log_axis) {
+    if (all(is.na(limits))) return(NULL)
+
+    finite_values <- values[is.finite(values)]
+    if (log_axis) finite_values <- finite_values[finite_values > 0]
+
+    if (is.na(limits[1]) && length(finite_values) > 0) {
+        limits[1] <- min(finite_values)
+    }
+    if (is.na(limits[2]) && length(finite_values) > 0) {
+        limits[2] <- max(finite_values)
+    }
+    if (any(is.na(limits))) return(NULL)
+
+    if (log_axis) {
+        if (limits[1] <= 0 && length(finite_values) > 0) {
+            limits[1] <- min(finite_values)
+        }
+        if (limits[2] <= 0 && length(finite_values) > 0) {
+            limits[2] <- max(finite_values)
+        }
+        if (any(limits <= 0)) return(NULL)
+        limits <- log10(limits)
+    }
+
+    if (!all(is.finite(limits))) return(NULL)
+    if (limits[1] == limits[2]) {
+        delta <- if (log_axis) 0.5 else max(abs(limits[1]) * 0.05, 1)
+        limits <- limits + c(-1, 1) * delta
+    }
+    limits
+}
+
+#' @rdname animate
+#' @param sim A `MizerSim` object.
+#' @export
+animateSpectra <- function(sim, ...) animate(sim, ...)

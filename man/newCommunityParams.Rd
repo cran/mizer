@@ -21,7 +21,8 @@ newCommunityParams(
   lambda = 2.05,
   r_pp = 10,
   knife_edge_size = 1000,
-  reproduction
+  reproduction,
+  info_level = 2
 )
 }
 \arguments{
@@ -45,8 +46,9 @@ spectrum. This value is used to calculate the search rate parameter
 
 \item{h}{The coefficient of the maximum food intake rate.}
 
-\item{gamma}{Volumetric search rate. Estimated using \code{h}, \code{f0} and
-\code{kappa} if not supplied.}
+\item{gamma}{Volumetric search rate. Passed through to
+\code{\link[=newMultispeciesParams]{newMultispeciesParams()}}, which estimates it from \code{h}, \code{f0}, and \code{kappa}
+if it is left as \code{NA}.}
 
 \item{beta}{The preferred predator prey mass ratio.}
 
@@ -61,15 +63,18 @@ rate of the resource.}
 \item{lambda}{Used to set power-law exponent for resource capacity if the
 \code{resource_capacity} argument is given as a single number.}
 
-\item{r_pp}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}. Use \code{resource_rate} argument
-instead.}
+\item{r_pp}{Growth rate parameter for the resource spectrum.}
 
 \item{knife_edge_size}{The size at the edge of the knife-edge-selectivity
 function.}
 
 \item{reproduction}{The constant reproduction in the smallest size class of
-the community spectrum. By default this is set so that the community
-spectrum is continuous with the resource spectrum.}
+the community spectrum. By default this is set to the rate required to
+maintain the constructed initial egg abundance.}
+
+\item{info_level}{Controls the amount of information messages that are shown
+when the function sets default values for parameters. Higher levels lead
+to more messages.}
 }
 \value{
 An object of type \code{\linkS4class{MizerParams}}
@@ -122,9 +127,9 @@ individual efficiencies of size-structured communities, Proceedings of the
 Royal Society, 276, 109-114
 }
 \seealso{
-Other functions for setting up models: 
-\code{\link{newMultispeciesParams}()},
-\code{\link{newSingleSpeciesParams}()},
-\code{\link{newTraitParams}()}
+Other functions for setting up models:
+\code{\link[=newMultispeciesParams]{newMultispeciesParams()}},
+\code{\link[=newSingleSpeciesParams]{newSingleSpeciesParams()}},
+\code{\link[=newTraitParams]{newTraitParams()}}
 }
 \concept{functions for setting up models}

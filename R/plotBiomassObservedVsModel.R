@@ -5,7 +5,8 @@
 #' `biomass_observed` column in the species parameter data frame, this function
 #' plots the biomass of each species in the model against the observed
 #' biomasses. When called with a MizerSim object, the plot will use the model
-#' biomasses predicted for the final time step in the simulation.
+#' biomasses predicted for the final time step in the simulation. `ratio`
+#' defaults to `FALSE`.
 #'
 #' Before you can use this function you will need to have added a
 #' `biomass_observed` column to your model which gives the observed biomass in
@@ -29,7 +30,7 @@
 #'   with the species indices, or a logical vector indicating for each species
 #'   whether it is to be included (TRUE) or not.
 #' @param ratio Whether to plot model biomass vs. observed biomass (FALSE) or
-#'   the ratio of model : observed biomass (TRUE). Default is TRUE.
+#'   the ratio of model : observed biomass (TRUE). Default is FALSE.
 #' @param log_scale Whether to plot on the log10 scale (TRUE) or not (FALSE).
 #'   For the non-ratio plot this applies for both axes, for the ratio plot only
 #'   the x-axis is on the log10 scale. Default is TRUE.
@@ -40,6 +41,9 @@
 #'   shown as if their observed biomass was equal to the model biomass.
 #' @param return_data Whether to return the data frame for the plot (TRUE) or
 #'   not (FALSE). Default is FALSE.
+#' @param ... For [plotlyBiomassObservedVsModel()], additional arguments passed
+#'   to [plotHover()]. Otherwise unused.
+#' 
 #' @return A ggplot2 object with the plot of model biomass by species compared
 #'   to observed biomass. If `return_data = TRUE`, the data frame used to
 #'   create the plot is returned instead of the plot.
@@ -61,21 +65,19 @@
 #' plotBiomassObservedVsModel(params, show_unobserved = TRUE, ratio = FALSE)
 #'
 #' # Show the ratio instead
-#' plotBiomassObservedVsModel(params)
-plotBiomassObservedVsModel <- function(object, species = NULL, ratio = TRUE,
+#' plotBiomassObservedVsModel(params, ratio = TRUE)
+plotBiomassObservedVsModel <- function(object, species = NULL, ratio = FALSE,
                                       log_scale = TRUE, return_data = FALSE, 
-                                      labels = TRUE, show_unobserved = FALSE) {
-    
+                                      labels = TRUE, show_unobserved = FALSE, ...) {
+    UseMethod("plotBiomassObservedVsModel")
+}
+#' @export
+plotBiomassObservedVsModel.MizerParams <- function(object, species = NULL, ratio = FALSE,
+                                      log_scale = TRUE, return_data = FALSE, 
+                                      labels = TRUE, show_unobserved = FALSE, ...) {
     # preliminary checks
-    if (is(object, "MizerSim")) {
-        params <- object@params # pull out params object
-        n <- finalN(object) # we want final numbers
-    } else if (is(object, "MizerParams")) {
-        params <- object # params object is just input
-        n <- initialN(params) # we want initial numbers
-    } else {
-        stop("You have not provided a valid mizerSim or mizerParams object.")
-    }
+    params <- object # params object is just input
+    n <- initialN(params) # we want initial numbers
     sp_params <- params@species_params # get species_params data frame
     
     # Select appropriate species
@@ -185,15 +187,25 @@ plotBiomassObservedVsModel <- function(object, species = NULL, ratio = TRUE,
             max.overlaps = Inf,
             seed = 42)
     }
-    gg
+    make_mizer_plot(gg, "all")
+}
+#' @export
+plotBiomassObservedVsModel.MizerSim <- function(object, species = NULL, ratio = FALSE,
+                                      log_scale = TRUE, return_data = FALSE, 
+                                      labels = TRUE, show_unobserved = FALSE, ...) {
+    params <- finalParams(object)
+    plotBiomassObservedVsModel(params, species = species, ratio = ratio,
+                               log_scale = log_scale, return_data = return_data,
+                               labels = labels, show_unobserved = show_unobserved)
 }
 
 #' @rdname plotBiomassObservedVsModel
+#' @usage NULL
 #' @export
 plotlyBiomassObservedVsModel <- function(object, species = NULL, ratio = FALSE,
-                                         log_scale = TRUE, return_data = FALSE, 
-                                         show_unobserved = FALSE) {
+                                         log_scale = TRUE,
+                                         show_unobserved = FALSE, ...) {
     argg <- as.list(environment())
     argg$labels <- FALSE
-    ggplotly(do.call("plotBiomassObservedVsModel", argg))
+    plotHover(do.call("plotBiomassObservedVsModel", argg), ...)
 }

@@ -23,8 +23,7 @@ that holds the predation coefficient of each predator at size on each prey
 size. If not supplied, a default is set as described in section "Setting
 predation kernel".}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then the predation kernel will be reset to the
+\item{reset}{If set to TRUE, then the predation kernel will be reset to the
 value calculated from the species parameters, even if it was previously
 overwritten with a custom value. If set to FALSE (default) then a
 recalculation from the species parameters will take place only if no custom
@@ -104,7 +103,7 @@ different.
 ## Set up a MizerParams object
 params <-  NS_params
 
-## If you change predation kernel parameters after setting up a model, 
+## If you change predation kernel parameters after setting up a model,
 #  this will be used to recalculate the kernel
 species_params(params)["Cod", "beta"] <- 200
 
@@ -117,23 +116,24 @@ plot(w_full(params), getPredKernel(params)["Cod", 100, ], type="l", log="x")
 ## If you need a kernel that depends also on prey size you need to define
 # it yourself.
 pred_kernel <- getPredKernel(params)
-pred_kernel["Herring", , ] <- sweep(pred_kernel["Herring", , ], 2, 
+pred_kernel["Herring", , ] <- sweep(pred_kernel["Herring", , ], 2,
                                     params@w_full, "*")
 params<- setPredKernel(params, pred_kernel = pred_kernel)
 }
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

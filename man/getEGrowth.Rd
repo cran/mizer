@@ -4,38 +4,52 @@
 \alias{getEGrowth}
 \title{Get energy rate available for growth}
 \usage{
-getEGrowth(
-  params,
-  n = initialN(params),
-  n_pp = initialNResource(params),
-  n_other = initialNOther(params),
-  t = 0,
-  ...
-)
+getEGrowth(object, ...)
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{n_pp}{A vector of the resource abundance by size}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
-
-\item{t}{The time for which to do the calculation (Not used by standard
-mizer rate functions but useful for extensions with time-dependent
-parameters.)}
-
-\item{...}{Unused}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{The time range over which to return the rates. Either
+a vector of values, a vector of min and max time, or a single value.
+Defaults to the whole time range of the simulation.}
+\item{\code{drop}}{If \code{TRUE} then any dimension of length 1 is removed from the
+returned array.}
+}}
 }
 \value{
-A two dimensional array (prey species x prey size)
+\itemize{
+\item \code{MizerParams}: An \code{ArraySpeciesBySize} object (species x size) with the
+somatic growth rates (grams/year).
+\item \code{MizerSim}: An \code{ArrayTimeBySpeciesBySize} object (time step x species x
+size) with the growth rates at every time step. If \code{drop = TRUE} then
+dimensions of length 1 will be removed.
+}
 }
 \description{
 Calculates the energy rate \eqn{g_i(w)} (grams/year) available by species and
 size for growth after metabolism, movement and reproduction have been
 accounted for.
+}
+\details{
+The growth rate is calculated as the difference between the energy available
+for reproduction and growth (obtainable with \code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}}) and
+the energy used for reproduction (obtainable with \code{\link[=getERepro]{getERepro()}}), but is
+set to 0 if the result would be negative.
 }
 \section{Your own growth rate function}{
 
@@ -65,19 +79,21 @@ growth["Sprat", "2"]
 \seealso{
 \code{\link[=getERepro]{getERepro()}}, \code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}}
 
-Other rate functions: 
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

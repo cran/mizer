@@ -5,28 +5,44 @@
 \title{Get the total fishing mortality rate from all fishing gears by time, species
 and size.}
 \usage{
-getFMort(object, effort, time_range, drop = TRUE)
+getFMort(object, ...)
 }
 \arguments{
-\item{object}{A \code{MizerParams} object or a \code{MizerSim} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{effort}{The effort of each fishing gear. Only used if the object
-argument is of class \code{MizerParams}. See notes below.}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{time_range}{Subset the returned fishing mortalities by time. The time
-range is either a vector of values, a vector of min and max time, or a
-single value. Default is the whole time range. Only used if the
-\code{object} argument is of type \code{MizerSim}.}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{effort}}{The effort of each fishing gear. See notes below.
+Defaults to the initial effort stored in \code{object}.}
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{drop}{Only used when object is of type \code{MizerSim}. Should
-dimensions of length 1 be dropped, e.g. if your community only has one
-species it might make presentation of results easier. Default is TRUE.}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{Subset the returned fishing mortalities by time. The
+time range is either a vector of values, a vector of min and max time,
+or a single value. Defaults to the whole time range of the
+simulation.}
+\item{\code{drop}}{Should dimensions of length 1 be dropped, e.g. if your
+community only has one species it might make presentation of results
+easier. Defaults to \code{TRUE}.}
+}}
 }
 \value{
-An array. If the effort argument has a time dimension, or object is
-of class \code{MizerSim}, the output array has three dimensions (time x
-species x size). If the effort argument does not have a time dimension, the
-output array has two dimensions (species x size).
+\itemize{
+\item \code{MizerParams} with vector effort: An \code{ArraySpeciesBySize} object
+(species x size) with the fishing mortality rates.
+\item \code{MizerParams} with time-dimensioned effort or \code{MizerSim}: An
+\code{ArrayTimeBySpeciesBySize} object (time x species x size).
+}
 
 The \code{effort} argument is only used if a \code{MizerParams} object is
 passed in. The \code{effort} argument can be a two dimensional array (time x
@@ -83,7 +99,7 @@ effort[, 3] <- seq(from = 1, to = 2, length = 20)
 effort[, 4] <- seq(from = 2, to = 1, length = 20)
 F <- getFMort(params, effort = effort)
 str(F)
-# Get the total fishing mortality using the effort already held in a 
+# Get the total fishing mortality using the effort already held in a
 # MizerSim object.
 sim <- project(params, t_max = 20, effort = 0.5)
 F <- getFMort(sim)
@@ -91,19 +107,21 @@ F <- getFMort(sim, time_range = c(10, 20))
 }
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

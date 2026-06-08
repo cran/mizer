@@ -1,10 +1,10 @@
 #' Determine whether a MizerParams or MizerSim object needs to be upgraded
-#' 
+#'
 #' Looks at the mizer version that was used to last update the object and
 #' returns TRUE if changes since that version require an upgrade of the object.
 #' You would not usually have to call this function. Upgrades are initiated
 #' automatically by `validParams` and `validSim` when necessary.
-#' 
+#'
 #' @param object A MizerParams or MizerSim object
 #' @return TRUE or FALSE
 #' @concept helper
@@ -17,66 +17,67 @@ needs_upgrading <- function(object) {
         stop("The object you supplied is neither a MizerParams nor a MizerSim object.")
     }
     !.hasSlot(params, "mizer_version") ||
-        params@mizer_version < "2.4.1.9002"
+        params@mizer_version < "2.5.4.9126"
 }
 
 #' Upgrade MizerParams object from earlier mizer versions
-#' 
+#'
 #' This function is called from [validParams()]. You should never need to call
 #' it directly.
-#' 
+#'
 #' @param params An old MizerParams object to be upgraded
-#' 
+#'
 #' @return The upgraded MizerParams object
 #' @concept helper
 #' @keywords internal
 #' @seealso [validParams()]
 upgradeParams <- function(params) {
     if (!needs_upgrading(params)) return(params)
-    
+    original_params <- params
+
     # Preserve time_created
     if (.hasSlot(params, "time_created")) {
         time_created <- params@time_created
     } else {
         time_created <- lubridate::now()
     }
-    
+
     # We'll use the version to decide which upgrades are needed. Copy it to
-    # a variable because params@mizer_version might get changed during the 
+    # a variable because params@mizer_version might get changed during the
     # upgrade
     if (!.hasSlot(params, "mizer_version")) {
         version <- "2.2.1"
     } else {
         version <- params@mizer_version
     }
-    
+
     # Before version 2.3 ----
     if (version < "2.4.1.9001") {
-        
+
         if ("interaction_p" %in% names(params@species_params)) {
-            params@species_params$interaction_resource <- 
+            params@species_params$interaction_resource <-
                 params@species_params$interaction_p
             params@species_params$interaction_p <- NULL
             message("The 'interaction_p' column has been renamed to 'interaction_resource'.")
         }
-        
+
         if (!.hasSlot(params, "gear_params")) {
             gear_params <- validGearParams(data.frame(), params@species_params)
         } else {
             gear_params <- params@gear_params
         }
-        
+
         if (!.hasSlot(params, "ft_pred_kernel_e")) {
             stop("Objects from versions 0.3 and earlier can not be upgraded.")
         }
-        
+
         params@species_params$w_min_idx <- NULL
-        
+
         if (.hasSlot(params, "srr")) {
             if (is.function(params@srr)) {
                 if ("constant_recruitment" %in% names(params@species_params)) {
                     RDD <- "constantRDD"
-                    params@species_params$constant_reproduction <- 
+                    params@species_params$constant_reproduction <-
                         params@species_params$constant_recruitment
                     params@species_params$constant_recruitment <- NULL
                 } else {
@@ -96,8 +97,8 @@ upgradeParams <- function(params) {
         } else {
             RDD <- "BevertonHoltRDD"
         }
-        
-        if (.hasSlot(params, "initial_effort") && 
+
+        if (.hasSlot(params, "initial_effort") &&
             length(params@initial_effort) == length(unique(gear_params$gear))) {
             initial_effort <- params@initial_effort
         } else {
@@ -106,20 +107,20 @@ upgradeParams <- function(params) {
             names(initial_effort) <- gears
             message("Initial effort has been set to 0.")
         }
-        
+
         if (.hasSlot(params, "metab")) {
             metab <- params@metab
         } else {
             metab <- params@std_metab + params@activity
         }
-        
-        if (.hasSlot(params, "pred_kernel") && 
+
+        if (.hasSlot(params, "pred_kernel") &&
             length(dim(params@pred_kernel)) == 3) {
             pred_kernel <- params@pred_kernel
         } else {
             pred_kernel <- NULL
         }
-        
+
         if (.hasSlot(params, "maturity")) {
             maturity <- params@maturity
             repro_prop <- params@psi / params@maturity
@@ -129,30 +130,30 @@ upgradeParams <- function(params) {
             maturity <- NULL
             repro_prop <- NULL
         }
-        
+
         if (.hasSlot(params, "mu_b")) {
             mu_b <- params@mu_b
         } else {
             mu_b <- NULL
         }
-        
+
         if (.hasSlot(params, "ext_encounter")) {
             ext_encounter <- params@ext_encounter
         } else {
             ext_encounter <- NULL
         }
-        
+
         if ("r_max" %in% names(params@species_params)) {
             params@species_params$R_max <- params@species_params$r_max
             params@species_params$r_max <- NULL
             message("The 'r_max' column has been renamed to 'R_max'.")
         }
-        
+
         if (.hasSlot(params, "p")) {
             params@species_params[["p"]] <- params@p
         } else if (!("p" %in% names(params@species_params))) {
             # No p in params object, so extract from metabolism
-            p <- log(metab[, 2] / metab[, 1]) / 
+            p <- log(metab[, 2] / metab[, 1]) /
                 log(params@w[[2]] / params@w[[1]])
             p[is.nan(p)] <- NA
             params@species_params[["p"]] <- p
@@ -161,7 +162,7 @@ upgradeParams <- function(params) {
             params@species_params[["q"]] <- params@q
         } else if (!("q" %in% names(params@species_params))) {
             # No q in params object, so extract from search volume
-            q <- log(params@search_vol[, 2] / params@search_vol[, 1]) / 
+            q <- log(params@search_vol[, 2] / params@search_vol[, 1]) /
                 log(params@w[[2]] / params@w[[1]])
             params@species_params[["q"]] <- q
         }
@@ -169,7 +170,7 @@ upgradeParams <- function(params) {
             params@species_params[["n"]] <- params@n
         } else if (!("n" %in% names(params@species_params))) {
             # No n in params object, so extract from intake_max
-            n <- log(params@intake_max[, 2] / params@intake_max[, 1]) / 
+            n <- log(params@intake_max[, 2] / params@intake_max[, 1]) /
                 log(params@w[[2]] / params@w[[1]])
             n[is.nan(n)] <- NA
             params@species_params[["n"]] <- n
@@ -177,9 +178,9 @@ upgradeParams <- function(params) {
         if (.hasSlot(params, "f0")) {
             params@species_params[["f0"]] <- params@f0
         }
-        
+
         params@species_params$species <- as.character(params@species_params$species)
-        
+
         pnew <- newMultispeciesParams(
             params@species_params,
             interaction = params@interaction,
@@ -201,9 +202,9 @@ upgradeParams <- function(params) {
             RDD = RDD,
             gear_params = gear_params,
             initial_effort = initial_effort)
-        
+
         pnew@psi <- params@psi
-        
+
         if (.hasSlot(params, "linecolour")) {
             names(params@linecolour)[names(params@linecolour) == "Plankton"] <- "Resource"
             names(params@linetype)[names(params@linetype) == "Plankton"] <- "Resource"
@@ -214,10 +215,15 @@ upgradeParams <- function(params) {
             pnew@initial_n <- params@initial_n
             pnew@initial_n_pp <- params@initial_n_pp
         }
+        if (.hasSlot(params, "diffusion")) {
+            pnew@ext_diffusion[] <- slot(params, "diffusion")
+        } else if (.hasSlot(params, "ext_diffusion")) {
+            pnew@ext_diffusion <- params@ext_diffusion
+        }
         if (.hasSlot(params, "initial_n_other")) {
             pnew@initial_n_other <- params@initial_n_other
         }
-        
+
         if (.hasSlot(params, "sc")) {
             pnew@sc <- params@sc
         }
@@ -230,6 +236,8 @@ upgradeParams <- function(params) {
         }
         if (.hasSlot(params, "other_pred_mort")) {
             pnew@other_mort <- params@other_pred_mort
+        } else if (.hasSlot(params, "other_mort")) {
+            pnew@other_mort <- params@other_mort
         }
         if (.hasSlot(params, "plankton_dynamics")) {
             if (is.function(params@plankton_dynamics)) {
@@ -244,6 +252,8 @@ upgradeParams <- function(params) {
                     pnew@resource_dynamics <- params@plankton_dynamics
                 }
             }
+        } else if (.hasSlot(params, "resource_dynamics")) {
+            pnew@resource_dynamics <- params@resource_dynamics
         }
         if (.hasSlot(params, "plankton_params")) {
             pnew@resource_params <- params@plankton_params
@@ -265,10 +275,10 @@ upgradeParams <- function(params) {
             # reconstruct from cc_pp and rr_pp
             minidx <- min(which(pnew@cc_pp > 0))  # The smallest resource index
             maxidx <- max(which(pnew@cc_pp > 0))  # The largest resource index
-            lambda <- -log(params@cc_pp[[maxidx]] / params@cc_pp[[minidx]]) / 
+            lambda <- -log(params@cc_pp[[maxidx]] / params@cc_pp[[minidx]]) /
                 log(params@w_full[[maxidx]] / params@w_full[[minidx]])
             kappa <- params@cc_pp[[maxidx]] * params@w_full[[maxidx]] ^ lambda
-            n <- 1 + log(params@rr_pp[[maxidx]] / params@rr_pp[[minidx]]) / 
+            n <- 1 + log(params@rr_pp[[maxidx]] / params@rr_pp[[minidx]]) /
                 log(params@w_full[[maxidx]] / params@w_full[[minidx]])
             r_pp <- params@rr_pp[[maxidx]] / params@w_full[[maxidx]] ^ (n - 1)
             pnew@resource_params[["r_pp"]] <- r_pp
@@ -277,24 +287,44 @@ upgradeParams <- function(params) {
             pnew@resource_params[["n"]] <- n
             pnew@resource_params[["w_pp_cutoff"]] <- pnew@w_full[[maxidx]]
         }
-        
+
         if (.hasSlot(params, "A")) {
             pnew@A <- params@A
+            # Derive is_background from the old @A slot if not already present
+            if (!("is_background" %in% names(pnew@species_params))) {
+                pnew@species_params$is_background <- is.na(params@A)
+            }
         }
-        
+
         if (.hasSlot(params, "metadata")) {
             pnew@metadata <- params@metadata
             pnew@time_created <- params@time_created
             pnew@extensions <- params@extensions
         }
-        
+
+        if (.hasSlot(params, "rates_funcs")) {
+            pnew@rates_funcs <- params@rates_funcs
+        }
+        if (.hasSlot(params, "given_species_params")) {
+            pnew@given_species_params <- params@given_species_params
+        }
+        if (.hasSlot(params, "selectivity")) {
+            pnew@selectivity <- params@selectivity
+        }
+        if (.hasSlot(params, "catchability")) {
+            pnew@catchability <- params@catchability
+        }
+        if (.hasSlot(params, "use_predation_diffusion")) {
+            pnew@use_predation_diffusion <- params@use_predation_diffusion
+        }
+
         # renaming catch_observed to yield_observed in mizer 2.3
         if ("catch_observed" %in% names(pnew@species_params)) {
-            pnew@species_params$yield_observed <- 
+            pnew@species_params$yield_observed <-
                 pnew@species_params$catch_observed
             pnew@species_params$catch_observed <- NULL
         }
-        
+
         # Copy over all comments
         comment(pnew) <- comment(params)
         for (slot in slotNames(pnew)) {
@@ -302,10 +332,20 @@ upgradeParams <- function(params) {
                 comment(slot(pnew, slot)) <- comment(slot(params, slot))
             }
         }
-        
+
         params <- pnew
     }
-    
+    if (!.hasSlot(params, "ext_diffusion")) {
+        mat1 <- array(0, dim = c(nrow(params@species_params), length(params@w)),
+                      dimnames = list(sp = params@species_params$species,
+                                      w = signif(params@w, 3)))
+        if (.hasSlot(params, "diffusion")) {
+            params@ext_diffusion <- slot(params, "diffusion")
+        } else {
+            params@ext_diffusion <- mat1
+        }
+    }
+
     # Before version 2.4 ----
     if (version < "2.3.1.9001") {
         # copy w_inf to w_max
@@ -327,38 +367,72 @@ upgradeParams <- function(params) {
             params <- setLinetypes(params, c("External" = "solid"))
         }
     }
-    
-    # For version 2.4.1.9002 ----
+
+    # For version since 2.4.1.9002 ----
     if (!.hasSlot(params, "given_species_params")) {
         params@given_species_params <- params@species_params
     }
     if (!("w_mat25" %in% names(params@species_params))) {
-        params <- set_species_param_default(params, "w_mat25",       
+        params <- set_species_param_default(params, "w_mat25",
             params@species_params$w_mat / (3 ^ (1 / 10)))
     }
-    
+
+    # Derive is_background from the old @A slot if not already present
+    if (!("is_background" %in% names(params@species_params))) {
+        params@species_params$is_background <- is.na(params@A)
+    }
+
+    # Add Diffusion rate function if missing (added in 2.5.4.9122)
+    if (is.null(params@rates_funcs[["Diffusion"]])) {
+        params@rates_funcs[["Diffusion"]] <- "mizerDiffusion"
+    }
+
+    # Add use_predation_diffusion slot if missing (added in 2.5.4.9xxx)
+    # Default to FALSE to preserve behaviour of previous mizer versions.
+    if (!.hasSlot(params, "use_predation_diffusion")) {
+        params@use_predation_diffusion <- FALSE
+    }
+
     params@mizer_version <- packageVersion("mizer")
+    params <- validParams(params, info_level = 0)
     params@time_modified <- lubridate::now()
     params@time_created <- time_created
+    reinstateParamsClass(params, original_params)
+}
+
+reinstateParamsClass <- function(params, original_params) {
+    original_class <- class(original_params)[[1]]
+    if (identical(original_class, "MizerParams")) {
+        return(params)
+    }
+
+    params <- as(params, original_class)
+    extra_slots <- setdiff(slotNames(original_params), slotNames("MizerParams"))
+    for (slot in extra_slots) {
+        if (.hasSlot(params, slot)) {
+            slot(params, slot) <- slot(original_params, slot)
+        }
+    }
+    validObject(params)
     params
 }
 
 #' Upgrade MizerSim object from earlier mizer versions
-#' 
+#'
 #' @param sim An old MizerSim object to be upgraded
-#' 
+#'
 #' @return The upgraded MizerSim object
 #' @concept helper
 #' @keywords internal
 upgradeSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     if (!needs_upgrading(sim)) return(sim)
-    
+
     t_dimnames <- dimnames(sim@n_pp)[[1]]
     no_gears <- dim(sim@effort)[[2]]
-    new_sim <- MizerSim(validParams(sim@params),
+    new_sim <- MizerSim(validParams(sim@params, info_level = 0),
                         t_dimnames = as.numeric(t_dimnames))
-    
+
     new_sim@n <- sim@n
     new_sim@n_pp <- sim@n_pp
     if (dim(sim@effort)[[1]] < dim(sim@n)[[1]]) {
@@ -370,6 +444,9 @@ upgradeSim <- function(sim) {
     }
     if (.hasSlot(sim, "n_other")) {
         new_sim@n_other <- sim@n_other
+    }
+    if (.hasSlot(sim, "sim_params")) {
+        new_sim@sim_params <- sim@sim_params
     }
     comment(new_sim) <- comment(sim)
     comment(new_sim@effort) <- comment(sim@effort)

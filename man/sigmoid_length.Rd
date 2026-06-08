@@ -27,6 +27,11 @@ A sigmoid shaped selectivity function. Based on two parameters \code{l25} and
 selected respectively.
 }
 \details{
+You would not usually call this function directly. Instead, set the \code{sel_func}
+column in \code{\link[=gear_params]{gear_params()}} to \code{"sigmoid_length"} and provide the \code{l25} and
+\code{l50} values as additional columns. \code{\link[=setFishing]{setFishing()}} will then call this
+function automatically when calculating the selectivity array.
+
 The selectivity is given by the logistic function
 \deqn{S(l) = \frac{1}{1 + \exp\left(\log(3)\frac{l50 -l}{l50 - l25}\right)}}{S(l) = 1/(1 + exp(log(3)*(l50 -l) / (l50 - l25)))}
 As the mizer model is weight based, and this
@@ -34,12 +39,19 @@ selectivity function is length based, it uses the
 length-weight parameters \code{a} and \code{b} to convert between length and weight
 \deqn{l = \left(\frac{w}{a}\right)^{1/b}}{l = (w/a)^(1/b)}
 }
+\examples{
+# Selectivity at weight given l25 = 10 cm, l50 = 15 cm
+# using length-weight parameters a = 0.01, b = 3
+sp <- list(a = 0.01, b = 3)
+w <- c(1, 10, 100, 500, 1000)
+sigmoid_length(w, l25 = 10, l50 = 15, species_params = sp)
+}
 \seealso{
 \code{\link[=gear_params]{gear_params()}} for setting the selectivity parameters.
 
-Other selectivity functions: 
-\code{\link{double_sigmoid_length}()},
-\code{\link{knife_edge}()},
-\code{\link{sigmoid_weight}()}
+Other selectivity functions:
+\code{\link[=double_sigmoid_length]{double_sigmoid_length()}},
+\code{\link[=knife_edge]{knife_edge()}},
+\code{\link[=sigmoid_weight]{sigmoid_weight()}}
 }
 \concept{selectivity functions}

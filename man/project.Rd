@@ -2,6 +2,8 @@
 % Please edit documentation in R/project.R
 \name{project}
 \alias{project}
+\alias{project.MizerParams}
+\alias{project.MizerSim}
 \title{Project size spectrum forward in time}
 \usage{
 project(
@@ -15,6 +17,37 @@ project(
   initial_n_pp,
   append = TRUE,
   progress_bar = TRUE,
+  method = c("euler", "predictor_corrector"),
+  ...
+)
+
+\method{project}{MizerParams}(
+  object,
+  effort,
+  t_max = 100,
+  dt = 0.1,
+  t_save = 1,
+  t_start = 0,
+  initial_n,
+  initial_n_pp,
+  append = TRUE,
+  progress_bar = TRUE,
+  method = c("euler", "predictor_corrector"),
+  ...
+)
+
+\method{project}{MizerSim}(
+  object,
+  effort,
+  t_max = 100,
+  dt = 0.1,
+  t_save = 1,
+  t_start = 0,
+  initial_n,
+  initial_n_pp,
+  append = TRUE,
+  progress_bar = TRUE,
+  method = c("euler", "predictor_corrector"),
   ...
 )
 }
@@ -25,14 +58,15 @@ project(
 \item{effort}{The effort of each fishing gear through time. See notes below.}
 
 \item{t_max}{The number of years the projection runs for. The default value
-is 100. This argument is ignored if an array is used for the \code{effort}
-argument. See notes below.}
+is 100. When an effort array is supplied, this argument can be used to
+extend the simulation beyond the times specified in the effort array.
+See notes below.}
 
-\item{dt}{Time step of the solver. The default value is 0.1.}
+\item{dt}{Time step of the solver. The default value is 0.1. When \code{object}
+is a \code{MizerSim}, defaults to the value used to produce that simulation.}
 
 \item{t_save}{The frequency with which the output is stored. The default
-value is 1. This argument is ignored if an array is used for the \code{effort}
-argument. See notes below.}
+value is 1. See notes below.}
 
 \item{t_start}{The the year of the start of the simulation. The simulation
 will cover the period from \code{t_start} to \code{t_start + t_max}.
@@ -54,6 +88,14 @@ are appended to the previous ones. Only relevant if \code{object} is a
 \item{progress_bar}{Either a boolean value to determine whether a progress
 bar should be shown in the console, or a shiny Progress object to implement
 a progress bar in a shiny app.}
+
+\item{method}{The numerical method to use for the consumer density update.
+Currently \code{"euler"} uses the existing semi-implicit Euler update, while
+\code{"predictor_corrector"} uses a predictor-corrector Crank-Nicolson update
+with midpoint rates. \code{"predictor-corrector"} is accepted as an alias.
+When \code{object} is a \code{MizerSim}, defaults to the value used to produce that
+simulation. A warning is issued if \code{append = TRUE} and the supplied value
+differs from the stored one.}
 
 \item{...}{Other arguments will be passed to rate functions.}
 }
@@ -78,7 +120,10 @@ effort).
 \item A named vector whose names match with existing gear names.
 The values in the vector specify the constant fishing effort for those
 fishing gears, i.e. the effort is constant through time. The
-effort for gears that are not included in the effort vector is set to 0.
+effort for gears that are not included in the effort vector is set to the
+default effort value, which is 1 in defaults edition 2 and later and 0 in
+earlier defaults editions. Missing (\code{NA}) effort entries are replaced in
+the same way.
 \item A numerical vector which has the same length as the number of fishing
 gears. The values in the vector specify the
 constant fishing effort of each of the fishing gears, with the ordering
@@ -94,9 +139,24 @@ is used during the interval from that time to the next time in the array.
 If effort is specified as an array then the smallest time in the array is
 used as the initial time for the simulation. Otherwise the initial time is
 set to the final time of the previous simulation if \code{object} is a
-\code{MizerSim} object or to \code{t_start} otherwise. Also, if the effort is
-an array then the \code{t_max} and \code{t_save} arguments are ignored and the
-simulation times will be taken from the effort array.
+\code{MizerSim} object or to \code{t_start} otherwise.
+
+When an effort array is provided, the \code{t_max} argument can be used to
+extend the simulation beyond the last time specified in the effort array.
+In this case, the effort values from the last time in the array will be
+used for the extended period. The \code{t_save} argument can be used to specify
+the frequency at which simulation results are saved. If \code{t_save} is not
+supplied, the results will be saved at the times specified in the effort
+array. If both \code{t_max} and \code{t_save} are provided with an effort array,
+effort values will be interpolated (using step function) or extrapolated
+(using the last known value) as needed for the new time points. The
+\code{t_start} argument continues to be ignored when an effort array is supplied.
+
+Note that if \code{t_max} or \code{t_save} are specified, the time grid for the
+simulation is resampled based on \code{t_save}. This means that if the time
+points in the \code{effort} array are irregular and do not align with the new
+grid, those specific time points may be lost and the effort values at the
+new grid points will be calculated via interpolation.
 
 If the \code{object} argument is of class \code{MizerSim} then the initial
 values for the simulation are taken from the final values in the
@@ -105,21 +165,28 @@ be ignored.
 }
 \examples{
 \donttest{
-params <-  NS_params
+params <- NS_params
 # With constant fishing effort for all gears for 20 time steps
 sim <- project(params, t_max = 20, effort = 0.5)
 # With constant fishing effort which is different for each gear
 effort <- c(Industrial = 0, Pelagic = 1, Beam = 0.5, Otter = 0.5)
 sim <- project(params, t_max = 20, effort = effort)
 # With fishing effort that varies through time for each gear
-gear_names <- c("Industrial","Pelagic","Beam","Otter")
+gear_names <- c("Industrial", "Pelagic", "Beam", "Otter")
 times <- seq(from = 1, to = 10, by = 1)
-effort_array <- array(NA, dim = c(length(times), length(gear_names)),
-    dimnames = list(time = times, gear = gear_names))
-effort_array[,"Industrial"] <- 0.5
-effort_array[,"Pelagic"] <- seq(from = 1, to = 2, length = length(times))
-effort_array[,"Beam"] <- seq(from = 1, to = 0, length = length(times))
-effort_array[,"Otter"] <- seq(from = 1, to = 0.5, length = length(times))
+effort_array <- array(NA,
+    dim = c(length(times), length(gear_names)),
+    dimnames = list(time = times, gear = gear_names)
+)
+effort_array[, "Industrial"] <- 0.5
+effort_array[, "Pelagic"] <- seq(from = 1, to = 2, length = length(times))
+effort_array[, "Beam"] <- seq(from = 1, to = 0, length = length(times))
+effort_array[, "Otter"] <- seq(from = 1, to = 0.5, length = length(times))
 sim <- project(params, effort = effort_array)
+# Extend a simulation beyond the effort array times
+# Effort values from the final time are used for the extension
+sim <- project(params, effort = effort_array, t_max = 15)
+# Control save times with an effort array using t_save
+sim <- project(params, effort = effort_array, t_save = 2)
 }
 }

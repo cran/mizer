@@ -12,19 +12,22 @@
 #' the Examples section of the help page for [setExtMort()].
 #'
 #' If the `ext_mort` argument is not supplied, then the external mortality is
-#' assumed to depend only on the species, not on the size of the individual:
-#' \eqn{\mu_{ext.i}(w) = z_{0.i}}. The value of the constant \eqn{z_0} for each
-#' species is taken from the `z0` column of the species parameter data frame, if
-#' that column exists. Otherwise it is calculated as
+#' taken from the species parameters as
+#' \deqn{\mu_{ext.i}(w) = z_{0.i} + z_{ext.i} w^{d_i}.}{mu_ext,i(w) = z0_i + z_ext,i w ^ d_i.}
+#' The value of the constant \eqn{z_0} for each species is taken from the `z0`
+#' column of the species parameter data frame, if that column exists.
+#' Otherwise it is calculated as
 #' \deqn{z_{0.i} = {\tt z0pre}_i\, w_{inf}^{\tt z0exp}.}{z_{0.i} = z0pre_i w_{inf}^{z0exp}.}
+#' Missing values of `z_ext` are set to 0 and missing values of `d` are set to
+#' `n - 1`.
 #'
 #' @param params MizerParams
 #' @param ext_mort Optional. An array (species x size) holding the external
 #'   mortality rate.  If not supplied, a default is set as described in the
 #'   section "Setting external mortality rate".
-#' @param reset `r lifecycle::badge("experimental")`
+#' @param reset
 #'   If set to TRUE, then the external mortality rate will be reset
-#'   to the value calculated from the `z0` parameters, even if it was
+#'   to the value calculated from the species parameters, even if it was
 #'   previously overwritten with a custom value. If set to FALSE (default) then
 #'   a recalculation from the species parameters will take place only if no
 #'   custom value has been set.
@@ -56,15 +59,20 @@
 #'
 #' # Change the external mortality rate in the params object
 #' ext_mort(params) <- allo_mort
-setExtMort <- function(params, ext_mort = NULL,
+setExtMort <- function(params, ext_mort = NULL, z0pre = 0.6,
+                       z0exp = params@resource_params$n - 1, reset = FALSE,
+                       z0 = deprecated(), ...) {
+    UseMethod("setExtMort")
+}
+#' @export
+setExtMort.MizerParams <- function(params, ext_mort = NULL,
                        z0pre = 0.6, z0exp = params@resource_params$n - 1,
                        reset = FALSE, z0 = deprecated(), ...) {
     if (lifecycle::is_present(z0)) {
         lifecycle::deprecate_warn("2.2.3", "setExtMort(z0)", "setExtMort(ext_mort)")
         ext_mort <- z0
     }
-    assert_that(is(params, "MizerParams"),
-                is.flag(reset),
+    assert_that(is.flag(reset),
                 is.number(z0pre), is.number(z0exp))
 
     if (reset) {
@@ -103,8 +111,20 @@ setExtMort <- function(params, ext_mort = NULL,
     params <- set_species_param_default(params, "z0",
                                         z0pre * species_params$w_max^z0exp,
                                         message)
+    params <- set_species_param_default(params, "z_ext", 0)
+    params <- set_species_param_default(params, "d",
+                                        params@species_params$n - 1)
     mu_b <- params@mu_b
     mu_b[] <- params@species_params$z0
+    has_power_law <- params@species_params$z_ext != 0
+    if (any(has_power_law)) {
+        mu_b[has_power_law, ] <- mu_b[has_power_law, ] +
+            sweep(
+                outer(params@species_params$d[has_power_law], params@w,
+                      function(d, w) w^d),
+                1, params@species_params$z_ext[has_power_law], "*"
+            )
+    }
 
     # Prevent overwriting slot if it has been commented
     if (!is.null(comment(params@mu_b))) {
@@ -122,17 +142,24 @@ setExtMort <- function(params, ext_mort = NULL,
 }
 
 #' @rdname setExtMort
-#' @return `getExtMort()` or equivalently `ext_mort()`: An array (species x
-#'   size) with the external mortality.
+#' @return `getExtMort()` or equivalently `ext_mort()`: An `ArraySpeciesBySize`
+#'   object (species x size) with the external mortality.
 #' @export
 getExtMort <- function(params) {
-    params@mu_b
+    UseMethod("getExtMort")
+}
+#' @export
+getExtMort.MizerParams <- function(params) {
+    ArraySpeciesBySize(params@mu_b,
+                       value_name = "External mortality",
+                       units = "1/year",
+                       params = params)
 }
 
 #' @rdname setExtMort
 #' @export
 ext_mort <- function(params) {
-    params@mu_b
+    getExtMort(params)
 }
 
 #' @rdname setExtMort

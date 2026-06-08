@@ -2,6 +2,8 @@
 % Please edit documentation in R/plots.R
 \name{plotGrowthCurves}
 \alias{plotGrowthCurves}
+\alias{plotGrowthCurves.MizerSim}
+\alias{plotGrowthCurves.MizerParams}
 \alias{plotlyGrowthCurves}
 \title{Plot growth curves}
 \usage{
@@ -14,28 +16,20 @@ plotGrowthCurves(
   highlight = NULL,
   size_at_age = NULL,
   return_data = FALSE,
+  log_x = FALSE,
+  log_y = FALSE,
+  log = NULL,
   ...
-)
-
-plotlyGrowthCurves(
-  object,
-  species = NULL,
-  max_age = 20,
-  percentage = FALSE,
-  species_panel = FALSE,
-  highlight = NULL
 )
 }
 \arguments{
-\item{object}{MizerSim or MizerParams object. If given a
-\linkS4class{MizerSim} object, uses the growth rates at the final time of a
-simulation to calculate the size at age. If given a
-\linkS4class{MizerParams} object, uses the initial growth rates instead.}
+\item{object}{An object of class \linkS4class{MizerSim} or
+\linkS4class{MizerParams}.}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
 
 \item{max_age}{The age up to which to run the growth curve. Default is 20.}
 
@@ -54,14 +48,23 @@ or \code{length} (in cm). If both \code{weight} and \code{length} are provided, 
 \code{weight} is used.}
 
 \item{return_data}{A boolean value that determines whether the formatted data
-used for the plot is returned instead of the plot itself. Default value is FALSE}
+used for the plot is returned instead of the plot itself. Default is FALSE.}
 
-\item{...}{Other arguments (currently unused)}
+\item{log_x}{If \code{TRUE}, use a log10 x-axis. Default is \code{FALSE}.}
+
+\item{log_y}{If \code{TRUE}, use a log10 y-axis. Default is \code{FALSE}.}
+
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.}
+
+\item{...}{Unused.}
 }
 \value{
 A ggplot2 object
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 The growth curves represent the average age of all the living fish of a
 species as a function of their size. So it would be natural to plot size
 on the x-axis. But to follow the usual convention from age-based models, we
@@ -102,18 +105,26 @@ str(fr)
 \seealso{
 \link{plotting_functions}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotBiomass}()},
-\code{\link{plotDiet}()},
-\code{\link{plotFMort}()},
-\code{\link{plotFeedingLevel}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotSpectra}()},
-\code{\link{plotYield}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotBiomass]{plotBiomass()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotDiet]{plotDiet()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotFeedingLevel]{plotFeedingLevel()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra]{plotSpectra()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYield]{plotYield()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

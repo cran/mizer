@@ -1,5 +1,6 @@
 #' Adjust model to produce observed growth
 #'
+#' `r lifecycle::badge("experimental")`
 #' Scales the search volume, the maximum consumption rate, the metabolic rate
 #' and the external encounter rate
 #' all by the same factor in order to achieve a growth rate that allows
@@ -20,33 +21,46 @@
 #'   vector indicating for each species whether it is to be affected (TRUE) or
 #'   not.
 #' @param keep A string determining which quantity is to be kept constant. The
-#'   choices are "egg" which keeps the egg density constant, "biomass" which 
+#'   choices are "egg" which keeps the egg density constant, "biomass" which
 #'   keeps the total biomass of the species constant and "number" which keeps
 #'   the total number of individuals constant.
+#' @param ... Additional arguments passed to the method.
+#'
 #' @return A modified MizerParams object with rescaled search volume, maximum
 #'   consumption rate and metabolic rate and rescaled species parameters
 #'   `gamma`,`h`, `ks` and `k`.
 #' @export
+#' @examples
+#' # Rescale rates so all species reach maturity by their maturity age.
+#' # The search volume gamma is adjusted to achieve the correct growth rate.
+#' species_params(NS_params)["Cod", "gamma"]
+#' params <- matchGrowth(NS_params)
+#' species_params(params)["Cod", "gamma"]
+#' age_mat(params)["Cod"]
 matchGrowth <- function(params, species = NULL,
-                        keep = c("egg", "biomass", "number")) {
-    assert_that(is(params, "MizerParams"))
-    sel <- valid_species_arg(params, species = species, 
+                        keep = c("egg", "biomass", "number"), ...)
+    UseMethod("matchGrowth")
+
+#' @export
+matchGrowth.MizerParams <- function(params, species = NULL,
+                                    keep = c("egg", "biomass", "number"), ...) {
+    sel <- valid_species_arg(params, species = species,
                                  return.logical = TRUE)
     sp <- params@species_params
     keep <- match.arg(keep)
-    
-    biomass <- getBiomass(params)
+
+    biomass <- getBiomass(params, usecutoff = TRUE)
     number <- getN(params)
-    
+
     sp <- set_species_param_default(sp, "age_mat", NA)
     # If age at maturity is not specified, calculate it from von Bertalanffy
     if (all(c("k_vb", "w_inf") %in% names(sp))) {
         sp <- set_species_param_default(sp, "age_mat", age_mat_vB(params))
     }
-    
+
     # Don't affect species where no age at maturity is available
     sel <- sel & !is.na(sp$age_mat)
-    
+
     factor <- age_mat(params)[sel] / sp$age_mat[sel]
 
     params@search_vol[sel, ] <- params@search_vol[sel, ] * factor
@@ -61,17 +75,17 @@ matchGrowth <- function(params, species = NULL,
     if ("k" %in% names(sp)) {
         params@species_params[sel, "k"] <- sp[sel, "k"] * factor
     }
-    
+
     params <- steadySingleSpecies(params, species = sel)
-    
+
     if (keep == "biomass") {
-        factor <- biomass / getBiomass(params)
+        factor <- biomass / getBiomass(params, use_cutoff = TRUE)
         params@initial_n <- params@initial_n * factor
     }
     if (keep == "number") {
         factor <- number / getN(params)
         params@initial_n <- params@initial_n * factor
     }
-    
+
     setBevertonHolt(params)
 }

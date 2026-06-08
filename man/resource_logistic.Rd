@@ -74,15 +74,19 @@ the resource level.
 The \code{\link[=balance_resource_logistic]{balance_resource_logistic()}} function is called by \code{\link[=setResource]{setResource()}} to
 determine the values of the resource parameters that are needed to make the
 replenishment rate at each size equal the consumption rate at that size, as
-calculated by \code{\link[=getResourceMort]{getResourceMort()}}. It should be called with only one of
-\code{resource_rate} or \code{resource_capacity} should and will return a named list
-with the values for both.
+calculated by \code{\link[=getResourceMort]{getResourceMort()}}. It should be called with exactly one of
+\code{resource_rate} or \code{resource_capacity} and returns a named list with values
+for both. If \code{resource_rate} is supplied it must be at least as large as the
+current mortality at each size. If \code{resource_capacity} is supplied it must be
+not be less than the current resource abundance. Where it equals the
+current resource abundance and there is positive consumption, it is nudged
+upwards slightly to avoid division by zero.
 }
 \seealso{
 \code{\link[=setResource]{setResource()}}
 
-Other resource dynamics functions: 
-\code{\link{resource_constant}()},
-\code{\link{resource_semichemostat}()}
+Other resource dynamics functions:
+\code{\link[=resource_constant]{resource_constant()}},
+\code{\link[=resource_semichemostat]{resource_semichemostat()}}
 }
 \concept{resource dynamics functions}

@@ -1,3 +1,407 @@
+# mizer 3.0.0
+
+This release brings new biological realism, improved numerics, a richer 
+interactive analysis experience, and a composable extension framework.
+
+## Diffusion in mizer
+
+The McKendrick-von Foerster equation now supports a diffusion term, allowing
+individual variability in growth to be modelled.
+
+- New `getDiffusion()` calculates the total diffusion rate D(w) (g²/year) for
+  each species, combining the predation-induced diffusion from the jump-growth
+  equation and any externally specified diffusion set via `setExtDiffusion()`.
+  It has both `MizerParams` and `MizerSim` methods and returns an
+  `ArraySpeciesBySize` or `ArrayTimeBySpeciesBySize` object respectively,
+  consistent with the other rate-getter functions.
+
+- The external diffusion coefficient is held in a new `ext_diffusion` slot in
+  `MizerParams`. Use `setExtDiffusion()` / `ext_diffusion()` /
+  `ext_diffusion<-()` to set and retrieve it. The new species parameter `D_ext`
+  (default 0) sets the coefficient of an external diffusion power law;
+  `setExtDiffusion()` calculates the default array from species parameters when
+  no custom array is supplied, following the same pattern as
+  `setExtEncounter()`.
+
+- `MizerParams` gains a `use_predation_diffusion` slot (logical, default
+  `FALSE`). When `FALSE` (the default), `mizerDiffusion()` omits the
+  predation-induced diffusion term, preserving the behaviour of previous mizer
+  versions. Set to `TRUE` via the new `use_predation_diffusion()` accessor to
+  enable the jump-growth diffusion term.
+
+- New `getFlux()` function calculates the flux of individuals entering each
+  size class, combining the advective flux from somatic growth and the
+  diffusive flux. It has a `power` argument, similar to that of `plotSpectra()`,
+  for multiplying the flux by a power of the weight; `power = 1` gives the flux
+  of biomass.
+
+- `getRequiredRDD()` is exported. It calculates the recruitment rate needed
+  to maintain a given initial abundance, accounting for both growth and
+  diffusion.
+
+- `steadySingleSpecies()` correctly preserves the steady state under
+  `project()`, including when diffusion is non-zero.
+
+- The vignette [cohort dynamics](https://sizespectrum.org/mizer/articles/cohort_dynamics_and_diffusion.html)
+  demonstrates the effect of diffusion in an example.
+
+
+## Higher-order numerical scheme
+
+- `project()`, `projectToSteady()` and `steady()` gain a `method` argument for
+  choosing the consumer density time-stepper. The default `"euler"` preserves
+  the existing semi-implicit update, while `"predictor_corrector"` uses a new
+  second-order predictor-corrector method. The accuracy of the two methods is
+  compared in the [numerical details](https://sizespectrum.org/mizer/articles/numerical_details.html)
+  vignette.
+
+- `MizerSim` objects now have a `sim_params` slot (a named list) that records
+  the projection parameters — currently `method` and `dt` — passed to
+  `project()` or `projectToSteady()`. The new `getSimParams()` accessor
+  retrieves this list. When `project()` is called on an existing `MizerSim`
+  object it defaults `dt` and `method` from the stored `sim_params`, with a
+  warning if the supplied values differ. Older objects are upgraded
+  automatically by `validSim()`, with `sim_params` set to an empty list.
+
+- `project_n()` and `project_n_2(2)` are new exported functions, factored out of
+  `project_simple()`, that projects the abundance spectrum forward in time with
+  the different methods. 
+
+## Convenient plot methods for mizer return values
+
+- New `ArraySpeciesBySize` S3 class for the species × size arrays returned by
+  many mizer functions. An `ArraySpeciesBySize` object behaves like a regular
+  matrix for arithmetic and subsetting but carries a human-readable
+  `value_name` and `units` attribute and provides enhanced `print()`,
+  `summary()`, `plot()`, and `as.data.frame()` methods. The `plot()` method
+  accepts `log_y`, `wlim`, and `ylim` arguments for controlling the y-axis
+  scale and limits.
+
+- New `ArrayTimeBySpecies` S3 class for the time × species arrays returned by
+  `getBiomass()`, `getSSB()`, `getN()`, and `getYield()` when called on a
+  `MizerSim` object. Like `ArraySpeciesBySize`, it carries `value_name` and
+  `units` attributes and provides enhanced `print()`, `summary()`, `plot()`,
+  and `as.data.frame()` methods. The `plot()` method accepts `log` and `ylim`
+  arguments.
+
+- New `ArrayTimeBySpeciesBySize` S3 class for the time × species × size arrays.
+  The `N()` accessor on a `MizerSim` object now returns an
+  `ArrayTimeBySpeciesBySize` object. Many rate-getter functions —
+  `getEGrowth()`, `getEReproAndGrowth()`, `getPredMort()`, `getFMort()`,
+  `getMort()`, `getFeedingLevel()`, `getEncounter()`, `getPredRate()`,
+  `getRDI()`, `getRDD()` — now also accept a `MizerSim` object and return an
+  `ArrayTimeBySpeciesBySize`. An `animate()` method allows interactive
+  playback. Subsetting an `ArrayTimeBySpeciesBySize` object returns an
+  `ArraySpeciesBySize` object when a single time is selected, and an
+  `ArrayTimeBySpecies` object when a single size is selected.
+
+- New `plot2()` generic with methods for comparing two compatible mizer array
+  objects in one plot, with species or group shown by colour and model by
+  linetype. The `plotSpectra2()` helper has moved from `mizerExperimental` into
+  mizer for comparing two abundance spectra.
+
+- New `plotRelative()` generic with methods for plotting the symmetric relative
+  difference between two compatible mizer array objects. The
+  `plotSpectraRelative()` and `plotlySpectraRelative()` helpers have moved from
+  `mizerExperimental` into mizer.
+
+- New `plotCDF()` and `plotCDF2()` generics for plotting cumulative abundance
+  or biomass distributions from `MizerParams` and `MizerSim` objects, together
+  with `plotlyCDF()` and `plotlyCDF2()` wrappers.
+
+- New `plotHover()` generic with methods for `ArraySpeciesBySize`,
+  `ArrayTimeBySpecies`, `ArrayTimeBySpeciesBySize`, and `mizer_plot` converts
+  mizer plots into hover-enabled plotly figures.
+
+- New `addPlot()` generic with methods for adding `ArraySpeciesBySize` and
+  `ArrayTimeBySpecies` values as extra lines on an existing compatible ggplot.
+
+- The `animate()` methods produces animated plots showing the time evolution
+  during a simulation. It can take a`MizerSim` and `ArrayTimeBySpeciesBySize`
+  argument and supports axis range settings (`xlim`, `ylim`), timing controls,
+  interpolation options, arguments `log_x` `log_y` and `log` to control which
+  axis is log-transformed, and `total` and `background` arguments, consistent
+  with `plotSpectra()`.
+
+- Plotting functions now consistently expose `log_x`, `log_y` and `log`
+  arguments. In all cases, when supplied, `log` overrides `log_x` and `log_y`.
+  `plotBiomass()` and `plotYield()` keep support for logical `log` values for
+  backward compatibility.
+
+- Time-filtering is now consistent across all time-series plot functions via a
+  new `tlim` parameter (analogous to `wlim` and `ylim`): a length-two numeric
+  vector `c(start, end)` that restricts the plotted time window. `plotYield()`,
+  `plotYieldGear()`, and `animate()` gain this parameter for the first time.
+  `plotBiomass()` and `animate.MizerSim()` now use `tlim` in place of the
+  former `start_time`/`end_time` and `time_range` parameters respectively;
+  the old parameters are deprecated and will be removed in a future release.
+
+- Size-based plots now accept `size_axis = "l"` to show length in cm on the
+  size axis instead of weight in grams, using the species' allometric
+  weight-length relationship.
+
+- Size-based plots with a `size_axis` argument now accept `llim`, the
+  length-axis equivalent of `wlim`, for filtering and limiting plots when
+  `size_axis = "l"`.
+
+
+## Extracting model state from a simulation
+
+- A shift in interpretation of a MizerParams object from just a specification
+  of the model to a representation of its state, consisting of both model
+  parameters and current values of the state variables (the abundances).
+
+- `getParams(sim, time_range, geometric_mean = FALSE)` now extracts the
+  ecosystem state from a `MizerSim` object at a particular time or averaged
+  over a time range. When no `time_range` is given, the state at the final time
+  step is extracted. New `finalParams(sim)` and `initialParams(sim)` return the
+  states at the initial and final times of a simulation respectively.
+
+- Once a state has been extracted from a simulation, it can be analysed by all
+  the existing mizer functions. For that purpose the indicator functions
+  `getProportionOfLargeFish()`, `getMeanWeight()`, `getMeanMaxWeight()`, and
+  `getCommunitySlope()` now also accept a `MizerParams` object and return a
+  single value (or named vector for `getMeanMaxWeight()` with 
+  `measure = "both"`) calculated from that state. Closes #262.
+
+- `setInitialValues()` is deprecated. Replace
+  `setInitialValues(params, sim)` with `finalParams(sim)` (or
+  `getParams(sim, time_range, geometric_mean)` when averaging over a time
+  range).
+
+
+## New extension mechanism allowing extension chains
+
+- Many functions are now S3 generics with methods for
+  `MizerParams` or `MizerSim` objects, and users can define their own subclass
+  methods to modify mizer behaviour (#330).
+
+- New composable extension chain infrastructure: `registerExtensions()`,
+  `getRegisteredExtensions()`, `coerceToExtensionClass()`,
+  `clearExtensionChain()`, and `registerExtension()`. Extension classes are S3
+  marker classes; `MizerSim` derives its extension chain from
+  `sim@params@extensions`. Extensions that do not provide a marker class remain
+  metadata-only and do not trigger the S3 projection-rate dispatch path.
+
+- S3 projection hooks have been added for all standard mizer rate functions.
+  Extension-aware projections dispatch through `projectRates()`,
+  `projectEncounter()`, `projectFeedingLevel()`, `projectEReproAndGrowth()`,
+  `projectERepro()`, `projectEGrowth()`, `projectDiffusion()`,
+  `projectPredRate()`, `projectPredMort()`, `projectFMort()`, `projectMort()`,
+  `projectRDI()`, `projectRDD()`, and `projectResourceMort()` — while models
+  without extensions continue to use the pre-resolved `mizerRates()` pipeline
+  directly, with no per-step overhead.
+  
+- The `MizerSim` accessors `getParams()`, 
+  `validSim()`, `N()`, `NResource()`, `finalN()`, `finalNResource()`,
+  `idxFinalT()`, `getTimes()`, `getEffort()`, and are now
+  registered as S3 generics with `MizerSim` methods, making extension-specific
+  methods possible. `validParams()` is also now an S3 generic.
+
+- `saveParams()` now serialises extension objects as plain `MizerParams`
+  objects while preserving their extension chain, and `readParams()` restores
+  the appropriate extension class. New `saveSim()` and `readSim()` helpers
+  provide the same lifecycle for `MizerSim` objects.
+
+- Extension installation support now integrates `pak` for managing missing or
+  outdated extension packages.
+
+- New vignette
+  [Extending mizer](https://sizespectrum.org/mizer/articles/extending-mizer.html)
+  documents when to use `setRateFunction()`, `setComponent()`, and
+  `customFunction()`, summarises required function signatures and return shapes,
+  and gives worked examples for both a custom encounter function and an added
+  ecosystem component. A companion vignette
+  [Using extension packages](https://sizespectrum.org/mizer/articles/using-extension-packages.html)
+  is aimed at users of extension packages, and
+  [Creating a mizer extension package](https://sizespectrum.org/mizer/articles/creating-extension-packages.html)
+  guides extension authors through setting up a new extension package.
+
+- `setRateFunction()` now validates the registered function by calling it with
+  test inputs and checking that the return value has the correct dimensions,
+  catching mismatched custom rate functions at registration time rather than
+  during a simulation run. Closes #167.
+
+- `setComponent()` now accepts optional `colour` and `linetype` arguments and
+  applies them via `setColours()` and `setLinetypes()` so added components can
+  be styled directly in plots.
+
+- The `plot()` and `summary()` methods for `MizerParams`, `MizerSim`, and the
+  mizer array classes are now registered as S3 methods rather than S4 methods,
+  so `plot()` and `summary()` remain plain S3 generics when mizer is loaded,
+  avoiding interference with S4 method dispatch for other packages.
+
+## Species parameters for external mortality, encounter and diffusion rates
+
+See the [model description](https://sizespectrum.org/mizer/articles/model_description.html) vignette for
+the mathematical details.
+
+- New species parameters `z_ext` (default 0) and `d` (default `n - 1`) add an
+  optional power-law term to the external mortality: `mu_ext(w) = z0 + z_ext *
+  w^d`. When `z_ext` is zero (the default) the behaviour is unchanged. Closes
+  #329.
+
+- New species parameter `E_ext` (default 0) sets the coefficient of the
+  external encounter rate power law. `setExtEncounter()` now calculates the
+  default external encounter rate as `E_ext * w^n` when no custom array is
+  supplied, matching the pattern of `setMaxIntakeRate()`. A `reset` argument is
+  also added to `setExtEncounter()` to force recalculation from species
+  parameters.
+
+- New species parameter `D_ext` (default 0) sets the coefficient of the
+  external diffusion rate power law. `setExtDiffusion()` calculates the default
+  array from species parameters when no custom array is supplied.
+
+## Other improvements
+
+- The `MizerSim` methods of the rate-getter functions (`getEncounter()`,
+  `getFeedingLevel()`, `getEReproAndGrowth()`, `getERepro()`, `getEGrowth()`,
+  `getDiffusion()`, `getPredRate()`, `getPredMort()`, `getMort()`, `getFMort()`,
+  `getFMortGear()`, `getRDI()`, `getRDD()` and `getFlux()`) are now much faster.
+  They resolve the rate functions and validate the parameters once and then, at
+  each saved time step, calculate only the rates needed (and their
+  dependencies) rather than re-resolving and recomputing the whole rate chain.
+  The speed-up grows with the depth of the rate chain, e.g. roughly 100× for
+  `getRDI()` and `getFlux()` on a 50-step simulation.
+
+- New `scaleRates(params, factor)` function that rescales all rates in a model
+  by a given factor. This is equivalent to a time rescaling: it speeds up or
+  slows down all dynamics without affecting the steady state. All rate slots
+  (`search_vol`, `intake_max`, `metab`, `mu_b`, `ext_encounter`,
+  `ext_diffusion`, `catchability`, `rr_pp`) and their associated species
+  parameters (`gamma`, `h`, `ks`, `k`, `z0`, `z_ext`, `z0pre`, `E_ext`,
+  `D_ext`, `R_max`) are rescaled consistently.
+
+- New `getTrophicLevel()` function returns a matrix (species × size) with the
+  trophic level of individuals at each size, accounting for ontogenetic diet
+  shifts by integrating the consumption-weighted average prey trophic level
+  over the individual's growth trajectory. New `getTrophicLevelBySpecies()`
+  returns the consumption-rate-weighted mean trophic level per species. Both
+  functions accept `MizerParams` and `MizerSim` objects. Closes #307.
+
+- New `expandSizeGrid()` function (an S3 generic) expands the size grid of a
+  `MizerParams` object to a new minimum and/or maximum size while preserving
+  all existing species data. Both `addSpecies()` and `expandSizeGrid()` now
+  preserve the `MizerParams` subclass. `upgradeParams()` also preserves
+  `MizerParams` subclasses and their extra slots.
+
+- `compareParams()` output is now printed in a human-readable format, with each
+  difference as its own block separated by blank lines. When array slots differ,
+  the max absolute difference is shown per species. When slots differ only in
+  their `comment` attributes, both comments are displayed. Closes #205.
+
+- `summary()` for `MizerParams` and `MizerSim` now displays metadata from the
+  `@metadata` slot, including title, description, authors, DOI, URL, mizer
+  version, and creation/modification timestamps (when set). Closes #294.
+
+- New `str()` methods for `MizerParams` and `MizerSim` objects, and the mizer
+  array classes (`ArraySpeciesBySize`, `ArrayTimeBySpecies`, and
+  `ArrayTimeBySpeciesBySize`), showing a clean, compact overview of their
+  structures without dumping large amounts of internal data.
+
+- A new `steady` argument to `addSpecies()` controls whether `steady()` is
+  called after adding the new species.
+
+- `constantEggRDI()` now accounts for diffusion across the egg-size boundary,
+  including when `project()` uses the `"predictor-corrector"` method.
+
+- `setRateFunction()` now validates custom RDI functions with the same
+  `diffusion` argument that they receive during projection.
+
+- Growth is now forced to always be non-negative, preventing unphysical
+  shrinkage. No warning is issued when growth stops at or after maturity size.
+
+- Added `info_level` argument to `projectToSteady()`, `steady()`, `setParams()`,
+  `newCommunityParams()`, `newTraitParams()`, `matchBiomasses()`,
+  `matchNumbers()`, `matchYields()` and `addSpecies()`to control the
+  verbosity of information messages, consistent with `newMultispeciesParams()`.
+  Set `info_level = 0` to suppress all messages. Closes #290. 
+
+- `t_max` and `t_save` arguments in `project()` are now respected even when an
+  effort array is supplied. When `t_max` is provided, the simulation extends
+  beyond the times in the effort array using the last known effort values. When
+  `t_save` is provided, it controls the save frequency with effort values
+  interpolated as needed (#231).
+
+- `getBiomass()` now has a `use_cutoff` argument to restrict the biomass
+  calculation to sizes above the `biomass_cutoff` species parameter.
+  `plotBiomass()` and `plotlyBiomass()` also gain this argument.
+
+- `setResource()` now allows `resource_level = 1`. When balancing would
+  otherwise divide by zero because the resource capacity equals the current
+  resource abundance at positive consumption, the capacity is increased
+  slightly with a warning instead of failing early.
+  
+- `project()` now warns when `t_max` is not a multiple of `t_save` and ensures
+  that the state at `t_max` is always saved, even if the final save interval is
+  shorter than `t_save`. (#341)
+  
+- New function `psi()` returns an `ArraySpeciesBySize` with the population-level
+  reproductive proportion.
+
+- `age_mat_vB()` is now exported.
+
+- New [Cheatsheet: Analysis and Plotting](https://sizespectrum.org/mizer/articles/cheatsheet-analysis-and-plotting.html)
+  vignette provides a quick reference for all functions that access simulation
+  arrays, compute summaries, calculate indicators, and create plots.
+  Closes #176.
+
+## Bug fixes
+
+- `getFMort()` on a `MizerSim` object was silently dropping the component
+  names from `n_other` when passing it to the rate function and its
+  dependencies (`getEGrowth()`, `getPredMort()`), causing failures whenever
+  rate functions accessed `n_other` by name (e.g. `n_other[["resource"]]`).
+  The implementation has been refactored to use the same `plyr::aaply` pattern
+  as `getFeedingLevel()` and `getPredMort()`.
+
+- `getFMort.MizerSim()` was not passing the time argument `t` to user-defined
+  fishing mortality functions.
+
+- `plotSpectra()` was incorrectly forcing the y-axis lower limit to 1e-20
+  (instead of auto-scaling to the data) and was using `min(params@w) / 100`
+  as the default lower w-axis limit even when `resource = FALSE`, where
+  `min(params@w)` is more appropriate.
+
+- `upgradeParams()` was silently dropping some slots (e.g. `resource_dynamics`)
+  and was not preserving `MizerParams` subclasses and their extra slots when
+  upgrading older objects.
+
+- `getMeanMaxWeight()` now correctly applies the species selector to the
+  denominator.
+
+- `plotDataFrame()` now correctly applies custom log-scale x breaks.
+
+- `get_size_range_array()` no longer gives an error when no size brackets are
+  selected.
+
+## Breaking changes
+
+- The default `ratio` argument in `plotBiomassObservedVsModel()` and
+  `plotlyBiomassObservedVsModel()` is now consistently `FALSE` for all object
+  types. Calls that relied on the previous default ratio plot should now set
+  `ratio = TRUE`.
+
+- The first argument of `plotBiomass()`, `plotYield()`, `plotYieldGear()` and
+  their `MizerSim` methods and `plotly*` wrappers has been renamed from `sim`
+  to `object` for consistency with other plot generics. Calls using
+  `sim = ...` as a named argument must be updated to `object = ...`.
+
+- The names of the dimnames of the arrays returned by `getMort()`, 
+  `getPredRate()` are now `sp` and `w` to be in line with other
+  functions like `getFMort()`.
+  
+- Functions that return arrays of the form (species x size), (time x species)
+  or (time x species x size) now return them with extra attributes and an S3
+  class of `ArraySpeciesBySize`, `ArrayTimeBySpecies` or 
+  `ArrayTimeBySpeciesBySize`. While this does not change their old behaviour,
+  the differences will be flagged by functions like `is.identical()`.
+
+- Because `plotDataFrame()` now correctly applies custom log-scale x breaks,
+  the axis ticks in plots that use this function have changed.
+
+- `plotDiet()` no longer accepts a `time_range` argument.
+
 # mizer 2.5.4
 
 - New function `renameGear()` to rename gears in a MizerParams object, similar 
@@ -325,7 +729,7 @@ state, so you will need to also call `steady()` after matching the growth rates.
   `scaleModel()`.
 * New `matchBiomasses()` and `matchYields()` will try to adjust the abundances
   of the species to produce the observed biomasses or yields.
-  See blog post at https://bit.ly/2YqXESV .
+  See blog post at https://blog.mizer.sizespectrum.org/posts/2021-08-20-a-5-step-recipe-for-tuning-the-model-steady-state/ .
 * There are now accessor and replacement functions for rates. So for example
   instead of `params <- setReproduction(params, maturity = my_maturity)` one
   can simply use `maturity(params) <- my_maturity`. These are documented
@@ -395,7 +799,7 @@ state, so you will need to also call `steady()` after matching the growth rates.
 * Many improvements in the documentation.
 * Many small improvements to code quality and testing.
 * Better social media cards, especially for twitter.
-* mizer can be run on binder, https://mybinder.org/v2/gh/sizespectrum/mizer/HEAD?urlpath=rstudio
+* mizer can be [run on binder](https://mybinder.org/v2/gh/sizespectrum/mizer/HEAD?urlpath=rstudio)
 
 ## Bug fixes
 
@@ -845,7 +1249,7 @@ species. The information is set up via a new `gear_params()` data frame. See
   well as `idxFinalT()` to access the values at the final time of a simulation.
 * New function `getCriticalFeedingLevel()` returns the critical feeding level
   for each species at each size.
-* Mizer reexports the `melt()` function from the reshape2 package which allows
+* Mizer re-exports the `melt()` function from the reshape2 package which allows
   users to convert the arrays returned by mizer functions into data frames
   that can be used for example in ggplot2 and plotly.
 * `validSpeciesParams()` checks validity of species parameter data frame and
@@ -894,8 +1298,6 @@ species. The information is set up via a new `gear_params()` data frame. See
 ## Documentation
 
 * Mizer now has a documentation website at <https://sizespectrum.org/mizer/>
-  for the latest released version and at <https://sizespectrum.org/mizer/dev/>
-  for the development version. (#48)
 * The help pages of mizer functions has been extended massively, see for
   example the help for `newMultispeciesParams()`.
 * The vignette chapters are shown as pages on the website.

@@ -8,20 +8,12 @@
 plotBiomassObservedVsModel(
   object,
   species = NULL,
-  ratio = TRUE,
-  log_scale = TRUE,
-  return_data = FALSE,
-  labels = TRUE,
-  show_unobserved = FALSE
-)
-
-plotlyBiomassObservedVsModel(
-  object,
-  species = NULL,
   ratio = FALSE,
   log_scale = TRUE,
   return_data = FALSE,
-  show_unobserved = FALSE
+  labels = TRUE,
+  show_unobserved = FALSE,
+  ...
 )
 }
 \arguments{
@@ -34,7 +26,7 @@ with the species indices, or a logical vector indicating for each species
 whether it is to be included (TRUE) or not.}
 
 \item{ratio}{Whether to plot model biomass vs. observed biomass (FALSE) or
-the ratio of model : observed biomass (TRUE). Default is TRUE.}
+the ratio of model : observed biomass (TRUE). Default is FALSE.}
 
 \item{log_scale}{Whether to plot on the log10 scale (TRUE) or not (FALSE).
 For the non-ratio plot this applies for both axes, for the ratio plot only
@@ -49,6 +41,9 @@ not (FALSE). Default is FALSE.}
 \item{show_unobserved}{Whether to include also species for which no
 biomass observation is available. If TRUE, these species will be
 shown as if their observed biomass was equal to the model biomass.}
+
+\item{...}{For \code{\link[=plotlyBiomassObservedVsModel]{plotlyBiomassObservedVsModel()}}, additional arguments passed
+to \code{\link[=plotHover]{plotHover()}}. Otherwise unused.}
 }
 \value{
 A ggplot2 object with the plot of model biomass by species compared
@@ -61,7 +56,8 @@ If biomass observations are available for at least some species via the
 \code{biomass_observed} column in the species parameter data frame, this function
 plots the biomass of each species in the model against the observed
 biomasses. When called with a MizerSim object, the plot will use the model
-biomasses predicted for the final time step in the simulation.
+biomasses predicted for the final time step in the simulation. \code{ratio}
+defaults to \code{FALSE}.
 }
 \details{
 Before you can use this function you will need to have added a
@@ -94,5 +90,5 @@ plotBiomassObservedVsModel(params, ratio = FALSE)
 plotBiomassObservedVsModel(params, show_unobserved = TRUE, ratio = FALSE)
 
 # Show the ratio instead
-plotBiomassObservedVsModel(params)
+plotBiomassObservedVsModel(params, ratio = TRUE)
 }

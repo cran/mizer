@@ -4,13 +4,10 @@
 \alias{setRmax}
 \title{Alias for \code{setBevertonHolt()}}
 \usage{
-setRmax(params, R_factor = deprecated(), erepro, R_max, reproduction_level)
+setRmax(params, erepro, R_max, reproduction_level, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
-
-\item{R_factor}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use
-\code{reproduction_level = 1 / R_factor} instead.}
 
 \item{erepro}{Reproductive efficiency for each species. See details.}
 
@@ -18,6 +15,12 @@ setRmax(params, R_factor = deprecated(), erepro, R_max, reproduction_level)
 
 \item{reproduction_level}{Sets \code{R_max} so that the reproduction rate at
 the initial state is \code{R_max * reproduction_level}.}
+
+\item{...}{Unused
+\itemize{
+\item \code{R_factor}: Legacy alternative for specifying
+\code{reproduction_level = 1 / R_factor}.
+}}
 }
 \value{
 A MizerParams object
@@ -85,7 +88,7 @@ The values for \code{R_max} must be larger than \eqn{R_{dd}}{R_dd} and can range
 up to \code{Inf}. If a smaller value is requested a warning is issued and the
 value is increased to the value required for a reproduction level of 0.99.
 
-The values for the \code{reproduction_level} must be positive and
+The values for the \code{reproduction_level} must be non-negative and
 less than 1. The values for \code{erepro} must be large enough to allow the
 required reproduction rate. If a smaller value is requested a warning is
 issued and the value is increased to the smallest possible value. The values

@@ -21,8 +21,10 @@ returns the fishing effort of each gear through time.
 \code{\link[=getTimes]{getTimes()}} returns the vector of times at which simulation results
 were stored and \code{\link[=idxFinalT]{idxFinalT()}} returns the index with which to access
 specifically the value at the final time in the arrays returned by the other
-functions. \code{\link[=getParams]{getParams()}} returns the \code{MizerParams} object that was
-passed to \code{project()}. There are also several
+functions. \code{\link[=getParams]{getParams()}} extracts the ecosystem state as a \code{MizerParams}
+object with initial abundances set to values from the simulation; \code{\link[=finalParams]{finalParams()}}
+and \code{\link[=initialParams]{initialParams()}} are convenient shorthands for the final and initial
+time steps. There are also several
 \link{summary_functions} and \link{plotting_functions}
 available to explore the contents of a \code{MizerSim} object.
 
@@ -39,12 +41,15 @@ functions for accessing that information.
 
 The \code{MizerSim} class has changed since previous versions of mizer. To use
 a \code{MizerSim} object created by a previous version, you need to upgrade it
-with \code{\link[=upgradeSim]{upgradeSim()}}.
+with \code{\link[=validSim]{validSim()}}.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{params}}{An object of type \linkS4class{MizerParams}.}
+\item{\code{params}}{An object of type \linkS4class{MizerParams}.
+If this params object uses extensions, the \code{MizerSim} object uses the same
+extension chain via \code{params@extensions}; \code{MizerSim} has no separate
+extension slot.}
 
 \item{\code{n}}{Three-dimensional array (time x species x size) that stores the
 projected community number densities.}
@@ -57,5 +62,8 @@ values for other ecosystem components.}
 
 \item{\code{effort}}{An array (time x gear) that stores the fishing effort by time
 and gear.}
+
+\item{\code{sim_params}}{A named list of the parameters passed to \code{\link[=project]{project()}} or
+\code{\link[=projectToSteady]{projectToSteady()}} to produce this simulation, such as \code{method} and \code{dt}.}
 }}
 

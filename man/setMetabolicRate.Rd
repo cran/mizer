@@ -7,7 +7,7 @@
 \alias{metab<-}
 \title{Set metabolic rate}
 \usage{
-setMetabolicRate(params, metab = NULL, p = NULL, reset = FALSE, ...)
+setMetabolicRate(object, metab = NULL, p = NULL, reset = FALSE, ...)
 
 getMetabolicRate(params)
 
@@ -16,7 +16,7 @@ metab(params)
 metab(params) <- value
 }
 \arguments{
-\item{params}{MizerParams}
+\item{object}{A MizerParams object}
 
 \item{metab}{Optional. An array (species x size) holding the metabolic rate
 for each species at size. If not supplied, a default is set as described in
@@ -26,8 +26,7 @@ the section "Setting metabolic rate".}
 is not given explicitly and if the exponent is not specified in a \code{p}
 column in the \code{species_params}.}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then the metabolic rate will be reset to the
+\item{reset}{If set to TRUE, then the metabolic rate will be reset to the
 value calculated from the species parameters, even if it was previously
 overwritten with a custom value. If set to FALSE (default) then a
 recalculation from the species parameters will take place only if no
@@ -35,13 +34,15 @@ custom value has been set.}
 
 \item{...}{Unused}
 
+\item{params}{A MizerParams object}
+
 \item{value}{metab}
 }
 \value{
 \code{setMetabolicRate()}: A MizerParams object with updated metabolic rate.
 
-\code{getMetabolicRate()} or equivalently \code{metab()}: An array
-(species x size) with the metabolic rate.
+\code{getMetabolicRate()} or equivalently \code{metab()}: A
+\code{ArraySpeciesBySize} object (species x size) with the metabolic rate.
 }
 \description{
 Sets the rate at which energy is used for metabolism and activity
@@ -59,26 +60,39 @@ where \eqn{k_s w^p} represents the rate of standard metabolism and \eqn{k w}
 is the rate at which energy is expended on activity and movement. The values
 of \eqn{k_s}, \eqn{p} and \eqn{k} are taken from the \code{ks}, \code{p} and
 \code{k} columns in the species parameter dataframe. If any of these
-parameters are not supplied, the defaults are \eqn{k = 0}, \eqn{p = n} and
+parameters are not supplied, the defaults are \eqn{k = 0}, \eqn{p = 3/4} and
 \deqn{k_s = f_c h \alpha w_{mat}^{n-p},}{k_s = f_c * h * alpha * w_mat^(n - p),}
 where \eqn{f_c} is the critical feeding level taken from the \code{fc} column
 in the species parameter data frame. If the critical feeding level is not
 specified, a default of \eqn{f_c = 0.2} is used.
+
+If the \code{metab} slot has a comment and \code{reset = FALSE}, then a recalculation
+from the species parameters is suppressed and a message is issued if the
+recalculated values would differ from the stored ones.
 }
 
+\examples{
+# Inspect the current metabolic rate
+getMetabolicRate(NS_params)["Cod", 1:5]
+
+# Reset metabolic rate from species parameters
+params <- setMetabolicRate(NS_params, reset = TRUE)
+getMetabolicRate(params)["Cod", 1:5]
+}
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

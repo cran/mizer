@@ -12,16 +12,8 @@ plotYieldObservedVsModel(
   log_scale = TRUE,
   return_data = FALSE,
   labels = TRUE,
-  show_unobserved = FALSE
-)
-
-plotlyYieldObservedVsModel(
-  object,
-  species = NULL,
-  ratio = FALSE,
-  log_scale = TRUE,
-  return_data = FALSE,
-  show_unobserved = FALSE
+  show_unobserved = FALSE,
+  ...
 )
 }
 \arguments{
@@ -49,6 +41,9 @@ not (FALSE). Default is FALSE.}
 \item{show_unobserved}{Whether to include also species for which no
 yield observation is available. If TRUE, these species will be
 shown as if their observed yield was equal to the model yield.}
+
+\item{...}{For \code{\link[=plotlyYieldObservedVsModel]{plotlyYieldObservedVsModel()}}, additional arguments passed
+to \code{\link[=plotHover]{plotHover()}}. Otherwise unused.}
 }
 \value{
 A ggplot2 object with the plot of model yield by species compared

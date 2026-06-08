@@ -68,8 +68,12 @@ resource_semichemostat <- function(params, n, n_pp, n_other, rates, t, dt,
 #' to determine the values of the resource parameters that are needed to make
 #' the replenishment rate at each size equal the consumption rate at that size,
 #' as calculated by [getResourceMort()]. It should be called with only one of
-#' `resource_rate` or `resource_capacity` and will return a named list
-#' with the values for both.
+#' `resource_rate` or `resource_capacity` and returns a named list with values
+#' for both. If `resource_rate` is supplied it must be positive wherever the
+#' current resource mortality is positive. If `resource_capacity` is supplied it
+#' must not be less than the current resource abundance. Where it equals the
+#' current resource abundance and there is positive consumption, it is nudged
+#' upwards slightly to avoid division by zero.
 #' @export
 balance_resource_semichemostat <- function(params,
                                            resource_rate, resource_capacity) {
@@ -98,13 +102,20 @@ balance_resource_semichemostat <- function(params,
         assert_that(is.numeric(resource_capacity),
                     length(resource_capacity) == length(params@cc_pp))
         if (any(resource_capacity < NR)) {
-            "I can't balance the resource if the capacity is less than the current abundance."
+            stop("I can't balance the resource if the capacity is less than the current abundance.")
         }
-        # If the capacity equals the abundance then there is no 
-        # replenishment, so this is only allowed when there is no death either.
         has_death <- (mu * NR) != 0
-        if (any(resource_capacity[has_death] <= NR[has_death])) {
-            stop("I can't balance the resource unless the capacity is greater than the current abundance wherever there is consumption.")
+        at_capacity <- has_death & resource_capacity == NR
+        if (any(at_capacity)) {
+            # Large enough to survive rounding while still being tiny.
+            factor <- 1 + sqrt(.Machine$double.eps)
+            warning(
+                "The resource capacity is equal to the current resource ",
+                "abundance where there is consumption. It has been increased ",
+                "slightly to avoid division by zero.",
+                call. = FALSE
+            )
+            resource_capacity[at_capacity] <- NR[at_capacity] * factor
         }
         rr <- mu * NR / (resource_capacity - NR)
         # If the capacity equals the abundance then the rate is not determined,

@@ -22,8 +22,7 @@ search_vol(params) <- value
 for each species at size. If not supplied, a default is set as described in
 the section "Setting search volume".}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then the search volume will be reset to the
+\item{reset}{If set to TRUE, then the search volume will be reset to the
 value calculated from the species parameters, even if it was previously
 overwritten with a custom value. If set to FALSE (default) then a
 recalculation from the species parameters will take place only if no custom
@@ -36,8 +35,8 @@ value has been set.}
 \value{
 \code{setSearchVolume()}: A MizerParams object with updated search volume.
 
-\code{getSearchVolume()} or equivalently \code{search_vol()}: An array (species
-x size) holding the search volume
+\code{getSearchVolume()} or equivalently \code{search_vol()}: A
+\code{ArraySpeciesBySize} object (species x size) holding the search volume.
 }
 \description{
 Set search volume
@@ -64,24 +63,39 @@ The values of \eqn{\gamma_i} (the search volume at 1g) and \eqn{q_i} (the
 allometric exponent of the search volume) are taken from the \code{gamma} and
 \code{q} columns in the species parameter dataframe. If the \code{gamma}
 column is not supplied in the species parameter dataframe, a default is
-calculated by the \code{\link[=get_gamma_default]{get_gamma_default()}} function. Note that only
+calculated by the \code{\link[=get_gamma_default]{get_gamma_default()}} function. If the \code{q} column is not
+supplied, a default of \code{lambda - 2 + n} is used. Note that only
 for predators of size \eqn{w = 1} gram is the value of the species parameter
 \eqn{\gamma_i} the same as the value of the search volume \eqn{\gamma_i(w)}.
+
+If the \code{search_vol} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
+\examples{
+# Inspect the current search volume
+getSearchVolume(NS_params)["Cod", 1:5]
+
+# Double the search volume for all species
+sv <- getSearchVolume(NS_params) * 2
+params <- setSearchVolume(NS_params, search_vol = sv)
+getSearchVolume(params)["Cod", 1:5]
+}
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

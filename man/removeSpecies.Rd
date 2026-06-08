@@ -4,7 +4,7 @@
 \alias{removeSpecies}
 \title{Remove species}
 \usage{
-removeSpecies(params, species)
+removeSpecies(params, species, ...)
 }
 \arguments{
 \item{params}{A mizer params object for the original system.}
@@ -12,20 +12,28 @@ removeSpecies(params, species)
 \item{species}{The species to be removed. A vector of species names, or a
 numeric vector of species indices, or a logical vector indicating for
 each species whether it is to be removed (TRUE) or not.}
+
+\item{...}{Currently unused.}
 }
 \value{
 An object of type \linkS4class{MizerParams}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-
 This function simply removes all entries from the MizerParams object that
 refer to the selected species. It does not recalculate the steady state for
 the remaining species or retune their reproductive efficiency.
+}
+\details{
+If a gear was targeting only the removed species, then this function will
+NOT remove that gear. If you want to also remove that gear then you can do
+that by calling \code{\link[=setFishing]{setFishing()}}.
 }
 \examples{
 params <- NS_params
 species_params(params)$species
 params <- removeSpecies(params, c("Cod", "Haddock"))
 species_params(params)$species
+}
+\seealso{
+\code{\link[=addSpecies]{addSpecies()}}, \code{\link[=renameSpecies]{renameSpecies()}}
 }

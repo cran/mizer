@@ -25,19 +25,21 @@ For details of how the yield rate is defined see the help page of
 }
 \examples{
 yield <- getYieldGear(NS_sim)
-yield["1972", "Herring", "Herring"]
-# (In this example MizerSim object each species was set up with its own gear)
+dim(yield)
+yield["1972", , "Herring"]
 }
 \seealso{
 \code{\link[=getYield]{getYield()}}
 
-Other summary functions: 
-\code{\link{getBiomass}()},
-\code{\link{getDiet}()},
-\code{\link{getGrowthCurves}()},
-\code{\link{getN}()},
-\code{\link{getSSB}()},
-\code{\link{getYield}()}
+Other summary functions:
+\code{\link[=getBiomass]{getBiomass()}},
+\code{\link[=getDiet]{getDiet()}},
+\code{\link[=getGrowthCurves]{getGrowthCurves()}},
+\code{\link[=getN]{getN()}},
+\code{\link[=getSSB]{getSSB()}},
+\code{\link[=getTrophicLevel]{getTrophicLevel()}},
+\code{\link[=getTrophicLevelBySpecies]{getTrophicLevelBySpecies()}},
+\code{\link[=getYield]{getYield()}}
 }
 \concept{summary functions}
 \concept{summary_function}

@@ -3,26 +3,20 @@
 \name{initial_effort}
 \alias{initial_effort}
 \alias{initial_effort<-}
-\alias{validEffortVector}
 \title{Initial fishing effort}
 \usage{
 initial_effort(params)
 
 initial_effort(params) <- value
-
-validEffortVector(effort, params)
 }
 \arguments{
 \item{params}{A MizerParams object}
 
 \item{value}{A vector or scalar with the initial fishing effort, see Details
 below.}
-
-\item{effort}{A vector or scalar with the initial fishing effort, see Details
-below.}
 }
 \value{
-Effort vector
+A named effort vector ordered by gear.
 }
 \description{
 The fishing effort is a named vector, specifying for each fishing gear the
@@ -43,7 +37,8 @@ gears in the params object
 \item a named vector in which the gear names have a different order than in the
 params object. This is then sorted correctly.
 \item a named vector which only supplies values for some of the gears.
-The effort for the other gears is then set to zero.
+The effort for the other gears is then set to the default effort returned
+by \code{\link[=validEffortVector]{validEffortVector()}}, which depends on the defaults edition.
 }
 
 These conversions are done by the function \code{validEffortVector()}.

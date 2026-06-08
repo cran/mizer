@@ -4,17 +4,33 @@
 \alias{getFMortGear}
 \title{Get the fishing mortality by time, gear, species and size}
 \usage{
-getFMortGear(object, effort, time_range)
+getFMortGear(object, ...)
 }
 \arguments{
-\item{object}{A \code{MizerParams} object or a \code{MizerSim} object.}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{effort}{The effort for each fishing gear. See notes below.}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{time_range}{Subset the returned fishing mortalities by time. The time
-range is either a vector of values, a vector of min and max time, or a
-single value. Default is the whole time range. Only used if the
-\code{object} argument is of type \code{MizerSim}.}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{effort}}{The effort for each fishing gear. See notes below.
+Defaults to the initial effort stored in \code{object}.}
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
+
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{Subset the returned fishing mortalities by time. The
+time range is either a vector of values, a vector of min and max time,
+or a single value. Defaults to the whole time range of the
+simulation.}
+}}
 }
 \value{
 An array. If the effort argument has a time dimension, or a
@@ -69,19 +85,21 @@ F <- getFMortGear(sim, time_range = c(10, 20))
 
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

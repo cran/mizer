@@ -6,16 +6,17 @@
 \usage{
 project_simple(
   params,
-  n = params@initial_n,
-  n_pp = params@initial_n_pp,
-  n_other = params@initial_n_other,
-  effort = params@initial_effort,
-  t = 0,
-  dt = 0.1,
+  n,
+  n_pp,
+  n_other,
+  effort,
+  t,
+  dt,
   steps,
-  resource_dynamics_fn = get(params@resource_dynamics),
-  other_dynamics_fns = lapply(params@other_dynamics, get),
-  rates_fns = lapply(params@rates_funcs, get),
+  resource_dynamics_fn,
+  other_dynamics_fns,
+  rates_fns,
+  method = c("euler", "predictor_corrector"),
   ...
 )
 }
@@ -49,10 +50,14 @@ dynamics of the other components. See Details.}
 \item{rates_fns}{List with the functions for calculating
 the rates. See Details.}
 
+\item{method}{The numerical method to use for the consumer density update.
+See \code{\link[=project]{project()}}.}
+
 \item{...}{Other arguments that are passed on to the rate functions.}
 }
 \value{
-List with the final values of \code{n}, \code{n_pp} and \code{n_other}, \code{rates}.
+List with the final values of \code{n}, \code{n_pp}, and \code{n_other}, together
+with \code{rates}, the rates calculated at the start of the final update step.
 }
 \description{
 This is an internal function used by the user-facing \code{project()} function.
@@ -82,7 +87,7 @@ This function is also used in \code{steady()}. In between calls to
 still changing significantly, so that it can stop when a steady state has
 been approached. Mizer extension packages might have a similar need to run
 a simulation repeatedly for short periods to run some other code in
-between. Because this code may want to use the values of the rates at the
-final time step, these too are included in the returned list.
+between. Because this code may want to use the values of the rates from the
+final update step, these too are included in the returned list.
 }
 \concept{helper}

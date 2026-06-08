@@ -38,9 +38,8 @@ Default value is 0.6.}
 the species data frame, it is calculated as \code{z0pre * w_max ^ z0exp}.
 Default value is \code{n-1}.}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then the external mortality rate will be reset
-to the value calculated from the \code{z0} parameters, even if it was
+\item{reset}{If set to TRUE, then the external mortality rate will be reset
+to the value calculated from the species parameters, even if it was
 previously overwritten with a custom value. If set to FALSE (default) then
 a recalculation from the species parameters will take place only if no
 custom value has been set.}
@@ -56,8 +55,8 @@ be confused with the species_parameter \code{z0}.}
 \code{setExtMort()}: A MizerParams object with updated external mortality
 rate.
 
-\code{getExtMort()} or equivalently \code{ext_mort()}: An array (species x
-size) with the external mortality.
+\code{getExtMort()} or equivalently \code{ext_mort()}: An \code{ArraySpeciesBySize}
+object (species x size) with the external mortality.
 }
 \description{
 Set external mortality rate
@@ -75,11 +74,14 @@ that depends on species and body size. You can see an example of this in
 the Examples section of the help page for \code{\link[=setExtMort]{setExtMort()}}.
 
 If the \code{ext_mort} argument is not supplied, then the external mortality is
-assumed to depend only on the species, not on the size of the individual:
-\eqn{\mu_{ext.i}(w) = z_{0.i}}. The value of the constant \eqn{z_0} for each
-species is taken from the \code{z0} column of the species parameter data frame, if
-that column exists. Otherwise it is calculated as
+taken from the species parameters as
+\deqn{\mu_{ext.i}(w) = z_{0.i} + z_{ext.i} w^{d_i}.}{mu_ext,i(w) = z0_i + z_ext,i w ^ d_i.}
+The value of the constant \eqn{z_0} for each species is taken from the \code{z0}
+column of the species parameter data frame, if that column exists.
+Otherwise it is calculated as
 \deqn{z_{0.i} = {\tt z0pre}_i\, w_{inf}^{\tt z0exp}.}{z_{0.i} = z0pre_i w_{inf}^{z0exp}.}
+Missing values of \code{z_ext} are set to 0 and missing values of \code{d} are set to
+\code{n - 1}.
 }
 
 \examples{
@@ -98,18 +100,19 @@ allo_mort <- outer(z0pre, w(params)^(-1/4))
 ext_mort(params) <- allo_mort
 }
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

@@ -29,7 +29,7 @@ for species parameters that were not provided.
 }
 \details{
 \code{validGivenSpeciesParams()} checks the validity of the given species
-parameter It throws an error if
+parameters. It throws an error if
 \itemize{
 \item the \code{species} column does not exist or contains duplicates
 \item the maximum size is not specified for all species
@@ -38,8 +38,8 @@ parameter It throws an error if
 If a weight-based parameter is missing but the corresponding length-based
 parameter is given, as well as the \code{a} and \code{b} parameters for length-weight
 conversion, then the weight-based parameters are added. If both length and
-weight are given, then weight is used and a warning is issued if the two are
-inconsistent.
+weight are given, then weight is used and an \code{info_about_default} condition
+is signalled if the two are inconsistent.
 
 If a \code{w_inf} column is given but no \code{w_max} then the value from \code{w_inf} is
 used. This is for backwards compatibility. But note that the von Bertalanffy
@@ -75,6 +75,10 @@ parameters are missing or NA:
 \item \code{interaction_resource} is set to \code{1}
 \item \code{n} is set to \code{3/4}
 \item \code{p} is set to \code{n}
+\item \code{z_ext} is set to \code{0}
+\item \code{d} is set to \code{n - 1}
+\item \code{E_ext} is set to \code{0}
+\item \code{D_ext} is set to \code{0}
 }
 
 Note that the species parameters returned by these functions are not

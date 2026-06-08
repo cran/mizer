@@ -70,7 +70,6 @@ resource_params <- function(params) {
 #' @export
 `resource_params<-` <- function(params, value) {
     assert_that(
-        is(params, "MizerParams"),
         is.number(value$lambda),
         value$lambda >= 0,
         is.number(value$kappa),
@@ -82,6 +81,8 @@ resource_params <- function(params) {
         value$w_pp_cutoff < max(params@w_full)
     )
     params@resource_params <- value
+    
+    params@time_modified <- lubridate::now()
     params
 }
 

@@ -4,7 +4,7 @@
 \alias{matchBiomasses}
 \title{Match biomasses to observations}
 \usage{
-matchBiomasses(params, species = NULL)
+matchBiomasses(params, species = NULL, info_level = 3, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -13,6 +13,11 @@ matchBiomasses(params, species = NULL)
 biomasses will be matched. A vector of species names, or a numeric vector
 with the species indices, or a logical vector indicating for each species
 whether it is to be affected (TRUE) or not.}
+
+\item{info_level}{Controls the amount of information messages that are shown.
+Higher levels lead to more messages.}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
 A MizerParams object
@@ -29,7 +34,7 @@ state solution, even if the initial abundance densities were at steady state.
 So after using this function you may want to use \code{steady()} to run the model
 to steady state, after which of course the biomasses will no longer match
 exactly. You could then iterate this process. This is described in the
-blog post at https://bit.ly/2YqXESV.
+blog post at \url{https://blog.mizer.sizespectrum.org/posts/2021-08-20-a-5-step-recipe-for-tuning-the-model-steady-state/}.
 
 Before you can use this function you will need to have added a
 \code{biomass_observed} column to your model which gives the observed biomass in

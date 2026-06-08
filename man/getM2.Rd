@@ -4,34 +4,41 @@
 \alias{getM2}
 \title{Alias for \code{getPredMort()}}
 \usage{
-getM2(object, n, n_pp, n_other, time_range, drop = TRUE, ...)
+getM2(object, ...)
 }
 \arguments{
-\item{object}{A \code{MizerParams} object or a \code{MizerSim} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{n_pp}{A vector of the resource abundance by size}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
-
-\item{time_range}{A vector of times. Only the range of times is relevant,
-i.e., all times between the smallest and largest will be selected.
-The time_range can be character or numeric.}
-
-\item{drop}{If \code{TRUE} then any dimension of length 1 will be removed
-from the returned array.}
-
-\item{...}{Unused}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{The time range over which to return the rates. Either
+a vector of values, a vector of min and max time, or a single value.
+Defaults to the whole time range of the simulation.}
+\item{\code{drop}}{If \code{TRUE} then any dimension of length 1 is removed from the
+returned array.}
+}}
 }
 \value{
-If a \code{MizerParams} object is passed in, the function returns a two
-dimensional array (prey species x prey size) based on the abundances also
-passed in. If a \code{MizerSim} object is passed in, the function returns a
-three dimensional array (time step x prey species x prey size) with the
-predation mortality calculated at every time step in the simulation.
-Dimensions may be dropped if they have length 1 unless \code{drop = FALSE}.
+\itemize{
+\item \code{MizerParams}: An \code{ArraySpeciesBySize} object (prey species x prey size)
+with the predation mortality rates.
+\item \code{MizerSim}: An \code{ArrayTimeBySpeciesBySize} object (time step x prey species
+x prey size) with the predation mortality at every time step.
+If \code{drop = TRUE} then dimensions of length 1 will be removed.
+}
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
@@ -69,19 +76,21 @@ M2 <- getPredMort(sim, time_range = c(15, 20))
 }
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{deprecated}

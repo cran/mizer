@@ -4,39 +4,47 @@
 \alias{getERepro}
 \title{Get energy rate available for reproduction}
 \usage{
-getERepro(
-  params,
-  n = initialN(params),
-  n_pp = initialNResource(params),
-  n_other = initialNOther(params),
-  t = 0,
-  ...
-)
+getERepro(object, ...)
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{n_pp}{A vector of the resource abundance by size}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
-
-\item{t}{The time for which to do the calculation (Not used by standard
-mizer rate functions but useful for extensions with time-dependent
-parameters.)}
-
-\item{...}{Unused}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{The time range over which to return the rates. Either
+a vector of values, a vector of min and max time, or a single value.
+Defaults to the whole time range of the simulation.}
+\item{\code{drop}}{If \code{TRUE} then any dimension of length 1 is removed from the
+returned array.}
+}}
 }
 \value{
-A two dimensional array (prey species x prey size) holding
-\deqn{\psi_i(w)E_{r.i}(w)}
+\itemize{
+\item \code{MizerParams}: An \code{ArraySpeciesBySize} object (species x size) holding
+\deqn{\psi_i(w)\max(0, E_{r.i}(w))}
 where \eqn{E_{r.i}(w)} is the rate at which energy becomes available for
 growth and reproduction, calculated with \code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
 and \eqn{\psi_i(w)} is the proportion of this energy that is used for
-reproduction. This proportion is taken from the \code{params} object and is
-set with \code{\link[=setReproduction]{setReproduction()}}.
+reproduction. Negative values of \eqn{E_{r.i}(w)} are clipped to 0 before
+multiplying by \eqn{\psi_i(w)}. This proportion is taken from the \code{params}
+object and is set with \code{\link[=setReproduction]{setReproduction()}}.
+\item \code{MizerSim}: An \code{ArrayTimeBySpeciesBySize} object (time step x species x
+size) with the energy for reproduction at every time step. If \code{drop = TRUE}
+then dimensions of length 1 will be removed.
+}
 }
 \description{
 Calculates the energy rate (grams/year) available for reproduction after
@@ -68,19 +76,21 @@ erepro["Sprat", "2"]
 }
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

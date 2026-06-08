@@ -1,6 +1,6 @@
 # setMaxIntakeRate ----
 test_that("setMaxIntakeRate works", {
-    params <- NS_params
+    params <- NS_params_small
     params@species_params$h <- 2 * params@species_params$h
     p2 <- setMaxIntakeRate(params)
     expect_identical(2 * params@intake_max, p2@intake_max)
@@ -10,7 +10,7 @@ test_that("setMaxIntakeRate works", {
 })
 
 test_that("Comment works on intake_max", {
-    params <- NS_params
+    params <- NS_params_small
     # if no comment, it is set automatically
     intake_max <- params@intake_max
     params <- setMaxIntakeRate(params, intake_max = intake_max)
@@ -42,16 +42,32 @@ test_that("Comment works on intake_max", {
 
 # getMaxIntakeRate ----
 test_that("getMaxIntakeRate works", {
-    expect_identical(getMaxIntakeRate(NS_params),
-                     NS_params@intake_max)
+    expect_true(is.ArraySpeciesBySize(getMaxIntakeRate(NS_params_small)))
+    expect_equal(getMaxIntakeRate(NS_params_small), NS_params_small@intake_max,
+                 ignore_attr = TRUE)
 })
 
 test_that("Can get and set slot", {
-    params <- NS_params
+    params <- NS_params_small
     intake_max <- getMaxIntakeRate(params)
     expect_identical(intake_max(params), intake_max)
     new <- 2 * intake_max
     comment(new) <- "test"
     intake_max(params) <- new
-    expect_identical(intake_max(params), new)
+    expect_equal(intake_max(params), new, ignore_attr = TRUE)
+    expect_identical(comment(params@intake_max), "test")
+})
+
+test_that("setMaxIntakeRate validates manual arrays", {
+    params <- NS_params_small
+    new <- intake_max(params)
+
+    bad_names <- new
+    dimnames(bad_names)[[1]] <- rev(dimnames(bad_names)[[1]])
+    expect_error(setMaxIntakeRate(params, intake_max = bad_names),
+                 "same ordering of species")
+
+    bad_values <- new
+    bad_values[1, 1] <- -1
+    expect_error(setMaxIntakeRate(params, intake_max = bad_values))
 })

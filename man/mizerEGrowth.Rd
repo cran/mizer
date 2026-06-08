@@ -2,9 +2,15 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerEGrowth}
 \alias{mizerEGrowth}
+\alias{projectEGrowth}
+\alias{projectEGrowth.MizerParams}
 \title{Get energy rate available for growth needed to project standard mizer model}
 \usage{
-mizerEGrowth(params, n, n_pp, n_other, t, e_repro, e, ...)
+projectEGrowth(params, n, n_pp, n_other, t = 0, e_repro, e, ...)
+
+\method{projectEGrowth}{MizerParams}(params, n, n_pp, n_other, t = 0, e_repro, e, ...)
+
+mizerEGrowth(params, n, n_pp, n_other, t = 0, e_repro, e, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -39,6 +45,12 @@ You would not usually call this
 function directly but instead use \code{\link[=getEGrowth]{getEGrowth()}}, which then calls this
 function unless an alternative function has been registered, see below.
 }
+\details{
+The growth rate is calculated as the difference between the energy available
+for reproduction and growth (obtainable with \code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}}) and
+the energy used for reproduction (obtainable with \code{\link[=getERepro]{getERepro()}}), but is
+set to 0 if the result would be negative.
+}
 \section{Your own growth rate function}{
 
 By default \code{\link[=getEGrowth]{getEGrowth()}} calls \code{\link[=mizerEGrowth]{mizerEGrowth()}}. However you can
@@ -54,18 +66,18 @@ same arguments.
 }
 
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

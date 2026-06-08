@@ -3,6 +3,8 @@
 \name{initialN<-}
 \alias{initialN<-}
 \alias{initialN}
+\alias{initialN.MizerParams}
+\alias{initialN.MizerSim}
 \title{Initial values for fish spectra}
 \usage{
 initialN(params) <- value
@@ -18,8 +20,8 @@ number densities for the fish spectra.}
 \item{object}{An object of class MizerParams or MizerSim}
 }
 \value{
-A matrix with dimensions species x size holding the initial number
-densities for the fish spectra.
+An \code{ArraySpeciesBySize} object with dimensions species x size holding
+the initial number densities for the fish spectra.
 }
 \description{
 Values used as starting values for simulations with \code{project()}.
@@ -28,10 +30,6 @@ Values used as starting values for simulations with \code{project()}.
 # Doubling abundance of Cod in the initial state of the North Sea model
 params <- NS_params
 initialN(params)["Cod", ] <- 2 * initialN(params)["Cod", ]
-# Calculating the corresponding initial biomass
-biomass <- initialN(params)["Cod", ] * dw(NS_params) * w(NS_params)
-# Of course this initial state will no longer be a steady state
-params <- steady(params)
 }
 \seealso{
 \code{\link[=initialNResource]{initialNResource()}}, \code{\link[=initialNOther]{initialNOther()}}

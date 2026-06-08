@@ -43,8 +43,7 @@ selectivity of each gear for species and size, \eqn{S_{g,i,w}}.}
 \item{catchability}{Optional. An array (gear x species) that holds the catchability of
 each species by each gear, \eqn{Q_{g,i}}.}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then both \code{catchability} and \code{selectivity} will
+\item{reset}{If set to TRUE, then both \code{catchability} and \code{selectivity} will
 be reset to the values calculated from the gear parameters, even if it was
 previously overwritten with a custom value. If set to FALSE (default) then
 a recalculation from the gear parameters will take place only if no custom
@@ -56,7 +55,7 @@ a vector, must be named by gear.}
 
 \item{...}{Unused}
 
-\item{value}{.}
+\item{value}{The array to assign}
 }
 \value{
 \code{setFishing()}: A MizerParams object with updated fishing
@@ -170,6 +169,9 @@ an effort that varies through time.
 }
 
 \examples{
+# Halve the initial fishing effort for all gears
+params <- setFishing(NS_params, initial_effort = 0.5)
+getInitialEffort(params)
 str(getCatchability(NS_params))
 str(getSelectivity(NS_params))
 str(getInitialEffort(NS_params))
@@ -177,18 +179,19 @@ str(getInitialEffort(NS_params))
 \seealso{
 \code{\link[=gear_params]{gear_params()}}
 
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

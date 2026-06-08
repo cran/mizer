@@ -22,7 +22,8 @@ other_params(params) <- value
 
 \item{fun}{Name of the function to use to calculate the rate.}
 
-\item{value}{Values for other parameters}
+\item{value}{A named list of user-defined parameters to store in
+\code{other_params(params)}.}
 }
 \value{
 For \code{setRateFunction()}: An updated MizerParams object
@@ -31,8 +32,9 @@ For \code{getRateFunction()}: The name of the registered rate function for
 the requested \code{rate}, or the list of all rate functions if called without
 \code{rate} argument.
 
-For \code{other_params()}: A named list with all the parameters for which
-you have set values.
+For \code{other_params()}: The user-defined parameters stored in
+\code{other_params(params)}, or \code{NULL} if none have been set. This excludes any
+component-specific parameters stored via \code{\link[=setComponent]{setComponent()}}.
 }
 \description{
 If the way mizer calculates a fundamental rate entering the model is
@@ -56,6 +58,7 @@ following components:
 \item \code{e} from \code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}}
 \item \code{e_repro} from \code{\link[=mizerERepro]{mizerERepro()}}
 \item \code{e_growth} from \code{\link[=mizerEGrowth]{mizerEGrowth()}}
+\item \code{diffusion} from \code{\link[=mizerDiffusion]{mizerDiffusion()}}
 \item \code{rdi} from \code{\link[=mizerRDI]{mizerRDI()}}
 \item \code{rdd} from \code{\link[=BevertonHoltRDD]{BevertonHoltRDD()}}
 }
@@ -91,3 +94,18 @@ Note that your own rate functions need to be defined in the global
 environment or in a package. If they are defined within a function then
 mizer will not find them.
 }
+\seealso{
+"Extending mizer":
+\code{vignette("extending-mizer", package = "mizer")}
+
+Other extension tools:
+\code{\link[=NOther]{NOther()}},
+\code{\link[=clearExtensionChain]{clearExtensionChain()}},
+\code{\link[=coerceToExtensionClass]{coerceToExtensionClass()}},
+\code{\link[=getRegisteredExtensions]{getRegisteredExtensions()}},
+\code{\link[=initialNOther<-]{initialNOther<-()}},
+\code{\link[=registerExtension]{registerExtension()}},
+\code{\link[=registerExtensions]{registerExtensions()}},
+\code{\link[=setComponent]{setComponent()}}
+}
+\concept{extension tools}

@@ -8,6 +8,7 @@
 \alias{getReproductionProportion}
 \alias{repro_prop}
 \alias{repro_prop<-}
+\alias{psi}
 \title{Set reproduction parameters}
 \usage{
 setReproduction(
@@ -30,6 +31,8 @@ getReproductionProportion(params)
 repro_prop(params)
 
 repro_prop(params) <- value
+
+psi(params)
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -39,12 +42,12 @@ of individuals of each species at size that are mature. If not supplied, a
 default is set as described in the section "Setting reproduction".}
 
 \item{repro_prop}{Optional. An array (species x size) that holds the
-proportion of consumed energy that a mature individual allocates to
-reproduction for each species at size. If not supplied, a default is set as
-described in the section "Setting reproduction".}
+proportion of the energy available for growth and reproduction that a mature
+individual allocates to reproduction for each species at size. If not
+supplied, a default is set as described in the section "Setting
+reproduction".}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then both \code{maturity} and \code{repro_prop} will be
+\item{reset}{If set to TRUE, then both \code{maturity} and \code{repro_prop} will be
 reset to the value calculated from the species parameters, even if they
 were previously overwritten with custom values. If set to FALSE (default)
 then a recalculation from the species parameters will take place only if no
@@ -56,21 +59,22 @@ reproduction rate from the density-independent rate. Defaults to
 
 \item{...}{Unused}
 
-\item{value}{.}
+\item{value}{The desired new value for the respective parameter.}
 }
 \value{
 \code{setReproduction()}: A MizerParams object with updated reproduction
 parameters.
 
-\code{getMaturityProportion()} or equivalently `maturity():
-An array (species x size) that holds the proportion
+\code{getMaturityProportion()} or equivalently \code{maturity()}:
+An \code{ArraySpeciesBySize} object (species x size) that holds the proportion
 of individuals of each species at size that are mature.
 
 \code{getReproductionProportion()} or equivalently \code{repro_prop()}:
-An array (species x size) that holds the
-proportion of consumed energy that a mature individual allocates to
-reproduction for each species at size. For sizes where the maturity
-proportion is zero, also the reproduction proportion is returned as zero.
+An \code{ArraySpeciesBySize} object (species x size) that holds the proportion
+of the energy available for growth and reproduction that a mature
+individual allocates to reproduction for each species at size. For sizes
+where the maturity proportion is zero, also the reproduction proportion is
+returned as zero.
 }
 \description{
 Sets the proportion of the total energy available for reproduction and growth
@@ -111,17 +115,16 @@ specifies the weight at which 25\% of individuals are mature, which sets
 w_mat25).}
 
 The sigmoidal function given above would strictly reach 1 only
-asymptotically. Mizer instead sets the function equal to 1 already at a size
-taken from the \code{w_repro_max} column in the species parameter data frame, if it
-exists, or otherwise from the \code{w_max} column. Also, for computational
-simplicity, any proportion smaller than \code{1e-8} is set to \code{0}.
+asymptotically. For computational simplicity, any proportion smaller than
+\code{1e-8} is set to \code{0}.
 }
 
 \subsection{Investment into reproduction}{
 If the the energy available to a mature individual that is
 invested into reproduction is not supplied via the \code{repro_prop} argument,
 it is set to the allometric form
-\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
+\deqn{{\tt repro\_prop}(w) =
+  \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
   repro_prop(w) = (w/w_repro_max)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
@@ -134,7 +137,13 @@ exists, or otherwise from the \code{w_max} column.
 
 The total proportion of energy invested into reproduction of an individual
 of size \eqn{w} is then
-\deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{psi(w) = maturity(w) * repro_prop(w)}
+\deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{
+  psi(w) = maturity(w) * repro_prop(w)}
+In mizer edition 1, at sizes above \code{w_repro_max} the value of \eqn{\psi}
+is additionally forced to 1, so that all available energy is invested into
+reproduction and growth stops. In edition 2 and above this forcing is not
+applied, and \eqn{\psi} is determined entirely by the maturity ogive and the
+reproductive proportion.
 }
 
 \subsection{Reproductive efficiency}{
@@ -180,7 +189,7 @@ df <- data.frame(Size = w(NS_params),
                  Reproduction = repro_prop,
                  Maturity = maturity,
                  Total = maturity * repro_prop)
-dff <- melt(df, id.vars = "Size",
+dff <- reshape2::melt(df, id.vars = "Size",
             variable.name = "Type",
             value.name = "Proportion")
 library(ggplot2)
@@ -188,18 +197,19 @@ ggplot(dff) + geom_line(aes(x = Size, y = Proportion, colour = Type))
 }
 }
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

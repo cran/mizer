@@ -2,26 +2,24 @@
 % Please edit documentation in R/plots.R
 \name{plotFeedingLevel}
 \alias{plotFeedingLevel}
+\alias{plotFeedingLevel.MizerSim}
+\alias{plotFeedingLevel.MizerParams}
 \alias{plotlyFeedingLevel}
 \title{Plot the feeding level of species by size}
 \usage{
 plotFeedingLevel(
   object,
   species = NULL,
-  time_range,
-  highlight = NULL,
   all.sizes = FALSE,
-  include_critical = FALSE,
-  return_data = FALSE,
-  ...
-)
-
-plotlyFeedingLevel(
-  object,
-  species = NULL,
-  time_range,
   highlight = NULL,
   include_critical = FALSE,
+  wlim = c(NA, NA),
+  llim = c(NA, NA),
+  size_axis = c("w", "l"),
+  return_data = FALSE,
+  log_x = TRUE,
+  log_y = FALSE,
+  log = NULL,
   ...
 )
 }
@@ -30,33 +28,54 @@ plotlyFeedingLevel(
 \linkS4class{MizerParams}.}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
-
-\item{time_range}{The time range (either a vector of values, a vector of min
-and max time, or a single value) to average the abundances over. Default is
-the final time step. Ignored when called with a \linkS4class{MizerParams}
-object.}
-
-\item{highlight}{Name or vector of names of the species to be highlighted.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
 
 \item{all.sizes}{If TRUE, then feeding level is plotted also for sizes
 outside a species' size range. Default FALSE.}
 
+\item{highlight}{Name or vector of names of the species to be highlighted.}
+
 \item{include_critical}{If TRUE, then the critical feeding level is also
 plotted. Default FALSE.}
 
-\item{return_data}{A boolean value that determines whether the formatted data
-used for the plot is returned instead of the plot itself. Default value is FALSE}
+\item{wlim}{A numeric vector of length two providing lower and upper limits
+for the weight (x) axis. Use \code{NA} to auto-scale to the data range.}
 
-\item{...}{Other arguments (currently unused)}
+\item{llim}{A numeric vector of length two providing lower and upper limits
+for the length (x) axis when \code{size_axis = "l"}. Use \code{NA} to auto-scale to
+the data range.}
+
+\item{size_axis}{Whether to plot size as weight (\code{"w"}, default) or length
+(\code{"l"}), using the allometric weight-length relationship.}
+
+\item{return_data}{A boolean value that determines whether the formatted data
+used for the plot is returned instead of the plot itself. Default is FALSE.}
+
+\item{log_x}{If \code{TRUE} (default), use a log10 x-axis.}
+
+\item{log_y}{If \code{TRUE}, use a log10 y-axis. Default is \code{FALSE}.}
+
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.}
+
+\item{...}{Further arguments used by only some of the methods:
+
+\strong{For \code{MizerSim} methods:}
+\describe{
+\item{\code{time_range}}{The time range (either a vector of values, a vector
+of min and max time, or a single value) to average the feeding level
+over. Default is the final time step.}
+}}
 }
 \value{
 A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
-frame with the variables 'w', 'value' and 'Species' is returned. If also
-\code{include_critical = TRUE} then the data frame contains a fourth variable
-'Type' that distinguishes between 'actual' and 'critical' feeding level.
+frame with the variables 'w' (or 'l' if \code{size_axis = "l"}), 'value' and
+'Species' is returned. If also \code{include_critical = TRUE} then the data
+frame contains a fourth variable 'Type' that distinguishes between
+'actual' and 'critical' feeding level.
 }
 \description{
 After running a projection, plot the feeding level of each species by size.
@@ -91,18 +110,26 @@ str(fr)
 \seealso{
 \link{plotting_functions}, \code{\link[=getFeedingLevel]{getFeedingLevel()}}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotBiomass}()},
-\code{\link{plotDiet}()},
-\code{\link{plotFMort}()},
-\code{\link{plotGrowthCurves}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotSpectra}()},
-\code{\link{plotYield}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotBiomass]{plotBiomass()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotDiet]{plotDiet()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotGrowthCurves]{plotGrowthCurves()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra]{plotSpectra()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYield]{plotYield()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

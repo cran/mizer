@@ -6,7 +6,7 @@
 \alias{interaction_matrix<-}
 \title{Set species interaction matrix}
 \usage{
-setInteraction(params, interaction = NULL)
+setInteraction(params, interaction = NULL, ...)
 
 interaction_matrix(params)
 
@@ -18,6 +18,8 @@ interaction_matrix(params) <- value
 \item{interaction}{Optional interaction matrix of the species (predator
 species x prey species). By default all entries are 1. See "Setting
 interaction matrix" section below.}
+
+\item{...}{Unused}
 
 \item{value}{An interaction matrix}
 }
@@ -59,7 +61,9 @@ stores it in the \code{interaction} slot of the \code{params} object.
 The order of the columns and rows of the \code{interaction} argument should be
 the same as the order in the species params data frame in the \code{params}
 object. If you supply a named array then the function will check the order
-and warn if it is different. One way of creating your own interaction
+and message if it is different before ignoring the supplied dimnames. If
+you supply only column names then these are also used as the row names. One
+way of creating your own interaction
 matrix is to enter the data using a spreadsheet program and saving it as a
 .csv file. The data can then be read into R using the command \code{read.csv()}.
 
@@ -76,18 +80,19 @@ params <- setInteraction(params, interaction = inter)
 getInteraction(params)
 }
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

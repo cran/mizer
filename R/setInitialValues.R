@@ -1,23 +1,12 @@
 #' Set initial values to values from a simulation
-#' 
-#' This is used to use the results from one simulation as the starting values
-#' for another simulation.
-#' 
-#' The initial abundances (for both species and resource) in the `params`
-#' object are set to the abundances in a MizerSim object, averaged over
-#' a range of times. Similarly, the initial effort in the `params` object is
-#' set to the effort in the MizerSim object, again averaged over that range
-#' of times.
-#' When no time range is specified, the initial values are taken from the final
-#' time step of the simulation.
-#' 
-#' If the model described by `sim` and `params` has additional components
-#' created with [setComponent()] then the values of these components are also
-#' averaged and copied to `params`.
-#' 
-#' The MizerSim object must come from a model with the same set of species and
-#' gears and other components and the same size bins as the MizerParams object.
-#' Otherwise an error is raised.
+#'
+#' `r lifecycle::badge("deprecated")`
+#'
+#' @description
+#' `r lifecycle::badge("deprecated")`
+#' This function is deprecated. Use [getParams()], [initialParams()], or
+#' [finalParams()] instead. These functions return a `MizerParams` object
+#' with the ecosystem state extracted from a simulation.
 #'
 #' @param params A `MizerParams` object in which to set the initial values
 #' @param sim A `MizerSim` object from which to take the values.
@@ -30,31 +19,37 @@
 #'   time range is a geometric mean instead of the default arithmetic mean. This
 #'   does not affect the average of the effort or of other components, which is
 #'   always arithmetic.
-#'   
-#' @return The `params` object with updated initial values and initial effort. 
-#'   Because of the way the
-#'   R language works, `setInitialValues()` does not make the changes to the
-#'   params object that you pass to it but instead returns a new params object.
-#'   So to affect the change you call the function in the form
-#'   `params <- setInitialValues(params, sim)`.
+#' @param ... Additional arguments passed to the method.
+#'
+#' @return The `params` object with updated initial values and initial effort.
 #' @export
-#' @family functions for setting parameters
+#' @concept deprecated
 #' @examples
 #' \donttest{
 #' params <- NS_params
 #' sim <- project(params, t_max = 20, effort = 0.5)
 #' params <- setInitialValues(params, sim)
 #' }
-setInitialValues <- function(params, sim, time_range, geometric_mean = FALSE) {
-    assert_that(is(params, "MizerParams"),
-                is(sim, "MizerSim"),
+setInitialValues <- function(params, sim, time_range, geometric_mean = FALSE, ...) {
+    UseMethod("setInitialValues")
+}
+#' @export
+setInitialValues.MizerParams <- function(params, sim, time_range, geometric_mean = FALSE, ...) {
+    lifecycle::deprecate_warn(
+        "3.0.0", "setInitialValues()",
+        details = paste0("Use `getParams(sim, time_range, geometric_mean)` to ",
+                         "extract a MizerParams object with updated initial ",
+                         "values. Convenience wrappers `initialParams()` and ",
+                         "`finalParams()` extract the first and last time steps.")
+    )
+    assert_that(is(sim, "MizerSim"),
                 is.flag(geometric_mean))
     no_t <- dim(sim@n)[1]
     if (!identical(dim(sim@n)[2:3], dim(params@initial_n))) {
         stop("The consumer size spectrum of the simulation in `sim` has a ",
              "different size from that in `params`.")
     }
-    if (!identical(params@species_params$species, 
+    if (!identical(params@species_params$species,
                    sim@params@species_params$species)) {
         stop("The species in `sim` have different names from those in `params`.")
     }
@@ -97,27 +92,27 @@ setInitialValues <- function(params, sim, time_range, geometric_mean = FALSE) {
         apply(sim@n_other[time_elements, , drop = FALSE], 2,
               function(l) Reduce(mizer_add, l) / length(l),
               simplify = FALSE)
-    
+
     params@initial_effort[] <-
         apply(sim@effort[time_elements, , drop = FALSE], 2, mean)
-    
+
     params@time_modified <- lubridate::now()
     params
 }
 
 #' Initial values for fish spectra
-#' 
+#'
 #' Values used as starting values for simulations with `project()`.
-#' 
+#'
 #' @param params A MizerParams object
 #' @param value A matrix with dimensions species x size holding the initial
 #'   number densities for the fish spectra.
 #' @export
 `initialN<-` <- function(params, value) {
-    if (!is(params, "MizerParams")) {
-        stop("You can only assign an initial N to a MizerParams object. ",
-             params, " is of class ", class(params), ".")
-    }
+    UseMethod("initialN<-")
+}
+#' @export
+`initialN<-.MizerParams` <- function(params, value) {
     assert_that(identical(dim(value), dim(params@initial_n)),
                 all(value >= 0))
     if (!is.null(dimnames(value)) &&
@@ -125,39 +120,45 @@ setInitialValues <- function(params, sim, time_range, geometric_mean = FALSE) {
         warning("The dimnames do not match. I will ignore them.")
     }
     params@initial_n[] <- value
-    
+
     params@time_modified <- lubridate::now()
     params
 }
 
 #' @rdname initialN-set
 #' @param object An object of class MizerParams or MizerSim
-#' @return A matrix with dimensions species x size holding the initial number
-#'   densities for the fish spectra.
+#' @return An `ArraySpeciesBySize` object with dimensions species x size holding
+#'   the initial number densities for the fish spectra.
 #' @export
 #' @seealso [initialNResource()], [initialNOther()]
-#' @examples 
+#' @examples
 #' # Doubling abundance of Cod in the initial state of the North Sea model
 #' params <- NS_params
 #' initialN(params)["Cod", ] <- 2 * initialN(params)["Cod", ]
-#' # Calculating the corresponding initial biomass
-#' biomass <- initialN(params)["Cod", ] * dw(NS_params) * w(NS_params)
-#' # Of course this initial state will no longer be a steady state
-#' params <- steady(params)
 initialN <- function(object) {
-    if (is(object, "MizerParams")) {
-        params <- validParams(object)
-        return(params@initial_n)
-    }
-    if (is(object, "MizerSim")) {
-        return(object@params@initial_n)
-    }
+    UseMethod("initialN")
+}
+#' @rdname initialN-set
+#' @usage NULL
+#' @export
+initialN.MizerParams <- function(object) {
+    params <- validParams(object)
+    ArraySpeciesBySize(params@initial_n, value_name = "Number density",
+                       params = params)
+}
+#' @rdname initialN-set
+#' @usage NULL
+#' @export
+initialN.MizerSim <- function(object) {
+    ArraySpeciesBySize(object@params@initial_n,
+                       value_name = "Number density",
+                       params = object@params)
 }
 
 #' Initial value for resource spectrum
-#' 
+#'
 #' Value used as starting value for simulations with `project()`.
-#' 
+#'
 #' @param params A MizerParams object
 #' @param value A vector with the initial number densities for the resource
 #'   spectrum
@@ -167,13 +168,11 @@ initialN <- function(object) {
 #' # Doubling resource abundance in the initial state of the North Sea model
 #' params <- NS_params
 #' initialNResource(params) <- 2 * initialNResource(params)
-#' # Of course this initial state will no longer be a steady state
-#' params <- steady(params)
 `initialNResource<-` <- function(params, value) {
-    if (!is(params, "MizerParams")) {
-        stop("You can only assign an initial N to a MizerParams object. ",
-             params, " is of class ", class(params), ".")
-    }
+    UseMethod("initialNResource<-")
+}
+#' @export
+`initialNResource<-.MizerParams` <- function(params, value) {
     assert_that(identical(dim(value), dim(params@initial_n_pp)),
                 all(value >= 0))
     if (!is.null(dimnames(value)) &&
@@ -181,7 +180,7 @@ initialN <- function(object) {
         warning("The dimnames do not match. I will ignore them.")
     }
     params@initial_n_pp[] <- value
-    
+
     params@time_modified <- lubridate::now()
     params
 }
@@ -192,11 +191,18 @@ initialN <- function(object) {
 #'   spectrum
 #' @export
 initialNResource <- function(object) {
-    if (is(object, "MizerParams")) {
-        params <- validParams(object)
-        return(params@initial_n_pp)
-    }
-    if (is(object, "MizerSim")) {
-        return(object@params@initial_n_pp)
-    }
+    UseMethod("initialNResource")
+}
+#' @rdname initialNResource-set
+#' @usage NULL
+#' @export
+initialNResource.MizerParams <- function(object) {
+    params <- validParams(object)
+    return(params@initial_n_pp)
+}
+#' @rdname initialNResource-set
+#' @usage NULL
+#' @export
+initialNResource.MizerSim <- function(object) {
+    return(object@params@initial_n_pp)
 }

@@ -1,6 +1,8 @@
+trait_resource_semichemostat_params <- trait_params_small
+
 test_that("resource_semichemostat preserves steady state", {
     # Set resource parameters so that we are at steady state
-    params <- newTraitParams()
+    params <- trait_resource_semichemostat_params
     params <- setResource(params,
                           resource_capacity = 2 * initialNResource(params),
                           resource_dynamics = "resource_semichemostat")
@@ -25,7 +27,7 @@ test_that("resource_semichemostat evolves towards steady state", {
     # a large factor s and simultaneously scaling up the plankton abundance
     # so as to keep the income of the fish constant.
     s <- 1e10
-    params <- newTraitParams()
+    params <- trait_resource_semichemostat_params
     species_params(params)$gamma <- species_params(params)$gamma / s
     initialNResource(params) <- initialNResource(params) * s
     # Set resource parameters so that we are at steady state
@@ -61,7 +63,7 @@ test_that("balance_resource_semichemostat works", {
         all.equal(N_steady[sel], N[sel])
     }
     
-    params <- NS_params
+    params <- NS_params_small
     
     # setting rate
     rate <- getResourceMort(params)
@@ -75,4 +77,53 @@ test_that("balance_resource_semichemostat works", {
     p1 <- setResource(params, resource_capacity = capacity)
     expect_identical(p1@cc_pp, capacity)
     expect_true(sc(p1))
+})
+
+test_that("balance_resource_semichemostat validates balancing inputs", {
+    params <- NS_params_small
+
+    rate <- getResourceMort(params)
+    rate[1] <- 0
+    expect_error(balance_resource_semichemostat(params,
+                                                resource_rate = rate,
+                                                resource_capacity = NULL),
+                 "resource rate is zero while the resource mortality is not")
+
+    expect_error(balance_resource_semichemostat(
+        params,
+        resource_rate = NULL,
+        resource_capacity = initialNResource(params) * 0.9
+    ), "capacity is less than the current abundance")
+})
+
+test_that("balance_resource_semichemostat nudges capacity to avoid division by zero", {
+    params <- NS_params_small
+    capacity <- initialNResource(params)
+    death <- getResourceMort(params) * capacity != 0
+
+    expect_warning(
+        balanced <- balance_resource_semichemostat(
+            params,
+            resource_rate = NULL,
+            resource_capacity = capacity
+        ),
+        "division by zero"
+    )
+
+    expect_true(all(is.finite(balanced$resource_rate)))
+    expect_true(all(balanced$resource_capacity[death] > capacity[death]))
+})
+
+test_that("balance_resource_semichemostat keeps current rate when unidentifiable", {
+    params <- trait_resource_semichemostat_params
+    initialN(params)[] <- 0
+    keep <- params@rr_pp[1]
+    capacity <- initialNResource(params)
+
+    balanced <- balance_resource_semichemostat(params,
+                                               resource_rate = NULL,
+                                               resource_capacity = capacity)
+
+    expect_identical(balanced$resource_rate[1], keep)
+    expect_identical(balanced$resource_capacity[1], capacity[1])
 })

@@ -4,53 +4,42 @@
 \alias{getEReproAndGrowth}
 \title{Get energy rate available for reproduction and growth}
 \usage{
-getEReproAndGrowth(
-  params,
-  n = initialN(params),
-  n_pp = initialNResource(params),
-  n_other = initialNOther(params),
-  t = 0,
-  ...
-)
+getEReproAndGrowth(object, ...)
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{n_pp}{A vector of the resource abundance by size}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
-
-\item{t}{The time for which to do the calculation (Not used by standard
-mizer rate functions but useful for extensions with time-dependent
-parameters.)}
-
-\item{...}{Unused}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{The time range over which to return the rates. Either
+a vector of values, a vector of min and max time, or a single value.
+Defaults to the whole time range of the simulation.}
+\item{\code{drop}}{If \code{TRUE} then any dimension of length 1 is removed from the
+returned array.}
+}}
 }
 \value{
-A two dimensional array (species x size) holding
-\deqn{E_{r.i}(w) = \max(0, \alpha_i\, (1 - {\tt feeding\_level}_i(w))\,
-                           {\tt encounter}_i(w) - {\tt metab}_i(w)).}{
-  E_{r.i}(w) = max(0, alpha_i * (1 - feeding_level_i(w)) *
-                      encounter_i(w) - metab_i(w)).}
-Due to the form of the feeding level, calculated by
-\code{\link[=getFeedingLevel]{getFeedingLevel()}}, if the feeding level is nonzero this can also be expressed as
-\deqn{E_{r.i}(w) = \max(0, \alpha_i\, {\tt feeding\_level}_i(w)\,
-                           h_i(w) - {\tt metab}_i(w))}{
-  E_{r.i}(w) = max(0, alpha_i * feeding_level_i(w) *
-                      h_i(w) - metab_i(w))}
-where \eqn{h_i} is the maximum intake rate, set with
-\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}}. However this function is using the first equation
-above so that it works also when the maximum intake rate is infinite, i.e.,
-there is no satiation.
-The assimilation rate \eqn{\alpha_i} is taken from the species parameter
-data frame in \code{params}. The metabolic rate \code{metab} is taken from
-\code{params} and set with \code{\link[=setMetabolicRate]{setMetabolicRate()}}.
-
-The return value can be negative, which means that the energy intake does not
-cover the cost of metabolism and movement.
+\itemize{
+\item \code{MizerParams}: An \code{ArraySpeciesBySize} object (species x size) with the
+energy rate \eqn{E_{r.i}(w)} available for growth and reproduction
+(grams/year).
+\item \code{MizerSim}: An \code{ArrayTimeBySpeciesBySize} object (time step x species x
+size) with the energy rate at every time step. If \code{drop = TRUE} then
+dimensions of length 1 will be removed.
+}
 }
 \description{
 Calculates the energy rate \eqn{E_{r.i}(w)} (grams/year) available for
@@ -77,7 +66,7 @@ params <- NS_params
 # Project with constant fishing effort for all gears for 20 time steps
 sim <- project(params, t_max = 20, effort = 0.5)
 # Get the energy at a particular time step
-e <- getEReproAndGrowth(params, n = N(sim)[15, , ], 
+e <- getEReproAndGrowth(params, n = N(sim)[15, , ],
                         n_pp = NResource(sim)[15, ], t = 15)
 # Rate at this time for Sprat of size 2g
 e["Sprat", "2"]
@@ -88,19 +77,21 @@ The part of this energy rate that is invested into growth is
 calculated with \code{\link[=getEGrowth]{getEGrowth()}} and the part that is invested into
 reproduction is calculated with \code{\link[=getERepro]{getERepro()}}.
 
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

@@ -2,10 +2,7 @@
 
 # Copyright 2012 Finlay Scott and Julia Blanchard.
 # Copyright 2018 Gustav Delius and Richard Southwell.
-# Development has received funding from the European Commission's Horizon 2020 
-# Research and Innovation Programme under Grant Agreement No. 634495 
-# for the project MINOUW (http://minouw-project.eu/).
-# Distributed under the GPL 3 or later 
+# Distributed under the GPL 3 or later
 # Maintainer: Gustav Delius, University of York, <gustav.delius@york.ac.uk>
 
 # Validity check
@@ -26,7 +23,7 @@ valid_MizerSim <- function(object) {
         errors <- c(errors, msg)
     }
     # Check time dimension is good - size, dim name, and names
-    if (!all(c(dim(object@n)[[1]], 
+    if (!all(c(dim(object@n)[[1]],
                dim(object@n_pp)[[1]],
                dim(object@n_other)[[1]]) == dim(object@effort)[[1]])) {
         msg <- "First dimension of effort, n, n_pp and n_other slots must be the same length."
@@ -93,7 +90,7 @@ valid_MizerSim <- function(object) {
         msg <- "Second dimension of n_other slot must have same component names as other_dynamics in the params slot"
         errors <- c(errors, msg)
     }
-    
+
     # gear dimension of effort
     if (dim(object@effort)[[2]] != dim(object@params@catchability)[[1]]) {
         msg <- "Second dimension of effort slot must have same number of gears as in the params slot"
@@ -114,44 +111,49 @@ valid_MizerSim <- function(object) {
 # Soundtrack: Yob - Quantum Mystic
 #### Class definition ####
 #' A class to hold the results of a simulation
-#' 
+#'
 #' A class that holds the results of projecting a \linkS4class{MizerParams}
 #' object through time using [project()].
-#' 
+#'
 #' A new `MizerSim` object can be created with the [MizerSim()]
 #' constructor, but you will never have to do that because the object is
 #' created automatically by [project()] when needed.
-#' 
+#'
 #' As a user you should never have to access the slots of a MizerSim object
 #' directly. Instead there are a range of functions to extract the information.
 #' [N()] and [NResource()] return arrays with the saved abundances of
 #' the species and the resource population at size respectively. [getEffort()]
-#' returns the fishing effort of each gear through time. 
+#' returns the fishing effort of each gear through time.
 #' [getTimes()] returns the vector of times at which simulation results
 #' were stored and [idxFinalT()] returns the index with which to access
 #' specifically the value at the final time in the arrays returned by the other
-#' functions. [getParams()] returns the `MizerParams` object that was
-#' passed to `project()`. There are also several
+#' functions. [getParams()] extracts the ecosystem state as a `MizerParams`
+#' object with initial abundances set to values from the simulation; [finalParams()]
+#' and [initialParams()] are convenient shorthands for the final and initial
+#' time steps. There are also several
 #' [summary_functions] and [plotting_functions]
 #' available to explore the contents of a `MizerSim` object.
-#' 
+#'
 #' The arrays all have named dimensions. The names of the `time` dimension
 #' denote the time in years. The names of the `w` dimension are weights in grams
 #' rounded to three significant figures. The names of the `sp` dimension are the
 #' same as the species name in the order specified in the species_params data
 #' frame. The names of the `gear` dimension are the names of the gears, in the
 #' same order as specified when setting up the `MizerParams` object.
-#' 
+#'
 #' Extensions of mizer can use the `n_other` slot to store the abundances of
 #' other ecosystem components and these extensions should provide their own
 #' functions for accessing that information.
-#' 
+#'
 #' The `MizerSim` class has changed since previous versions of mizer. To use
 #' a `MizerSim` object created by a previous version, you need to upgrade it
-#' with [upgradeSim()].
-#' 
+#' with [validSim()].
+#'
 #' @slot params An object of type \linkS4class{MizerParams}.
-#' @slot n Three-dimensional array (time x species x size) that stores the 
+#'   If this params object uses extensions, the `MizerSim` object uses the same
+#'   extension chain via `params@extensions`; `MizerSim` has no separate
+#'   extension slot.
+#' @slot n Three-dimensional array (time x species x size) that stores the
 #'   projected community number densities.
 #' @slot n_pp An array (time x size) that stores the projected resource number
 #'   densities.
@@ -159,7 +161,9 @@ valid_MizerSim <- function(object) {
 #'   values for other ecosystem components.
 #' @slot effort An array (time x gear) that stores the fishing effort by time
 #'   and gear.
-#' 
+#' @slot sim_params A named list of the parameters passed to [project()] or
+#'   [projectToSteady()] to produce this simulation, such as `method` and `dt`.
+#'
 #' @export
 setClass(
     "MizerSim",
@@ -168,7 +172,8 @@ setClass(
         n = "array",
         effort = "array",
         n_pp = "array",
-        n_other = "array"
+        n_other = "array",
+        sim_params = "list"
     )
 )
 
@@ -177,11 +182,11 @@ remove(valid_MizerSim)
 
 
 #' Constructor for the `MizerSim` class
-#' 
-#' A constructor for the `MizerSim` class. This is used by 
+#'
+#' A constructor for the `MizerSim` class. This is used by
 #' [project()] to create `MizerSim` objects of the right
 #' dimensions. It is not necessary for users to use this constructor.
-#' 
+#'
 #' @param params a \linkS4class{MizerParams} object
 #' @param t_dimnames Numeric vector that is used for the time dimensions of the
 #'   slots. Default = NA.
@@ -189,7 +194,7 @@ remove(valid_MizerSim)
 #'   = NA. Default value = 100.
 #' @param t_save How often should the results of the simulation be stored. Only
 #'   used if t_dimnames = NA. Default value = 1.
-#'   
+#'
 #' @return An object of type \linkS4class{MizerSim}
 #' @export
 MizerSim <- function(params, t_dimnames = NA, t_max = 100, t_save = 1) {
@@ -209,70 +214,77 @@ MizerSim <- function(params, t_dimnames = NA, t_max = 100, t_save = 1) {
     no_w <- length(params@w)
     w_names <- dimnames(params@psi)$w
     no_t <- length(t_dimnames)
-    array_n <- array(NA, dim = c(no_t, no_sp, no_w), 
-                     dimnames = list(time = t_dimnames, 
+    array_n <- array(NA, dim = c(no_t, no_sp, no_w),
+                     dimnames = list(time = t_dimnames,
                                      sp = species_names, w = w_names))
-    
+
     no_gears <- dim(params@selectivity)[1]
     gear_names <- dimnames(params@selectivity)$gear
-    array_effort <- array(NA, dim = c(no_t, no_gears), 
-                          dimnames = list(time = t_dimnames, 
+    array_effort <- array(NA, dim = c(no_t, no_gears),
+                          dimnames = list(time = t_dimnames,
                                           gear = gear_names))
-    
+
     no_w_full <- length(params@w_full)
     w_full_names <- names(params@rr_pp)
-    array_n_pp <- array(NA, dim = c(no_t, no_w_full), 
-                        dimnames = list(time = t_dimnames, 
+    array_n_pp <- array(NA, dim = c(no_t, no_w_full),
+                        dimnames = list(time = t_dimnames,
                                         w = w_full_names))
-    
+
     component_names <- names(params@other_dynamics)
     no_components <- length(component_names)
     list_n_other <- rep(list(NA), no_t * no_components)
     dim(list_n_other) <- c(no_t, no_components)
     dimnames(list_n_other) <- list(time = t_dimnames,
                                    component = component_names)
-    
+
     sim <- new("MizerSim",
                params = params,
                n = array_n,
                n_pp = array_n_pp,
                n_other = list_n_other,
-               effort = array_effort)
-    return(sim)
+               effort = array_effort,
+               sim_params = list())
+    coerceToExtensionClass(sim)
 }
 
 #' Validate MizerSim object and upgrade if necessary
-#' 
+#'
 #' Checks that the given MizerSim object is valid and upgrades it if necessary.
-#' Checks whether any abundances are non-finite and if any are found, a warning
-#' is issued and the simulation is truncated at the last time step where all
-#' results are finite.
-#' 
+#' It also validates the embedded [MizerParams-class()] object with
+#' [validParams()]. If any entries of the consumer abundance array `sim@n` are
+#' non-finite, a warning is issued and the simulation is truncated at the last
+#' time step where `sim@n` is still finite.
+#'
 #' Occasionally, during the development of new features for mizer, the
 #' \linkS4class{MizerSim} class or the \linkS4class{MizerParams} class gains
 #' extra slots. MizerSim objects created in older versions of mizer are then no
 #' longer valid in the new version because of the missing slots. You need to
 #' upgrade them with this function.
-#' 
+#'
 #' This function adds the missing slots and fills them with default values. It
 #' also calls [validParams()] to upgrade the MizerParams object inside the
 #' MizerSim object. Any object from version 0.4 onwards can be upgraded.
-#' 
+#'
 #' @inheritSection validParams Backwards compatibility
-#' 
+#'
 #' @param sim The MizerSim object to validate
 #' @return A valid MizerSim object
 #' @export
 validSim <- function(sim) {
+    UseMethod("validSim")
+}
+
+#' @export
+validSim.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     if (needs_upgrading(sim)) {
         sim <- suppressWarnings(upgradeSim(sim))
-        warning("Your MizerSim object was created with an earlier version of mizer. You can upgrade it with `sim <- upgradeSim(sim)` where you should replace `sim` by the name of the variable that holds your MizerSim object.")
+        warning("Your MizerSim object was created with an earlier version of mizer. You can upgrade it with `sim <- validSim(sim)` where you should replace `sim` by the name of the variable that holds your MizerSim object.")
     } else {
         # Always validate the params object, even if no upgrading was required.
         sim@params <- validParams(sim@params)
     }
-    
+
     if (!all(is.finite(sim@n))) {
         inf_idx <- which(!is.finite(sim@n), arr.ind = TRUE)
         max_t_idx <- min(inf_idx[, 1]) - 1
@@ -294,6 +306,7 @@ validSim <- function(sim) {
         }
         sim <- truncateSim(sim, end_time = max_t)
     }
+    sim <- coerceToExtensionClass(sim)
     validObject(sim)
     sim
 }
@@ -313,18 +326,24 @@ truncateSim <- function(sim, end_time) {
 }
 
 #' Time series of size spectra
-#' 
+#'
 #' Fetch the simulation results for the size spectra over time.
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return For `N()`: A three-dimensional array (time x species x size) with the
-#'   number density of consumers
+#' @return For `N()`: An `ArrayTimeBySpeciesBySize` object (time x species x
+#'   size) with the number density of consumers.
 #' @export
 #' @examples
 #' str(N(NS_sim))
 N <- function(sim) {
+    UseMethod("N")
+}
+
+#' @export
+N.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
-    sim@n
+    ArrayTimeBySpeciesBySize(sim@n, value_name = "Number density",
+                             units = "1/g", params = sim@params)
 }
 
 #' @rdname N
@@ -333,27 +352,38 @@ N <- function(sim) {
 #' @examples
 #' str(NResource(NS_sim))
 NResource <- function(sim) {
+    UseMethod("NResource")
+}
+
+#' @export
+NResource.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     sim@n_pp
 }
 
 
 #' Size spectra at end of simulation
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return For `finalN()`: An array (species x size) holding the consumer
-#'   number densities at the end of the simulation
+#' @return For `finalN()`: An `ArraySpeciesBySize` object (species x size)
+#'   holding the consumer number densities at the end of the simulation
 #' @export
 #' @examples
 #' str(finalN(NS_sim))
-#' 
+#'
 #' # This could also be obtained using `N()` and `idxFinalT()`
 #' identical(N(NS_sim)[idxFinalT(NS_sim), , ], finalN(NS_sim))
 finalN <- function(sim) {
+    UseMethod("finalN")
+}
+
+#' @export
+finalN.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     n <- sim@params@initial_n  # Needed to get the right dimnames
     n[] <- sim@n[dim(sim@n)[[1]], , ]
-    n
+    ArraySpeciesBySize(n, value_name = "Number density",
+                       params = sim@params)
 }
 
 #' @rdname finalN
@@ -363,6 +393,11 @@ finalN <- function(sim) {
 #' @examples
 #' str(finalNResource(NS_sim))
 finalNResource <- function(sim) {
+    UseMethod("finalNResource")
+}
+
+#' @export
+finalNResource.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     sim@n_pp[dim(sim@n_pp)[[1]], ]
 }
@@ -382,53 +417,189 @@ finalNResource <- function(sim) {
 #' identical(N(NS_sim)[idx, , ], finalN(NS_sim))
 #' identical(NResource(NS_sim)[idx, ], finalNResource(NS_sim))
 idxFinalT <- function(sim) {
+    UseMethod("idxFinalT")
+}
+
+#' @export
+idxFinalT.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     dim(sim@n_pp)[[1]]
 }
 
 
 #' Times for which simulation results are available
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return A numeric vectors of the times (in years) at which simulation results
+#' @return A numeric vector of the times (in years) at which simulation results
 #'   have been stored in the MizerSim object.
 #' @export
-#' @examples 
+#' @examples
 #' getTimes(NS_sim)
 getTimes <- function(sim) {
+    UseMethod("getTimes")
+}
+
+#' @export
+getTimes.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
-    as.numeric(dimnames(sim@n)$t)
+    as.numeric(dimnames(sim@n)$time)
 }
 
 #' Fishing effort used in simulation
-#' 
+#'
 #' Note that the array returned may not be exactly the same as the `effort`
 #' argument that was passed in to `project()`. This is because only the saved
 #' effort is stored (the frequency of saving is determined by the argument
 #' `t_save`).
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return An array (time x gear) that contains the fishing effort by time and 
+#' @return An array (time x gear) that contains the fishing effort by time and
 #'   gear.
 #' @export
 #' @examples
 #' str(getEffort(NS_sim))
 getEffort <- function(sim) {
+    UseMethod("getEffort")
+}
+
+#' @export
+getEffort.MizerSim <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     sim@effort
 }
 
-#' Extract the parameter object underlying a simulation
-#' 
-#' @param sim A MizerSim object
-#' @return The MizerParams object that was used to run the simulation
+#' Extract the model state from a simulation
+#'
+#' A `MizerParams` object describes the state of the ecosystem: its species
+#' parameters, size grid, rate functions, *and* the current abundances stored in
+#' the `initial_n`, `initial_n_pp`, `initial_n_other`, and `initial_effort`
+#' slots. `getParams()` extracts that state from a `MizerSim` object, averaged
+#' over a chosen time range (or at a single time point).
+#'
+#' When no `time_range` is given, the state at the final time step is returned.
+#' Use [initialParams()] or [finalParams()] as convenient shorthand for the
+#' state at the initial and final time respectively.
+#'
+#' The abundances set in the returned `MizerParams` object are averages over the
+#' selected time range. By default this is an arithmetic mean; set
+#' `geometric_mean = TRUE` to use a geometric mean instead (this does not affect
+#' the effort or other components, which are always averaged arithmetically).
+#'
+#' @param sim A `MizerSim` object.
+#' @param time_range The time range to average the abundances over. Can be a
+#'   vector of values, a vector of min and max time, or a single value. Only the
+#'   range of times is relevant, i.e., all times between the smallest and
+#'   largest will be selected.  Default is the final time step.
+#' @param geometric_mean `r lifecycle::badge("experimental")`
+#'   If `TRUE`, the average of the abundances over the time range is a geometric
+#'   mean instead of the default arithmetic mean. This does not affect the
+#'   average of the effort or of other components, which is always arithmetic.
+#' @return A `MizerParams` object with `initial_n`, `initial_n_pp`,
+#'   `initial_n_other`, and `initial_effort` set to the (averaged) values from
+#'   the simulation.
 #' @export
-#' @examples 
-#' # This will be identical to the params object that was used to create the
-#' # simulation
-#' sim <- project(NS_params, t_max = 1)
-#' identical(getParams(sim), NS_params)
-getParams <- function(sim) {
-    assert_that(is(sim, "MizerSim"))
+#' @seealso [initialParams()], [finalParams()]
+#' @examples
+#' sim <- project(NS_params, t_max = 20, effort = 0.5)
+#' # Extract state at a specific time
+#' params_2010 <- getParams(sim, time_range = 10)
+#' # Extract state averaged over the last 10 years
+#' params_avg <- getParams(sim, time_range = c(10, 20))
+getParams <- function(sim, time_range, geometric_mean = FALSE) {
+    UseMethod("getParams")
+}
+
+#' @export
+getParams.MizerSim <- function(sim, time_range, geometric_mean = FALSE) {
+    assert_that(is(sim, "MizerSim"),
+                is.flag(geometric_mean))
+    params <- sim@params
+    if (missing(time_range)) {
+        time_range <- max(as.numeric(dimnames(sim@n)$time))
+    }
+    time_elements <- get_time_elements(sim, time_range)
+    mean_fn <- mean
+    if (geometric_mean) {
+        mean_fn <- function(x) exp(mean(log(x)))
+    }
+    params@initial_n[] <-
+        apply(sim@n[time_elements, , , drop = FALSE], c(2, 3), mean_fn)
+    params@initial_n_pp[] <-
+        apply(sim@n_pp[time_elements, , drop = FALSE], 2, mean_fn)
+    mizer_add <- function(l1, l2) {
+        ifelse(is.list(l1), Map("+", l1, l2), l1 + l2)
+    }
+    params@initial_n_other[] <-
+        apply(sim@n_other[time_elements, , drop = FALSE], 2,
+              function(l) Reduce(mizer_add, l) / length(l),
+              simplify = FALSE)
+    params@initial_effort[] <-
+        apply(sim@effort[time_elements, , drop = FALSE], 2, mean)
+    params@time_modified <- lubridate::now()
+    params
+}
+
+#' Extract the initial state from a simulation
+#'
+#' Returns the `MizerParams` object underlying the simulation with its initial
+#' abundances set to the abundances at the initial time of the
+#' simulation.
+#'
+#' @param sim A `MizerSim` object.
+#' @return A `MizerParams` object with initial state of the simulation.
+#' @export
+#' @seealso [getParams()], [finalParams()]
+#' @examples
+#' sim <- project(NS_params, t_max = 20, effort = 0.5)
+#' params_start <- initialParams(sim)
+initialParams <- function(sim) {
+    sim <- validSim(sim)
     sim@params
+}
+
+#' Extract the final state from a simulation
+#'
+#' Returns the `MizerParams` object underlying the simulation with its initial
+#' abundances set to the abundances at the *last* saved time step of the
+#' simulation. This is a convenience wrapper around [getParams()] with no
+#' `time_range` argument (the default).
+#'
+#' @param sim A `MizerSim` object.
+#' @return A `MizerParams` object with initial values taken from the final time
+#'   step of the simulation.
+#' @export
+#' @seealso [getParams()], [initialParams()]
+#' @examples
+#' sim <- project(NS_params, t_max = 20, effort = 0.5)
+#' params_end <- finalParams(sim)
+finalParams <- function(sim) {
+    UseMethod("finalParams")
+}
+
+#' @export
+finalParams.MizerSim <- function(sim) {
+    getParams(sim)
+}
+
+#' Extract the projection parameters used to produce a simulation
+#'
+#' Returns the named list of arguments passed to [project()] or
+#' [projectToSteady()] when producing this `MizerSim` object, such as
+#' `method` and `dt`. Returns an empty list for simulations produced by
+#' older versions of mizer.
+#'
+#' @param sim A MizerSim object
+#' @return A named list of projection parameters.
+#' @export
+#' @examples
+#' sim <- project(NS_params, t_max = 0.1, dt = 0.05, method = "predictor-corrector")
+#' getSimParams(sim)
+getSimParams <- function(sim) {
+    UseMethod("getSimParams")
+}
+
+#' @export
+getSimParams.MizerSim <- function(sim) {
+    assert_that(is(sim, "MizerSim"))
+    sim@sim_params
 }

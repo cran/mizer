@@ -2,10 +2,16 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerERepro}
 \alias{mizerERepro}
+\alias{projectERepro}
+\alias{projectERepro.MizerParams}
 \title{Get energy rate available for reproduction needed to project standard mizer
 model}
 \usage{
-mizerERepro(params, n, n_pp, n_other, t, e, ...)
+projectERepro(params, n, n_pp, n_other, t = 0, e, ...)
+
+\method{projectERepro}{MizerParams}(params, n, n_pp, n_other, t = 0, e, ...)
+
+mizerERepro(params, n, n_pp, n_other, t = 0, e, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -28,12 +34,13 @@ for reproduction and growth as calculated by \code{\link[=mizerEReproAndGrowth]{
 }
 \value{
 A two dimensional array (species x size) holding
-\deqn{\psi_i(w)E_{r.i}(w)}
+\deqn{\psi_i(w)\max(0, E_{r.i}(w))}
 where \eqn{E_{r.i}(w)} is the rate at which energy becomes available for
 growth and reproduction, calculated with \code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
 and \eqn{\psi_i(w)} is the proportion of this energy that is used for
-reproduction. This proportion is taken from the \code{params} object and is
-set with \code{\link[=setReproduction]{setReproduction()}}.
+reproduction. Negative entries in \code{e} are clipped to 0 before multiplying by
+\eqn{\psi_i(w)}. This proportion is taken from the \code{params} object and is set
+with \code{\link[=setReproduction]{setReproduction()}}.
 }
 \description{
 Calculates the energy rate (grams/year) available for reproduction after
@@ -57,18 +64,18 @@ same arguments.
 }
 
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

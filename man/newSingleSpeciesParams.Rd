@@ -83,7 +83,7 @@ by \code{\link[=get_gamma_default]{get_gamma_default()}} using the value of \cod
 external mortality, i.e., from sources not explicitly modelled. A number in
 the interval [0, 1).}
 
-\item{reproduction_level}{A number between 0 an 1 that determines the
+\item{reproduction_level}{A number between 0 and 1 that determines the
 level of density dependence in reproduction, see \code{\link[=setBevertonHolt]{setBevertonHolt()}}.}
 
 \item{R_factor}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use
@@ -114,6 +114,23 @@ many arguments, all of which have default values.
 In addition to setting up the parameters, this function also sets up an
 initial condition that is close to steady state, under the assumption of
 no fishing.
+
+The function rounds \code{no_w} to the nearest integer and increases it if
+necessary so that there are at least 5 size bins per factor 10 in body
+size. It requires \verb{w_min < w_mat < w_max}, \code{ext_mort_prop} in \verb{[0, 1)},
+positive values for \code{n}, \code{lambda}, \code{kappa}, \code{alpha}, \code{h}, \code{beta}, \code{sigma}
+and \code{f0}, and \code{fc} between 0 and \code{f0} if \code{fc} is supplied. If \code{gamma} is
+supplied then \code{f0} is ignored. The function stops if the resulting feeding
+level is not sufficient to maintain the species.
+
+The returned model has a single foreground species with cannibalism switched
+off and a fixed power-law background community that provides both food and
+predation mortality. The initial species spectrum is scaled so that its
+maximum abundance is half the background abundance at the corresponding
+size, and \code{erepro} is then adjusted so the initial state satisfies the egg
+boundary condition.
+
+The diffusion rate is set to \code{0}
 }
 \examples{
 params <- newSingleSpeciesParams()
@@ -121,9 +138,9 @@ sim <- project(params, t_max = 5, effort = 0)
 plotSpectra(sim)
 }
 \seealso{
-Other functions for setting up models: 
-\code{\link{newCommunityParams}()},
-\code{\link{newMultispeciesParams}()},
-\code{\link{newTraitParams}()}
+Other functions for setting up models:
+\code{\link[=newCommunityParams]{newCommunityParams()}},
+\code{\link[=newMultispeciesParams]{newMultispeciesParams()}},
+\code{\link[=newTraitParams]{newTraitParams()}}
 }
 \concept{functions for setting up models}

@@ -4,13 +4,16 @@
 \alias{calibrateNumber}
 \title{Calibrate the model scale to match total observed number}
 \usage{
-calibrateNumber(params)
+calibrateNumber(params, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
-A MizerParams object
+A MizerParams object. If no non-missing observed number values are
+provided, the original object is returned unchanged.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -31,7 +34,7 @@ total number, summed over all species. However the numbers of the
 individual species will not match observations yet, with some species
 having numbers that are too high and others too low. So after this
 function you may want to use \code{\link[=matchNumbers]{matchNumbers()}}. This is described in the
-blog post at https://bit.ly/2YqXESV.
+blog post at \url{https://blog.mizer.sizespectrum.org/posts/2021-08-20-a-5-step-recipe-for-tuning-the-model-steady-state/}.
 
 If you have observations of the yearly yield instead of numbers, you can
 use \code{\link[=calibrateYield]{calibrateYield()}} instead of this function.

@@ -1,9 +1,9 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
- 
+<div style="text-align: center;">
 
-<img src="man/figures/mizer.png" style='height: 100%; width: 100%; object-fit: contain' title="mizer logo created by Kira Askaroff (www.kiraaskaroff.com)"/>
+<img src="man/figures/mizer.png" style='height: 50%; width: 50%; object-fit: contain' title="mizer logo created by Kira Askaroff (www.kiraaskaroff.com)"/>
 
 [![CRAN
 Status](https://www.r-pkg.org/badges/version-ago/mizer)](https://cran.r-project.org/package=mizer)
@@ -13,6 +13,8 @@ Downloads](http://cranlogs.r-pkg.org/badges/grand-total/mizer)](https://cran.r-p
 Downloads](http://cranlogs.r-pkg.org/badges/mizer)](https://cran.r-project.org/package=mizer)
 [![Coverage
 status](https://codecov.io/gh/sizespectrum/mizer/branch/master/graph/badge.svg)](https://app.codecov.io/github/sizespectrum/mizer?branch=master)
+
+</div>
 
 Mizer is an R package to run [dynamic multi-species size-spectrum
 models](#dynamic-multi-species-size-spectrum-models) of fish
@@ -30,10 +32,18 @@ and calculations of community indicators such as the slope of the size
 spectrum. Size-based models can be complicated, so mizer contains many
 default options that you can however change when needed.
 
+<a href="https://sizespectrum.org/mizer/reference/figures/mizer_workflow.png" target="_blank">
+<img src="https://raw.githubusercontent.com/sizespectrum/mizer/master/man/figures/mizer_workflow.png" style='height: 100%; width: 100%; object-fit: contain' title="mizer workflow"/>
+</a>
+
 <!-- Mizer can also be used to create web apps that allow users to explore models -->
+
 <!-- without the need to install R. An [example of such an -->
+
 <!-- app](https://mizer.shinyapps.io/selectivity/) investigates the effect of -->
+
 <!-- switching to a gear with a T90 extension net to reduce the catches of undersize -->
+
 <!-- hake and red mullet -->
 
 Mizer has been supporting research in marine ecology and fisheries
@@ -44,7 +54,11 @@ user-friendliness and the flexibility of the framework. Contributions
 from the user community are very welcome. There is a sister package
 called [mizerExperimental](https://sizespectrum.org/mizerExperimental/)
 where user contributions can be checked out and receive feedback from
-the community. Example mizer models can be contributed to
+the community. A growing number of other extension packages add new
+biology such as temperature dependence, starvation mortality, seasonal
+dynamics, and more — see the [list of extension
+packages](https://sizespectrum.org/mizer/articles/using-extension-packages.html).
+Example mizer models can be contributed to
 [mizerExamples](https://sizespectrum.org/mizerExamples/). Follow us on
 [twitter](https://x.com/mizer_model) and read our
 [blog](https://blog.mizer.sizespectrum.org) to stay up-to-date with new
@@ -53,7 +67,7 @@ would love to know.
 
 Recent work on mizer was funded by the European Commission Horizon 2020
 Research and Innovation Programme under Grant Agreement No 634495 for
-the project MINOUW (<http://minouw-project.eu/>) and the Australian
+the project MINOUW and the Australian
 Research Council Discovery Project [Rewiring Marine Food
 Webs](https://marinesocioecology.org/projects/rewiring-marine-food-webs-predicting-consequences-of-species-distribution-shifts-on-marine-communities/).
 
@@ -96,6 +110,10 @@ See the accompanying [Get
 started](https://sizespectrum.org/mizer/articles/mizer.html) page for
 more details on how the package works, including detailed examples.
 
+<a href="https://sizespectrum.org/mizer/reference/figures/size_spectrum.png" target="_blank">
+<img src="https://raw.githubusercontent.com/sizespectrum/mizer/master/man/figures/size.png" style='height: 95%; width: 95%; object-fit: contain' title="Size spectrum dynamics"/>
+</a>
+
 ## Dynamic multi-species size-spectrum model
 
 Size-based multi-species models are important for fisheries science
@@ -131,6 +149,8 @@ and realistic framework for understanding the dynamics of fish
 populations and ecosystems, and for developing effective fisheries
 management strategies that account for the complex interactions among
 species and their environment.
+
+<img src="https://raw.githubusercontent.com/sizespectrum/mizer/master/man/figures/size_selective_fishing.png" style='height: 95%; width: 95%; object-fit: contain' title="Effect of size-selective fishing"/>
 
 A mizer model captures the interactions between species. The growth
 rates of fish are determined by the availability of prey and the death
@@ -176,6 +196,10 @@ our fisheries depend on this traffic flowing smoothly and without
 traffic jams.
 
 An analogy with road traffic may be helpful:
+
+<a href="https://sizespectrum.org/mizer/reference/figures/traffic_jam.png" target="_blank">
+<img src="https://raw.githubusercontent.com/sizespectrum/mizer/master/man/figures/traffic.png" style='height: 95%; width: 95%; object-fit: contain' title="Fish growth traffic jam"/>
+</a>
 
 In road traffic, if traffic density gets too high in a section of the
 highway, drivers slow down, which leads to a pile-up producing even

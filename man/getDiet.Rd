@@ -13,14 +13,16 @@ getDiet(
 )
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{params}{A \linkS4class{MizerParams} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{n}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{params}.}
 
-\item{n_pp}{A vector of the resource abundance by size}
+\item{n_pp}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{params}.}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
+\item{n_other}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{params}.}
 
 \item{proportion}{If TRUE (default) the function returns the diet as a
 proportion of the total consumption rate. If FALSE it returns the
@@ -67,13 +69,15 @@ str(diet)
 \seealso{
 \code{\link[=plotDiet]{plotDiet()}}
 
-Other summary functions: 
-\code{\link{getBiomass}()},
-\code{\link{getGrowthCurves}()},
-\code{\link{getN}()},
-\code{\link{getSSB}()},
-\code{\link{getYield}()},
-\code{\link{getYieldGear}()}
+Other summary functions:
+\code{\link[=getBiomass]{getBiomass()}},
+\code{\link[=getGrowthCurves]{getGrowthCurves()}},
+\code{\link[=getN]{getN()}},
+\code{\link[=getSSB]{getSSB()}},
+\code{\link[=getTrophicLevel]{getTrophicLevel()}},
+\code{\link[=getTrophicLevelBySpecies]{getTrophicLevelBySpecies()}},
+\code{\link[=getYield]{getYield()}},
+\code{\link[=getYieldGear]{getYieldGear()}}
 }
 \concept{summary functions}
 \concept{summary_function}

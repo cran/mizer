@@ -4,22 +4,27 @@
 \alias{setParams}
 \title{Set or change any model parameters}
 \usage{
-setParams(params, interaction = NULL, ...)
+setParams(object, interaction = NULL, info_level = 3, ...)
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} object}
 
 \item{interaction}{Optional interaction matrix of the species (predator
 species x prey species). By default all entries are 1. See "Setting
 interaction matrix" section below.}
 
+\item{info_level}{Controls the amount of information messages that are shown.
+Higher levels lead to more messages.}
+
 \item{...}{
-  Arguments passed on to \code{\link[=setPredKernel]{setPredKernel}}, \code{\link[=setSearchVolume]{setSearchVolume}}, \code{\link[=setMaxIntakeRate]{setMaxIntakeRate}}, \code{\link[=setMetabolicRate]{setMetabolicRate}}, \code{\link[=setExtMort]{setExtMort}}, \code{\link[=setReproduction]{setReproduction}}, \code{\link[=setFishing]{setFishing}}
+  Arguments passed on to \code{\link{setPredKernel}}, \code{\link{setSearchVolume}}, \code{\link{setMaxIntakeRate}}, \code{\link{setMetabolicRate}}, \code{\link{setExtMort}}, \code{\link{setExtEncounter}}, \code{\link{setReproduction}}, \code{\link{setFishing}}
   \describe{
+    \item{\code{params}}{A MizerParams object}
     \item{\code{pred_kernel}}{Optional. An array (species x predator size x prey size)
 that holds the predation coefficient of each predator at size on each prey
 size. If not supplied, a default is set as described in section "Setting
 predation kernel".}
+    \item{\code{value}}{pred_kernel}
     \item{\code{search_vol}}{Optional. An array (species x size) holding the search volume
 for each species at size. If not supplied, a default is set as described in
 the section "Setting search volume".}
@@ -43,13 +48,18 @@ the species data frame, it is calculated as \code{z0pre * w_max ^ z0exp}.
 Default value is \code{n-1}.}
     \item{\code{z0}}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{ext_mort} instead. Not to
 be confused with the species_parameter \code{z0}.}
+    \item{\code{ext_encounter}}{Optional. An array (species x size) holding the external
+encounter rate.  If not supplied, a default is calculated from the \code{E_ext}
+and \code{n} species parameters as described in the section "Setting external
+encounter rate".}
     \item{\code{maturity}}{Optional. An array (species x size) that holds the proportion
 of individuals of each species at size that are mature. If not supplied, a
 default is set as described in the section "Setting reproduction".}
     \item{\code{repro_prop}}{Optional. An array (species x size) that holds the
-proportion of consumed energy that a mature individual allocates to
-reproduction for each species at size. If not supplied, a default is set as
-described in the section "Setting reproduction".}
+proportion of the energy available for growth and reproduction that a mature
+individual allocates to reproduction for each species at size. If not
+supplied, a default is set as described in the section "Setting
+reproduction".}
     \item{\code{RDD}}{The name of the function calculating the density-dependent
 reproduction rate from the density-independent rate. Defaults to
 "\code{\link[=BevertonHoltRDD]{BevertonHoltRDD()}}".}
@@ -173,7 +183,9 @@ stores it in the \code{interaction} slot of the \code{params} object.
 The order of the columns and rows of the \code{interaction} argument should be
 the same as the order in the species params data frame in the \code{params}
 object. If you supply a named array then the function will check the order
-and warn if it is different. One way of creating your own interaction
+and message if it is different before ignoring the supplied dimnames. If
+you supply only column names then these are also used as the row names. One
+way of creating your own interaction
 matrix is to enter the data using a spreadsheet program and saving it as a
 .csv file. The data can then be read into R using the command \code{read.csv()}.
 
@@ -255,9 +267,14 @@ The values of \eqn{\gamma_i} (the search volume at 1g) and \eqn{q_i} (the
 allometric exponent of the search volume) are taken from the \code{gamma} and
 \code{q} columns in the species parameter dataframe. If the \code{gamma}
 column is not supplied in the species parameter dataframe, a default is
-calculated by the \code{\link[=get_gamma_default]{get_gamma_default()}} function. Note that only
+calculated by the \code{\link[=get_gamma_default]{get_gamma_default()}} function. If the \code{q} column is not
+supplied, a default of \code{lambda - 2 + n} is used. Note that only
 for predators of size \eqn{w = 1} gram is the value of the species parameter
 \eqn{\gamma_i} the same as the value of the search volume \eqn{\gamma_i(w)}.
+
+If the \code{search_vol} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
 \section{Setting maximum intake rate}{
@@ -272,10 +289,15 @@ The values of \eqn{h_i} (the maximum intake rate of an individual of size 1
 gram) and \eqn{n_i} (the allometric exponent for the intake rate) are taken
 from the \code{h} and \code{n} columns in the species parameter dataframe. If
 the \code{h} column is not supplied in the species parameter dataframe, it is
-calculated by the \code{\link[=get_h_default]{get_h_default()}} function.
+calculated by the \code{\link[=get_h_default]{get_h_default()}} function. If the \code{n} column is not
+supplied, a default of \eqn{n_i = 3/4} is used.
 
 If \eqn{h_i} is set to \code{Inf}, fish of species i will consume all encountered
 food.
+
+If the \code{intake_max} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
 \section{Setting metabolic rate}{
@@ -291,11 +313,15 @@ where \eqn{k_s w^p} represents the rate of standard metabolism and \eqn{k w}
 is the rate at which energy is expended on activity and movement. The values
 of \eqn{k_s}, \eqn{p} and \eqn{k} are taken from the \code{ks}, \code{p} and
 \code{k} columns in the species parameter dataframe. If any of these
-parameters are not supplied, the defaults are \eqn{k = 0}, \eqn{p = n} and
+parameters are not supplied, the defaults are \eqn{k = 0}, \eqn{p = 3/4} and
 \deqn{k_s = f_c h \alpha w_{mat}^{n-p},}{k_s = f_c * h * alpha * w_mat^(n - p),}
 where \eqn{f_c} is the critical feeding level taken from the \code{fc} column
 in the species parameter data frame. If the critical feeding level is not
 specified, a default of \eqn{f_c = 0.2} is used.
+
+If the \code{metab} slot has a comment and \code{reset = FALSE}, then a recalculation
+from the species parameters is suppressed and a message is issued if the
+recalculated values would differ from the stored ones.
 }
 
 \section{Setting external mortality rate}{
@@ -311,11 +337,14 @@ that depends on species and body size. You can see an example of this in
 the Examples section of the help page for \code{\link[=setExtMort]{setExtMort()}}.
 
 If the \code{ext_mort} argument is not supplied, then the external mortality is
-assumed to depend only on the species, not on the size of the individual:
-\eqn{\mu_{ext.i}(w) = z_{0.i}}. The value of the constant \eqn{z_0} for each
-species is taken from the \code{z0} column of the species parameter data frame, if
-that column exists. Otherwise it is calculated as
+taken from the species parameters as
+\deqn{\mu_{ext.i}(w) = z_{0.i} + z_{ext.i} w^{d_i}.}{mu_ext,i(w) = z0_i + z_ext,i w ^ d_i.}
+The value of the constant \eqn{z_0} for each species is taken from the \code{z0}
+column of the species parameter data frame, if that column exists.
+Otherwise it is calculated as
 \deqn{z_{0.i} = {\tt z0pre}_i\, w_{inf}^{\tt z0exp}.}{z_{0.i} = z0pre_i w_{inf}^{z0exp}.}
+Missing values of \code{z_ext} are set to 0 and missing values of \code{d} are set to
+\code{n - 1}.
 }
 
 \section{Setting external encounter rate}{
@@ -326,6 +355,38 @@ food that is not explicitly modelled. It is a rate with units mass/year.
 The \code{ext_encounter} argument allows you to specify an external encounter rate
 that depends on species and body size. You can see an example of this in
 the Examples section of the help page for \code{\link[=setExtEncounter]{setExtEncounter()}}.
+
+If the \code{ext_encounter} argument is not supplied, then the external encounter
+rate is calculated as a power law:
+\deqn{E_{ext.i}(w) = E_{ext.i}\, w^{n_i}.}{E_{ext.i}(w) = E_{ext.i} * w^n_i.}
+The coefficient \eqn{E_{ext.i}} is taken from the \code{E_ext} column of the
+species parameter data frame, which defaults to 0. The exponent \eqn{n_i} is
+taken from the \code{n} column of the species parameter data frame.
+
+If the \code{ext_encounter} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
+}
+
+\section{Setting external diffusion rate}{
+
+The external diffusion rate allows you to impose additional diffusion
+beyond the predation-driven diffusion that can be internally modelled by mizer.
+
+The \code{ext_diffusion} argument allows you to specify a diffusion rate that
+depends on species and body size.
+
+If the \code{ext_diffusion} argument is not supplied, then the external diffusion
+rate is calculated as a power law:
+\deqn{D_{ext.i}(w) = D_{ext.i}\, w^{n_i+1}.}{
+  D_{ext.i}(w) = D_{ext.i} * w^(n_i+1).}
+The coefficient \eqn{D_{ext.i}} is taken from the \code{D_ext} column of the
+species parameter data frame, which defaults to 0. The exponent
+\eqn{n_i + 1} uses the \code{n} column of the species parameter data frame.
+
+If the \code{ext_diffusion} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
 \section{Setting reproduction}{
@@ -362,17 +423,16 @@ specifies the weight at which 25\% of individuals are mature, which sets
 w_mat25).}
 
 The sigmoidal function given above would strictly reach 1 only
-asymptotically. Mizer instead sets the function equal to 1 already at a size
-taken from the \code{w_repro_max} column in the species parameter data frame, if it
-exists, or otherwise from the \code{w_max} column. Also, for computational
-simplicity, any proportion smaller than \code{1e-8} is set to \code{0}.
+asymptotically. For computational simplicity, any proportion smaller than
+\code{1e-8} is set to \code{0}.
 }
 
 \subsection{Investment into reproduction}{
 If the the energy available to a mature individual that is
 invested into reproduction is not supplied via the \code{repro_prop} argument,
 it is set to the allometric form
-\deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
+\deqn{{\tt repro\_prop}(w) =
+  \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
   repro_prop(w) = (w/w_repro_max)^(m - n).}
 Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 the exponent \eqn{m} determines the scaling of the investment into
@@ -385,7 +445,13 @@ exists, or otherwise from the \code{w_max} column.
 
 The total proportion of energy invested into reproduction of an individual
 of size \eqn{w} is then
-\deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{psi(w) = maturity(w) * repro_prop(w)}
+\deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{
+  psi(w) = maturity(w) * repro_prop(w)}
+In mizer edition 1, at sizes above \code{w_repro_max} the value of \eqn{\psi}
+is additionally forced to 1, so that all available energy is invested into
+reproduction and growth stops. In edition 2 and above this forcing is not
+applied, and \eqn{\psi} is determined entirely by the maturity ogive and the
+reproductive proportion.
 }
 
 \subsection{Reproductive efficiency}{
@@ -516,18 +582,19 @@ an effort that varies through time.
 }
 
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

@@ -1,15 +1,13 @@
 #' Add new species
 #'
-#' @description `r lifecycle::badge("experimental")`
-#'
-#'   Takes a \linkS4class{MizerParams} object and adds additional species with
-#'   given parameters to the ecosystem. It sets the initial values for these new
-#'   species to their steady-state solution in the given initial state of the
-#'   existing ecosystem. This will be close to the true steady state if the
-#'   abundances of the new species are sufficiently low. Hence the abundances of
-#'   the new species are set so that they are at most 1/100th of the resource 
-#'   power law. Their reproductive efficiencies are set so as to keep them at
-#'   that low level.
+#' Takes a \linkS4class{MizerParams} object and adds additional species with
+#' given parameters to the ecosystem. It sets the initial values for these new
+#' species to their steady-state solution in the given initial state of the
+#' existing ecosystem. This will be close to the true steady state if the
+#' abundances of the new species are sufficiently low. Hence the abundances of
+#' the new species are set so that they are at most 1/100th of the resource
+#' power law. Their reproductive efficiencies are set so as to keep them at that
+#' low level.
 #'
 #' @param params A mizer params object for the original system.
 #' @param species_params Data frame with the species parameters of the new
@@ -25,7 +23,17 @@
 #'   introduced in `gear_params`. Not needed if the added species are only
 #'   fished by already existing gear. Should not include effort values
 #'   for existing gear. New gear for which no effort is set via this
-#'   vector will have an initial effort of 0. 
+#'   vector will have an initial effort of 0.
+#' @param steady If `TRUE` (default), runs [steadySingleSpecies()] to
+#'   initialise the new species at their single-species steady state and
+#'   retuning their reproductive efficiencies. Set to `FALSE` when the caller
+#'   (e.g. an extension package using `NextMethod()`) needs to make further
+#'   changes to the params object before that steady-state calculation can be
+#'   run successfully.
+#' @param info_level Controls the amount of information messages that are shown
+#'   when the function sets default values for parameters. Higher levels lead
+#'   to more messages. Set to 0 to suppress all such messages.
+#' @param ... Currently unused.
 #'
 #' @return An object of type \linkS4class{MizerParams}
 #'
@@ -45,8 +53,6 @@
 #'   The new species will have a reproduction level of 1/4, this can then be
 #'   changed with [setBevertonHolt()]
 #'
-#' @seealso [removeSpecies()]
-#' @export
 #' @examples
 #' params <- newTraitParams()
 #' species_params <- data.frame(
@@ -61,11 +67,64 @@
 #' )
 #' params <- addSpecies(params, species_params)
 #' plotSpectra(params)
+#' @seealso [removeSpecies()], [renameSpecies()]
+#' @export
+#' @rdname addSpecies
 addSpecies <- function(params, species_params,
                        gear_params = data.frame(), initial_effort,
-                       interaction) {
+                       interaction, steady = TRUE, info_level = 3, ...) {
+    UseMethod("addSpecies")
+}
+
+getPreservedParamsClass <- function(original_params, params) {
+    original_class <- class(original_params)[[1]]
+    target_class <- class(params)[[1]]
+    if (identical(target_class, "MizerParams") &&
+        !identical(original_class, "MizerParams")) {
+        return(original_class)
+    }
+    target_class
+}
+
+restoreParamsClass <- function(params, target_class) {
+    if (target_class != "MizerParams") {
+        params <- as(params, target_class)
+    }
+    params
+}
+
+copyPreservedParamsSlots <- function(params, old_params) {
+    params@other_dynamics <- old_params@other_dynamics
+    params@initial_n_other <- old_params@initial_n_other
+    params@other_encounter <- old_params@other_encounter
+    params@other_mort <- old_params@other_mort
+    params@other_params <- old_params@other_params
+    params@rates_funcs <- old_params@rates_funcs
+    params@use_predation_diffusion <- old_params@use_predation_diffusion
+
+    params@metadata <- old_params@metadata
+    params@time_created <- old_params@time_created
+    params@mizer_version <- old_params@mizer_version
+    params@extensions <- old_params@extensions
+    params
+}
+
+copyParamsComments <- function(params, old_params) {
+    comment(params) <- comment(old_params)
+    for (slot in slotNames(params)) {
+        comment(slot(params, slot)) <- comment(slot(old_params, slot))
+    }
+    params
+}
+
+#' @export
+addSpecies.MizerParams <- function(params, species_params, gear_params = data.frame(),
+                                   initial_effort = NULL, interaction = NULL,
+                                   steady = TRUE, info_level = 3, ...) {
     # check validity of parameters ----
+    original_params <- params
     params <- validParams(params)
+    target_class <- getPreservedParamsClass(original_params, params)
     given_species_params <- validGivenSpeciesParams(species_params)
     species_params <- validSpeciesParams(species_params)
     gear_params <- validGearParams(gear_params, species_params)
@@ -84,7 +143,7 @@ addSpecies <- function(params, species_params,
         stop("addSpecies() can not add species to a MizerParams object that ",
              "has its catchability array protected by a comment.")
     }
-    
+
     # set interaction ----
     no_old_sp <- nrow(params@species_params)
     old_sp <- 1:no_old_sp
@@ -108,33 +167,33 @@ addSpecies <- function(params, species_params,
     } else {
         inter <- interaction
     }
-    
+
     # combine species params ----
-    
+
     # Move linecolour and linetype into species_params
     params@species_params$linetype <-
         params@linetype[params@species_params$species]
     params@species_params$linecolour <-
         params@linecolour[params@species_params$species]
-    
+
     # Make sure that all columns exist in both data frames
     missing <- setdiff(names(params@given_species_params), names(given_species_params))
     given_species_params[missing] <- NA
     missing <- setdiff(names(given_species_params), names(params@given_species_params))
     params@given_species_params[missing] <- NA
-    
+
     missing <- setdiff(names(params@species_params), names(species_params))
     species_params[missing] <- NA
     missing <- setdiff(names(species_params), names(params@species_params))
     params@species_params[missing] <- NA
-    
+
     # add the new species (with parameters described by species_params),
     # to make a larger species_params dataframe.
     combi_species_params <- rbind(params@species_params, species_params,
                                   stringsAsFactors = FALSE)
     combi_given_species_params <- rbind(params@given_species_params, given_species_params,
                                   stringsAsFactors = FALSE)
-    
+
     # combine gear params ----
     if (!all(gear_params$species %in% species_params$species)) {
         stop("gear_params should only set gear parameters for new species.")
@@ -150,7 +209,7 @@ addSpecies <- function(params, species_params,
     }
     combi_gear_params <- rbind(params@gear_params, gear_params,
                                stringsAsFactors = FALSE)
-    
+
     # expand grid ----
     # in case the new species need a bigger range of w
     # We need to make sure that the new grid that newMultispeciesParams()
@@ -179,11 +238,11 @@ addSpecies <- function(params, species_params,
         sel_min <- combi_species_params$w_min == new_min_w
         new_min_w <- max(params@w_full[params@w_full <= new_min_w])
         combi_species_params$w_min[sel_min] <- new_min_w
-        
+
         extra_no_w <- sum(params@w_full >= new_min_w) - no_w
         new_no_w <- new_no_w + extra_no_w
     }
-    
+
     # new params object ----
     # use dataframe and global settings from params to make a new MizerParams
     # object.
@@ -199,10 +258,11 @@ addSpecies <- function(params, species_params,
         kappa = params@resource_params$kappa,
         n = params@resource_params[["n"]],
         lambda = params@resource_params$lambda,
-        w_pp_cutoff = params@resource_params$w_pp_cutoff
+        w_pp_cutoff = params@resource_params$w_pp_cutoff,
+        info_level = info_level
     )
     p@given_species_params <- combi_given_species_params
-    
+
     # Set effort ----
     new_gear <- setdiff(unique(gear_params$gear),
                         unique(params@gear_params$gear))
@@ -216,20 +276,17 @@ addSpecies <- function(params, species_params,
         }
         p@initial_effort[names(initial_effort)] <- initial_effort
     }
-    
+
     # Keep resource spectrum ----
     p@initial_n_pp[1:no_w_full] <- params@initial_n_pp
     p@cc_pp[1:no_w_full] <- params@cc_pp
     p@rr_pp[1:no_w_full] <- params@rr_pp
     p@resource_dynamics <- params@resource_dynamics
     p@resource_params <- params@resource_params
-    
+
     # Preserve comments ----
-    comment(p) <- comment(params)
-    for (slot in (slotNames(p))) {
-        comment(slot(p, slot)) <- comment(slot(params, slot))
-    }
-    
+    p <- copyParamsComments(p, params)
+
     # Copy old data ----
     # selector for old w bins inside new w
     old_w <- (extra_no_w + 1):(extra_no_w + no_w)
@@ -239,98 +296,106 @@ addSpecies <- function(params, species_params,
     p@sc[old_w] <- params@sc
     p@mu_b[old_sp, old_w] <- params@mu_b
     p@ext_encounter[old_sp, old_w] <- params@ext_encounter
+    p@ext_diffusion[old_sp, old_w] <- params@ext_diffusion
     p@intake_max[old_sp, old_w] <- params@intake_max
     p@search_vol[old_sp, old_w] <- params@search_vol
     p@metab[old_sp, old_w] <- params@metab
-    
-    p@other_dynamics <- params@other_dynamics
-    p@other_encounter <- params@other_encounter
-    p@other_mort <- params@other_mort
-    p@other_params <- params@other_params
-    p@rates_funcs <- params@rates_funcs
-    
-    p@metadata <- params@metadata
-    p@time_created <- params@time_created
-    p@mizer_version <- params@mizer_version
-    p@extensions <- params@extensions
-    
+
+    p <- copyPreservedParamsSlots(p, params)
+
     # The following does not affect the new species but preserves
     # any changes the user might have made in the original params object
     p <- setColours(p, params@linecolour)
     p <- setLinetypes(p, params@linetype)
-    
+
     # we assume same background death for all species
     # p@mu_b[new_sp, ] <- rep(params@mu_b[1, ], each = no_new_sp)
-    
+
     # initial solution ----
     p@initial_n[old_sp, old_w] <- params@initial_n
-    # Turn off self-interaction among the new species, so we can determine the
-    # growth rates, and death rates induced upon them by the pre-existing species
-    p@interaction[new_sp, new_sp] <- 0
-    
-    # Compute solution for new species
-    p <- steadySingleSpecies(p, species = new_sp)
-    
-    # set low abundance ----
-    for (i in new_sp) {
-        # Normalise solution so that it is never more than 1/100th of the
-        # Sheldon spectrum.
-        # We look at the maximum of abundance times w^lambda
-        # because that is always an increasing function at small size.
-        idx <- which.max(p@initial_n[i, ] * p@w^p@resource_params$lambda)
-        p@initial_n[i, ] <- p@initial_n[i, ] *
-            p@resource_params$kappa * p@w[idx]^(-p@resource_params$lambda) / 
-            p@initial_n[i, idx] / 100
-        p@A[i] <- sum(p@initial_n[i, ] * p@w * p@dw * p@maturity[i, ])
+
+    if (steady) {
+        # Turn off self-interaction among the new species, so we can determine the
+        # growth rates, and death rates induced upon them by the pre-existing species
+        p@interaction[new_sp, new_sp] <- 0
+
+        # Compute solution for new species
+        p <- steadySingleSpecies(p, species = new_sp)
+
+        # set low abundance ----
+        for (i in new_sp) {
+            # Normalise solution so that it is never more than 1/100th of the
+            # Sheldon spectrum.
+            # We look at the maximum of abundance times w^lambda
+            # because that is always an increasing function at small size.
+            idx <- which.max(p@initial_n[i, ] * p@w^p@resource_params$lambda)
+            p@initial_n[i, ] <- p@initial_n[i, ] *
+                p@resource_params$kappa * p@w[idx]^(-p@resource_params$lambda) /
+                p@initial_n[i, idx] / 100
+            # TODO: remove next line after release of mizer 3.0
+            p@A[i] <- sum(p@initial_n[i, ] * p@w * p@dw * p@maturity[i, ])
+            p@species_params$is_background[i] <- FALSE
+        }
+
+        if (any(is.infinite(p@initial_n))) {
+            stop("Candidate steady state holds infinities.")
+        }
+        if (any(is.na(p@initial_n) | is.nan(p@initial_n))) {
+            stop("Candidate steady state holds non-numeric values.")
+        }
+
+        # Turn self interaction back on
+        p@interaction[new_sp, new_sp] <- inter[new_sp, new_sp]
+
+        # Retune reproductive efficiencies of new species
+        repro_level <- rep(1 / 4, length(new_sp))
+        names(repro_level) <- p@species_params$species[new_sp]
+        p <- setBevertonHolt(p, reproduction_level = repro_level)
     }
-    
-    if (any(is.infinite(p@initial_n))) {
-        stop("Candidate steady state holds infinities.")
-    }
-    if (any(is.na(p@initial_n) | is.nan(p@initial_n))) {
-        stop("Candidate steady state holds non-numeric values.")
-    }
-    
-    # Turn self interaction back on
-    p@interaction[new_sp, new_sp] <- inter[new_sp, new_sp]
-    
-    # Retune reproductive efficiencies of new species
-    repro_level <- rep(1 / 4, length(new_sp))
-    names(repro_level) <- p@species_params$species[new_sp]
-    p <- setBevertonHolt(p, reproduction_level = repro_level)
-    
+
+    p <- restoreParamsClass(p, target_class)
+
     return(p)
 }
 
 
 #' Remove species
 #'
-#' @description
-#' `r lifecycle::badge("experimental")`
-#'
 #' This function simply removes all entries from the MizerParams object that
 #' refer to the selected species. It does not recalculate the steady state for
 #' the remaining species or retune their reproductive efficiency.
+#'
+#' If a gear was targeting only the removed species, then this function will
+#' NOT remove that gear. If you want to also remove that gear then you can do
+#' that by calling [setFishing()].
 #'
 #' @param params A mizer params object for the original system.
 #' @param species The species to be removed. A vector of species names, or a
 #'   numeric vector of species indices, or a logical vector indicating for
 #'   each species whether it is to be removed (TRUE) or not.
+#' @param ... Currently unused.
 #'
 #' @return An object of type \linkS4class{MizerParams}
+#' @seealso [addSpecies()], [renameSpecies()]
 #' @export
+#' @rdname removeSpecies
 #' @examples
 #' params <- NS_params
 #' species_params(params)$species
 #' params <- removeSpecies(params, c("Cod", "Haddock"))
 #' species_params(params)$species
-removeSpecies <- function(params, species) {
+removeSpecies <- function(params, species, ...) {
+    UseMethod("removeSpecies")
+}
+
+#' @export
+removeSpecies.MizerParams <- function(params, species, ...) {
     params <- validParams(params)
     species <- valid_species_arg(params, species,
                                  return.logical = TRUE)
     keep <- !species
     p <- params
-    
+
     # Select only the parts corresponding the species we keep
     p@linecolour <-
         params@linecolour[!(names(params@linecolour) %in%
@@ -356,6 +421,7 @@ removeSpecies <- function(params, species) {
     p@ft_mask <- params@ft_mask[keep, , drop = FALSE]
     p@mu_b <- params@mu_b[keep, , drop = FALSE]
     p@ext_encounter <- params@ext_encounter[keep, , drop = FALSE]
+    p@ext_diffusion <- params@ext_diffusion[keep, , drop = FALSE]
     p@species_params <- p@species_params[keep, , drop = FALSE]
     p@given_species_params <- p@given_species_params[keep, , drop = FALSE]
     p@interaction <- params@interaction[keep, keep, drop = FALSE]
@@ -366,20 +432,20 @@ removeSpecies <- function(params, species) {
     p@gear_params <- p@gear_params[p@gear_params$species %in%
                                        p@species_params$species, ]
     p@gear_params <- validGearParams(p@gear_params, p@species_params)
-    
+
     # Drop species parameters with all values NA
     keep <- colSums(is.na(p@species_params)) < nrow(p@species_params)
     p@species_params <- p@species_params[, keep]
     keep <- colSums(is.na(p@given_species_params)) < nrow(p@given_species_params)
     p@given_species_params <- p@given_species_params[, keep]
-    
+
     # Preserve comments
     for (slot in (slotNames(p))) {
         comment(slot(p, slot)) <- comment(slot(params, slot))
     }
-    
+
     validObject(p)
-    
+
     p@time_modified <- lubridate::now()
     return(p)
 }
@@ -387,23 +453,28 @@ removeSpecies <- function(params, species) {
 
 #' Rename species
 #'
-#' @description
-#' `r lifecycle::badge("experimental")`
-#'
 #' Changes the names of species in a MizerParams object. This involves for
 #' example changing the species dimension names of rate arrays appropriately.
 #'
 #' @param params A mizer params object
 #' @param replace A named character vector, with new names as values, and old
 #'   names as names.
+#' @param ... Currently unused.
 #'
 #' @return An object of type \linkS4class{MizerParams}
+#' @seealso [renameGear()]
 #' @export
+#' @rdname renameSpecies
 #' @examples
 #' replace <- c(Cod = "Kabeljau", Haddock = "Schellfisch")
 #' params <- renameSpecies(NS_params, replace)
 #' species_params(params)$species
-renameSpecies <- function(params, replace) {
+renameSpecies <- function(params, replace, ...) {
+    UseMethod("renameSpecies")
+}
+
+#' @export
+renameSpecies.MizerParams <- function(params, replace, ...) {
     params <- validParams(params)
     replace[] <- as.character(replace)
     to_replace <- names(replace)
@@ -427,7 +498,7 @@ renameSpecies <- function(params, replace) {
                 replace[[params@gear_params$species[[i]]]]
         }
     }
-    params@gear_params <- validGearParams(params@gear_params, 
+    params@gear_params <- validGearParams(params@gear_params,
                                           params@species_params)
     # rename line colours
     linenames <- names(params@linecolour)
@@ -441,7 +512,7 @@ renameSpecies <- function(params, replace) {
     linenames[to_replace] <- replace
     names(linenames) <- NULL
     names(params@linetype) <- linenames
-    
+
     names(params@w_min_idx) <- species
     dimnames(params@maturity)$sp <- species
     dimnames(params@psi)$sp <- species
@@ -457,22 +528,159 @@ renameSpecies <- function(params, replace) {
     }
     dimnames(params@mu_b)$sp <- species
     dimnames(params@ext_encounter)$sp <- species
+    dimnames(params@ext_diffusion)$sp <- species
     dimnames(params@interaction)$predator <- species
     dimnames(params@interaction)$prey <- species
     dimnames(params@selectivity)$sp <- species
     dimnames(params@catchability)$sp <- species
-    
+
     validObject(params)
-    
+
     params@time_modified <- lubridate::now()
     return(params)
 }
 
+#' Expand the size grid
+#'
+#' This function expands the size grid in a [MizerParams] object to the desired
+#' min and max size, preserving all existing species.
+#'
+#' @param params A [MizerParams] object.
+#' @param new_min_w The new minimum size in the grid. Must not be larger than
+#'   the current minimum size.
+#' @param new_max_w The new maximum size in the grid. Must not be smaller than
+#'   the current maximum size.
+#' @param preserve_species A vector of species names for which all rate arrays
+#'   should be copied over to the new params object rather than being
+#'   re-calculated from the species parameters. If missing, all species are
+#'   preserved.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @return A new [MizerParams] object with the updated size grid.
+#' @export
+#' @rdname expandSizeGrid
+expandSizeGrid <- function(params, ...) {
+    UseMethod("expandSizeGrid")
+}
+
+#' @export
+#' @rdname expandSizeGrid
+expandSizeGrid.MizerParams <- function(params,
+                           new_min_w = min(params@w),
+                           new_max_w = max(params@w),
+                           preserve_species = params@species_params$species,
+                           ...) {
+    target_class <- class(params)[[1]]
+    sp_sel <- valid_species_arg(params, preserve_species, return.logical = TRUE)
+    min_w <- min(params@w)
+    max_w <- max(params@w)
+    if (new_min_w > min_w || new_max_w < max_w) {
+        stop("`expandSizeGrid()` can only expand, not shrink the grid.")
+    }
+    if (new_min_w < min(params@w_full)) {
+        stop("The smallest egg size is too small.")
+    }
+    # Step 1: Determine the desired size range and calculate new number of bins. ----
+    no_w <- length(params@w)
+    new_no_w <- no_w
+    extra_no_w <- 0  # extra bins added for smaller egg size
+    if (new_max_w > max(params@w) + .Machine$double.eps) {
+        dx <- log10(max_w / min_w) / (no_w - 1)
+        new_no_w <- ceiling(log10(new_max_w / min_w) / dx) + 1
+        new_max_w <- min_w * 10^(dx * (new_no_w - 1))
+    }
+    if (new_min_w < min(params@w) - .Machine$double.eps) {
+        # We need to set the smallest egg size to a size on the existing grid
+        # so that the new grid will be compatible
+        new_min_w <- max(params@w_full[params@w_full <= new_min_w])
+        extra_no_w <- sum(params@w_full >= new_min_w) - no_w
+        new_no_w <- new_no_w + extra_no_w
+    }
+
+    # Step 2: Create a new MizerParams object with the updated size grid ----
+
+    # Build a modified species_params to pass to newMultispeciesParams.
+    # We add linetype/linecolour so the new params will inherit the colours.
+    # We also snap the minimum w_min to new_min_w so that emptyParams() creates
+    # the grid starting at new_min_w (emptyParams uses min(species_params$w_min)
+    # as the grid start).
+    sp_params_for_grid <- params@species_params
+    sp_params_for_grid$linetype <- params@linetype[params@species_params$species]
+    sp_params_for_grid$linecolour <- params@linecolour[params@species_params$species]
+    if (extra_no_w > 0) {
+        # Force at least one species to have w_min = new_min_w so that
+        # emptyParams() creates the grid starting there.
+        idx_min <- which.min(sp_params_for_grid$w_min)
+        sp_params_for_grid$w_min[idx_min] <- new_min_w
+    }
+
+    p <- newMultispeciesParams(
+        sp_params_for_grid,
+        interaction = params@interaction,
+        max_w = new_max_w,
+        min_w = new_min_w,
+        # for min_w_pp we choose something that will then be rounded down
+        # to the existing smallest size when emptyParams() creates the new grid
+        min_w_pp = (params@w_full[[1]] + params@w_full[[2]]) / 2,
+        no_w = new_no_w,
+        gear_params = params@gear_params,
+        initial_effort = params@initial_effort,
+        kappa = params@resource_params$kappa,
+        n = params@resource_params[["n"]],
+        lambda = params@resource_params$lambda,
+        w_pp_cutoff = params@resource_params$w_pp_cutoff
+    )
+
+    # Restore original species_params (without the temporary modifications).
+    # validParams() will recompute w_min_idx from species_params$w_min and p@w.
+    p@species_params <- params@species_params
+
+    # Step 3: Copy over data for existing species and resource spectra ----
+    # selector for old w bins inside new w
+    old_w <- (extra_no_w + 1):(extra_no_w + no_w)
+    p@initial_n[sp_sel, old_w] <- params@initial_n[sp_sel, ]
+    p@A[sp_sel] <- params@A[sp_sel]
+    p@psi[sp_sel, old_w] <- params@psi[sp_sel, ]
+    p@maturity[sp_sel, old_w] <- params@maturity[sp_sel, ]
+    p@sc[old_w] <- params@sc
+    p@mu_b[sp_sel, old_w] <- params@mu_b[sp_sel, ]
+    p@ext_encounter[sp_sel, old_w] <- params@ext_encounter[sp_sel, ]
+    p@ext_diffusion[sp_sel, old_w] <- params@ext_diffusion[sp_sel, ]
+    p@intake_max[sp_sel, old_w] <- params@intake_max[sp_sel, ]
+    p@search_vol[sp_sel, old_w] <- params@search_vol[sp_sel, ]
+    p@metab[sp_sel, old_w] <- params@metab[sp_sel, ]
+
+    p@initial_n_pp[1:length(params@w_full)] <- params@initial_n_pp
+    p@cc_pp[1:length(params@w_full)] <- params@cc_pp
+    p@rr_pp[1:length(params@w_full)] <- params@rr_pp
+    p@resource_dynamics <- params@resource_dynamics
+    p@resource_params <- params@resource_params
+
+    # Step 4: Preserve other slots and metadata ----
+    p@given_species_params <- params@given_species_params
+    p <- copyPreservedParamsSlots(p, params)
+    p <- setColours(p, params@linecolour)
+    p <- setLinetypes(p, params@linetype)
+
+    # Preserve comments
+    p <- copyParamsComments(p, params)
+
+    p <- validParams(p)
+
+    # validParams() may add recently introduced default species parameters
+    # and the constructor may reorder plot metadata. expandSizeGrid() should
+    # preserve the original user-visible metadata exactly.
+    p@species_params <- params@species_params
+    p@given_species_params <- params@given_species_params
+    p@linecolour <- params@linecolour
+    p@linetype <- params@linetype
+
+    p <- restoreParamsClass(p, target_class)
+
+    return(p)
+}
 
 #' Rename gears
-#'
-#' @description
-#' `r lifecycle::badge("experimental")`
 #'
 #' Changes the names of gears in a MizerParams object. This involves for
 #' example changing the gear dimension names of selectivity and catchability
@@ -481,14 +689,22 @@ renameSpecies <- function(params, replace) {
 #' @param params A mizer params object
 #' @param replace A named character vector, with new names as values, and old
 #'   names as names.
+#' @param ... Currently unused.
 #'
 #' @return An object of type \linkS4class{MizerParams}
+#' @seealso [renameSpecies()]
 #' @export
+#' @rdname renameGear
 #' @examples
 #' replace <- c(Industrial = "Trawl", Otter = "Beam_Trawl")
 #' params <- renameGear(NS_params, replace)
 #' gear_params(params)$gear
-renameGear <- function(params, replace) {
+renameGear <- function(params, replace, ...) {
+    UseMethod("renameGear")
+}
+
+#' @export
+renameGear.MizerParams <- function(params, replace, ...) {
     params <- validParams(params)
     replace[] <- as.character(replace)
     to_replace <- names(replace)
@@ -501,7 +717,7 @@ renameGear <- function(params, replace) {
     names(gears) <- gears
     gears[to_replace] <- replace
     names(gears) <- NULL
-    
+
     # Update gear_params data frame
     for (i in seq_len(nrow(params@gear_params))) {
         if (params@gear_params$gear[[i]] %in% names(replace)) {
@@ -509,22 +725,22 @@ renameGear <- function(params, replace) {
                 replace[[params@gear_params$gear[[i]]]]
         }
     }
-    params@gear_params <- validGearParams(params@gear_params, 
+    params@gear_params <- validGearParams(params@gear_params,
                                           params@species_params)
-    
+
     # Update dimension names in arrays
     dimnames(params@selectivity)$gear <- gears
     dimnames(params@catchability)$gear <- gears
-    
+
     # Update initial_effort names
     gearnames <- names(params@initial_effort)
     names(gearnames) <- gearnames
     gearnames[to_replace] <- replace
     names(gearnames) <- NULL
     names(params@initial_effort) <- gearnames
-    
+
     validObject(params)
-    
+
     params@time_modified <- lubridate::now()
     return(params)
 }

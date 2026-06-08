@@ -10,7 +10,10 @@ defaults_edition(edition = NULL)
 \item{edition}{NULL or a numerical value.}
 }
 \value{
-The current edition number.
+If \code{edition} is \code{NULL}, the currently active edition number. If
+\code{edition} is supplied, the function sets the global
+\code{mizer_defaults_edition} option, emits a message, and returns the supplied
+value invisibly.
 }
 \description{
 Function to set and get which edition of default choices is being used.
@@ -33,7 +36,15 @@ The most recent edition is edition 2. It will become the default in the
 next release. The current default is edition 1. The following defaults
 are changed in edition 2:
 \itemize{
-\item catchability = 0.3 instead of 1
-\item initial effort = 1 instead of 0
+\item \code{catchability} = 0.3 instead of 1
+\item \verb{initial effort} = 1 instead of 0
+\item \code{gamma} is set to ensure a feeding level of \code{f0} for larvae with the
+current value of \code{interaction_resource} instead of
+interaction_resource = 1`.
+\item \code{initial_n} is set using \code{\link[=get_steady_state_n]{get_steady_state_n()}} instead of the rather
+arbitrary old choice.
+\item In \code{\link[=setReproduction]{setReproduction()}}, \code{psi} is no longer forced to 1 above
+\code{w_repro_max}; its value is determined entirely by the maturity ogive
+and the reproductive proportion.
 }
 }

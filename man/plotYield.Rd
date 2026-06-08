@@ -2,55 +2,62 @@
 % Please edit documentation in R/plots.R
 \name{plotYield}
 \alias{plotYield}
+\alias{plotYield.MizerSim}
 \alias{plotlyYield}
 \title{Plot the total yield of species through time}
 \usage{
 plotYield(
-  sim,
+  object,
   sim2,
   species = NULL,
   total = FALSE,
-  log = TRUE,
+  log_x = FALSE,
+  log_y = TRUE,
+  log = NULL,
+  ylim = c(NA, NA),
+  tlim = c(NA, NA),
   highlight = NULL,
   return_data = FALSE,
   ...
 )
-
-plotlyYield(
-  sim,
-  sim2,
-  species = NULL,
-  total = FALSE,
-  log = TRUE,
-  highlight = NULL,
-  ...
-)
 }
 \arguments{
-\item{sim}{An object of class \linkS4class{MizerSim}}
+\item{object}{An object of class \linkS4class{MizerSim}}
 
 \item{sim2}{An optional second object of class \linkS4class{MizerSim}. If
 this is provided its yields will be shown on the same plot in bolder lines.}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
 
-\item{total}{A boolean value that determines whether the total over all
-species in the system is plotted as well. Note that even if the plot
-only shows a selection of species, the total is including all species.
-Default is FALSE.}
+\item{total}{A boolean value that determines whether the total yield from all
+species is plotted as well. Default is FALSE.}
 
-\item{log}{Boolean whether yield should be plotted on a logarithmic axis.
-Defaults to true.}
+\item{log_x}{If \code{TRUE}, use a log10 x-axis. Default is \code{FALSE}.}
+
+\item{log_y}{If \code{TRUE}, use a log10 y-axis. Default is \code{TRUE}.}
+
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.
+For backward compatibility, \code{TRUE} and \code{FALSE} are interpreted as setting
+only \code{log_y}.}
+
+\item{ylim}{A numeric vector of length two providing lower and upper limits
+for the y axis. Use \code{NA} to refer to the existing minimum or maximum.}
+
+\item{tlim}{A numeric vector of length two providing lower and upper limits
+for the time axis, e.g. \code{c(1980, 2000)}. Use \code{NA} to apply no limit at
+that end. Default is \code{c(NA, NA)}.}
 
 \item{highlight}{Name or vector of names of the species to be highlighted.}
 
 \item{return_data}{A boolean value that determines whether the formatted data
-used for the plot is returned instead of the plot itself. Default value is FALSE}
+used for the plot is returned instead of the plot itself. Default is FALSE.}
 
-\item{...}{Other arguments (currently unused)}
+\item{...}{Arguments passed to \code{\link[=getYield]{getYield()}}.}
 }
 \value{
 A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
@@ -80,18 +87,26 @@ str(fr)
 \seealso{
 \link{plotting_functions},  \code{\link[=getYield]{getYield()}}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotBiomass}()},
-\code{\link{plotDiet}()},
-\code{\link{plotFMort}()},
-\code{\link{plotFeedingLevel}()},
-\code{\link{plotGrowthCurves}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotSpectra}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotBiomass]{plotBiomass()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotDiet]{plotDiet()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotFeedingLevel]{plotFeedingLevel()}},
+\code{\link[=plotGrowthCurves]{plotGrowthCurves()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra]{plotSpectra()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

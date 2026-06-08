@@ -17,6 +17,23 @@
 #' initial condition that is close to steady state, under the assumption of
 #' no fishing.
 #'
+#' The function rounds `no_w` to the nearest integer and increases it if
+#' necessary so that there are at least 5 size bins per factor 10 in body
+#' size. It requires `w_min < w_mat < w_max`, `ext_mort_prop` in `[0, 1)`,
+#' positive values for `n`, `lambda`, `kappa`, `alpha`, `h`, `beta`, `sigma`
+#' and `f0`, and `fc` between 0 and `f0` if `fc` is supplied. If `gamma` is
+#' supplied then `f0` is ignored. The function stops if the resulting feeding
+#' level is not sufficient to maintain the species.
+#'
+#' The returned model has a single foreground species with cannibalism switched
+#' off and a fixed power-law background community that provides both food and
+#' predation mortality. The initial species spectrum is scaled so that its
+#' maximum abundance is half the background abundance at the corresponding
+#' size, and `erepro` is then adjusted so the initial state satisfies the egg
+#' boundary condition.
+#'
+#' The diffusion rate is set to `0`
+#'
 #' @param species_name A string with a name for the species. Will be used in
 #'   plot legends.
 #' @param w_max Maximum size of species
@@ -124,9 +141,9 @@ newSingleSpeciesParams <-
     if (!is.na(gamma)) {  # If gamma is supplied, f0 is ignored
         f0 <- NA
     }
-    if (lifecycle::is_present(R_factor)) {
-        lifecycle::deprecate_soft("2.3.0", "newTraitParams(R_factor)",
-                                  "newTraitParams(reproduction_level)",
+        if (lifecycle::is_present(R_factor)) {
+        lifecycle::deprecate_soft("2.3.0", "newSingleSpeciesParams(R_factor)",
+                                  "newSingleSpeciesParams(reproduction_level)",
                                   "Set `reproduction_level = 1 / R_factor`.")
         reproduction_level <- 1 / R_factor
     }
@@ -166,6 +183,8 @@ newSingleSpeciesParams <-
         ))
     # No cannibalism
     params@interaction[] <- 0
+    # No fishing
+    params@initial_effort[] <- 0
 
     w <- params@w
     dw <- params@dw
@@ -200,7 +219,13 @@ newSingleSpeciesParams <-
     idxs <- 1:i_inf
     gg <- hbar * w^n * (1 - params@psi[1, ])  # Growth rate
     # Steady state solution of the upwind-difference scheme used in project
-    initial_n[1, idxs] <- c(1, cumprod(gg[idx] / ((gg + mumu * dw)[idx + 1])))
+    growth_matrix <- matrix(gg, nrow = 1)
+    mort_matrix <- matrix(mumu, nrow = 1)
+    diffusion_matrix <- growth_matrix
+    diffusion_matrix[] <- 0
+    n_exact <- get_steady_state_n(params, growth_matrix, mort_matrix,
+                                  diffusion_matrix, c(1))
+    initial_n[1, idxs] <- n_exact[1, idxs]
 
     # The resource was already set up by newMultispeciesParams()
     initial_n_pp <- params@initial_n_pp
@@ -217,7 +242,7 @@ newSingleSpeciesParams <-
 
     ## Set reproduction to meet boundary condition ----
     params@species_params$erepro <- params@species_params$erepro *
-        get_required_reproduction(params) / getRDI(params)
+        getRequiredRDD(params) / getRDI(params)
     params@given_species_params$erepro <- params@species_params$erepro
 
     params <- setBevertonHolt(params, reproduction_level = reproduction_level)

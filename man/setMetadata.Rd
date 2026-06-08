@@ -5,7 +5,15 @@
 \alias{getMetadata}
 \title{Set metadata for a model}
 \usage{
-setMetadata(params, title, description, authors, url, doi, ...)
+setMetadata(
+  params,
+  title = NULL,
+  description = NULL,
+  authors = NULL,
+  url = NULL,
+  doi = NULL,
+  ...
+)
 
 getMetadata(params)
 }
@@ -64,4 +72,12 @@ set by the extension packages.
 
 Setting the metadata with this function does not count as a modification of
 the object, so the \code{time_modified} field will not be updated.
+}
+\examples{
+params <- setMetadata(NS_params,
+    title = "North Sea model",
+    description = "A multi-species model of the North Sea fish community.",
+    authors = list(list(name = "Finlay Scott", email = "finlay@example.com")))
+getMetadata(params)$title
+getMetadata(params)$authors[[1]]$name
 }

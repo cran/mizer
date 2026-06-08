@@ -4,7 +4,7 @@
 \alias{matchNumbers}
 \title{Match numbers to observations}
 \usage{
-matchNumbers(params, species = NULL)
+matchNumbers(params, species = NULL, info_level = 3, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -13,6 +13,11 @@ matchNumbers(params, species = NULL)
 numbers will be matched. A vector of species names, or a numeric vector
 with the species indices, or a logical vector indicating for each species
 whether it is to be affected (TRUE) or not.}
+
+\item{info_level}{Controls the amount of information messages that are shown.
+Higher levels lead to more messages.}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
 A MizerParams object
@@ -29,11 +34,11 @@ state solution, even if the initial number densities were at steady state.
 So after using this function you may want to use \code{steady()} to run the model
 to steady state, after which of course the numbers will no longer match
 exactly. You could then iterate this process. This is described in the
-blog post at https://bit.ly/2YqXESV.
+blog post at \url{https://blog.mizer.sizespectrum.org/posts/2021-08-20-a-5-step-recipe-for-tuning-the-model-steady-state/}.
 
 Before you can use this function you will need to have added a
-\code{number_observed} column to your model which gives the observed number in
-grams.  For species for which you have no observed number, you should set
+\code{number_observed} column to your model which gives the observed number of
+individuals. For species for which you have no observed number, you should set
 the value in the \code{number_observed} column to 0 or NA.
 
 Number observations usually only include individuals above a certain size.

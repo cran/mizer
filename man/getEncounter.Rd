@@ -4,34 +4,41 @@
 \alias{getEncounter}
 \title{Get encounter rate}
 \usage{
-getEncounter(
-  params,
-  n = initialN(params),
-  n_pp = initialNResource(params),
-  n_other = initialNOther(params),
-  t = 0,
-  ...
-)
+getEncounter(object, ...)
 }
 \arguments{
-\item{params}{A \linkS4class{MizerParams} object}
+\item{object}{A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.}
 
-\item{n}{A matrix of species abundances (species x size).}
+\item{...}{Additional arguments that depend on the class of \code{object}.
 
-\item{n_pp}{A vector of the resource abundance by size}
+\strong{For a \linkS4class{MizerParams} object:}
+\describe{
+\item{\code{n}}{A matrix of species abundances (species x size). Defaults to
+the initial abundances stored in \code{object}.}
+\item{\code{n_pp}}{A vector of the resource abundance by size. Defaults to the
+initial resource abundance stored in \code{object}.}
+\item{\code{n_other}}{A named list of the abundances of other dynamical
+components. Defaults to the initial values stored in \code{object}.}
+\item{\code{t}}{The time for which to do the calculation. Defaults to 0.}
+}
 
-\item{n_other}{A list of abundances for other dynamical components of the
-ecosystem}
-
-\item{t}{The time for which to do the calculation (Not used by standard
-mizer rate functions but useful for extensions with time-dependent
-parameters.)}
-
-\item{...}{Unused}
+\strong{For a \linkS4class{MizerSim} object:}
+\describe{
+\item{\code{time_range}}{The time range over which to return the rates. Either
+a vector of values, a vector of min and max time, or a single value.
+Defaults to the whole time range of the simulation.}
+\item{\code{drop}}{If \code{TRUE} then any dimension of length 1 is removed from the
+returned array.}
+}}
 }
 \value{
-A named two dimensional array (predator species x predator size) with
-the encounter rates.
+\itemize{
+\item \code{MizerParams}: An \code{ArraySpeciesBySize} object (predator species x predator
+size) with the encounter rates.
+\item \code{MizerSim}: An \code{ArrayTimeBySpeciesBySize} object (time step x predator
+species x predator size) with the encounter rates at every time step.
+If \code{drop = TRUE} then dimensions of length 1 will be removed.
+}
 }
 \description{
 Returns the rate at which a predator of species \eqn{i} and
@@ -77,12 +84,21 @@ If your model contains additional components that you added with
 the encounters of these components will be included in the returned value.
 }
 
+\section{Extension hook}{
+
+\code{projectEncounter()} is the S3 generic used by extension-aware projections.
+Extension packages can add methods for their marker classes and call
+\code{NextMethod()} to compose encounter-rate changes. The \code{MizerParams} method
+contains the standard mizer calculation and is also exported as
+\code{mizerEncounter()} for compatibility.
+}
+
 \section{Your own encounter function}{
 
-By default \code{\link[=getEncounter]{getEncounter()}} calls \code{\link[=mizerEncounter]{mizerEncounter()}}. However you can
-replace this with your own alternative encounter function. If
-your function is called \code{"myEncounter"} then you register it in a MizerParams
-object \code{params} with
+By default \code{\link[=getEncounter]{getEncounter()}} calls \code{\link[=mizerEncounter]{mizerEncounter()}} on models without
+extensions. However you can replace this with your own alternative encounter
+function. If your function is called \code{"myEncounter"} then you register it in
+a MizerParams object \code{params} with
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{params <- setRateFunction(params, "Encounter", "myEncounter")
 }\if{html}{\out{</div>}}
@@ -96,19 +112,21 @@ encounter <- getEncounter(NS_params)
 str(encounter)
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getRates}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getRates]{getRates()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

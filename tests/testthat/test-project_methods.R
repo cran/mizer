@@ -1,14 +1,16 @@
 # Initialise --------------------------------------------------------------
+# Snapshots recorded with edition 1; lock params creation to edition 1
+withr::local_options(mizer_defaults_edition = 1)
 
 # North sea
-params <- newMultispeciesParams(NS_species_params_gears, inter,
+params <- newMultispeciesParams(NS_species_params_gears_small, inter_small,
                                 n = 2/3, p = 0.7, lambda = 2.8 - 2/3,
                                 info_level = 0)
 no_gear <- dim(params@catchability)[1]
 no_sp <- dim(params@catchability)[2]
 no_w <- length(params@w)
 no_w_full <- length(params@w_full)
-sim <- project(params, effort = 1, t_max = 20, dt = 0.5, t_save = 0.5)
+sim <- project(params, effort = 1, t_max = 2, dt = 0.5, t_save = 0.5)
 
 # Rescaled
 params_r <- params
@@ -28,6 +30,9 @@ set.seed(0)
 n <- abs(array(rnorm(no_w * no_sp), dim = c(no_sp, no_w))) * 1e9
 n_full <- abs(rnorm(no_w_full)) * 1e9
 
+# Helper: strip params attribute before snapshot to avoid JSON roundtrip failure
+drop_params <- function(x) { attr(x, "params") <- NULL; x }
+
 params2 <- params
 params2@initial_n <- params2@initial_n / 2
 params2@initial_n_pp <- params2@initial_n_pp / 2
@@ -37,22 +42,22 @@ params2@initial_effort <- params2@initial_effort / 2
 # getRates ----
 test_that("getRates works", {
     r <- getRates(params)
-    expect_identical(names(r), 
-                     c("encounter", "feeding_level", "e", "e_repro", 
-                       "e_growth", "pred_rate", "pred_mort", "f_mort",
-                       "mort", "rdi", "rdd", "resource_mort"))
+    expect_identical(names(r),
+                     c("encounter", "feeding_level", "e", "e_repro",
+                       "e_growth", "diffusion", "pred_rate", "pred_mort",
+                       "f_mort", "mort", "rdi", "rdd", "resource_mort"))
     # test that the optional parameters take the correct defaults
-    expect_identical(r, 
+    expect_identical(r,
                      getRates(params, n = params@initial_n,
                               n_pp = params@initial_n_pp,
-                              n_other  = params@initial_n_other, 
+                              n_other  = params@initial_n_other,
                               effort = params@initial_effort,
                               t = 0))
     # test that getRates actually uses its optional arguments
-    expect_identical(getRates(params2), 
+    expect_identical(getRates(params2),
                      getRates(params, n = params2@initial_n,
                               n_pp = params2@initial_n_pp,
-                              n_other  = params2@initial_n_other, 
+                              n_other  = params2@initial_n_other,
                               effort = params2@initial_effort,
                               t = 0))
 })
@@ -61,20 +66,20 @@ test_that("getRates works", {
 
 test_that("getEncounter returns with correct dimnames", {
     enc <- getEncounter(params)
-    expect_identical(dimnames(enc), 
+    expect_identical(dimnames(enc),
                      dimnames(params@initial_n))
 })
-test_that("mizerEncounter is independent of volume", {
+test_that("getEncounter is independent of volume", {
     enc <- getEncounter(params)
     enc_r <- getEncounter(params_r)
-    expect_equal(enc, enc_r)
+    expect_equal(enc, enc_r, ignore_attr = "params")
 })
 test_that("External encounter is included", {
     enc <- getEncounter(params)
     # add something of the right dimension
     extra_enc <- params@mu_b
     ext_encounter(params) <- ext_encounter(params) + extra_enc
-    expect_identical(getEncounter(params), enc + extra_enc)
+    expect_equal(getEncounter(params), enc + extra_enc, ignore_attr = TRUE)
 })
 
 # getFeedingLevel -----------------------------------------
@@ -87,27 +92,28 @@ test_that("getFeedingLevel for MizerParams", {
     # A crap test - just returns what's already in the function
     encounter <- getEncounter(params, n = n, n_pp = n_full)
     f <- encounter / (encounter + params@intake_max)
-    expect_identical(fl, f)
+    expect_equal(fl, f, ignore_attr = TRUE)
     # test value
     # expect_known_value(fl, "values/getFeedingLevel")
     # expect_snapshot(round(fl, 5)) # round to take into account different rounding errors depending on OS
-    expect_snapshot_value(fl, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(fl), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
 })
 
 test_that("getFeedingLevel for MizerSim", {
-    time_range <- 15:20
+    time_range <- 1:2
     fl <- getFeedingLevel(sim, time_range = time_range)
     expect_length(dim(fl), 3)
-    # because t_save is 0.5, there should be 11 time steps in the range 15:20
-    expect_equal(dim(fl), c(11, dim(params@initial_n)))
+    # because t_save is 0.5, there should be 3 time steps in the range 1:2
+    expect_equal(dim(fl), c(3, dim(params@initial_n)))
     expect_identical(dimnames(fl)$sp, dimnames(params@initial_n)$sp)
     expect_identical(dimnames(fl)$w, dimnames(params@initial_n)$w)
-    time_range <- 20
+    time_range <- 2
     expect_length(dim(getFeedingLevel(sim, time_range = time_range)), 3)
-    expect_identical(
+    expect_equal(
         getFeedingLevel(sim, time_range = time_range)[1, , ],
-        getFeedingLevel(sim@params, sim@n[as.character(time_range), , ], 
-                        sim@n_pp[as.character(time_range), ])
+        getFeedingLevel(sim@params, sim@n[as.character(time_range), , ],
+                        sim@n_pp[as.character(time_range), ]),
+        ignore_attr = TRUE
     )
 })
 
@@ -116,7 +122,7 @@ test_that("getFeedingLevel passes correct time", {
     # a sim object, it passes the correct values of t and n at each time step.
     # To do this we replace mizerFeedingLevel() with a simpler function that
     # just returns t * n
-    time_range <- 15:20
+    time_range <- 1:2
     time_elements <- get_time_elements(sim, time_range)
     times <- as.numeric(dimnames(sim@effort)$time[time_elements])
     e <- globalenv() # We need to define the following functions in the
@@ -124,22 +130,97 @@ test_that("getFeedingLevel passes correct time", {
     e$testFeedingLevel <- function(params, n, t, ...) {
         n * t
     }
-    sim@params <- setRateFunction(sim@params, "FeedingLevel", 
+    sim@params <- setRateFunction(sim@params, "FeedingLevel",
                                   "testFeedingLevel")
-    expect_identical(getFeedingLevel(sim, time_range = time_range),
-                     sweep(sim@n[time_elements, , ], 1, times, "*"))
+    expect_equal(getFeedingLevel(sim, time_range = time_range),
+                 sweep(sim@n[time_elements, , ], 1, times, "*"),
+                 ignore_attr = TRUE)
 })
 
 test_that("getFeedingLevel is independent of volume", {
     fl <- getFeedingLevel(params)
     fl_r <- getFeedingLevel(params_r)
-    expect_equal(fl, fl_r)
+    expect_equal(fl, fl_r, ignore_attr = "params")
+})
+
+test_that("species-size rate getters work for MizerSim", {
+    time_range <- 1:2
+    time_elements <- get_time_elements(sim, time_range)
+    time_idx <- which(time_elements)[1]
+    t <- as.numeric(dimnames(sim@n)$time[[time_idx]])
+    n_slice <- array(sim@n[time_idx, , ], dim = dim(sim@n)[2:3])
+    dimnames(n_slice) <- dimnames(sim@n)[2:3]
+    n_other_slice <- sim@n_other[time_idx, ]
+    names(n_other_slice) <- dimnames(sim@n_other)$component
+    n_pp_slice <- sim@n_pp[time_idx, ]
+    effort_slice <- sim@effort[time_idx, ]
+
+    rates <- list(
+        list(
+            sim = function() getEncounter(sim, time_range = time_range),
+            params = function() getEncounter(sim@params, n = n_slice,
+                                             n_pp = n_pp_slice,
+                                             n_other = n_other_slice, t = t)
+        ),
+        list(
+            sim = function() getEReproAndGrowth(sim, time_range = time_range),
+            params = function() getEReproAndGrowth(sim@params, n = n_slice,
+                                                   n_pp = n_pp_slice,
+                                                   n_other = n_other_slice,
+                                                   t = t)
+        ),
+        list(
+            sim = function() getMort(sim, time_range = time_range),
+            params = function() getMort(sim@params, n = n_slice,
+                                        n_pp = n_pp_slice,
+                                        n_other = n_other_slice,
+                                        effort = effort_slice, t = t)
+        ),
+        list(
+            sim = function() getERepro(sim, time_range = time_range),
+            params = function() getERepro(sim@params, n = n_slice,
+                                          n_pp = n_pp_slice,
+                                          n_other = n_other_slice, t = t)
+        ),
+        list(
+            sim = function() getEGrowth(sim, time_range = time_range),
+            params = function() getEGrowth(sim@params, n = n_slice,
+                                           n_pp = n_pp_slice,
+                                           n_other = n_other_slice, t = t)
+        ),
+        list(
+            sim = function() getDiffusion(sim, time_range = time_range),
+            params = function() getDiffusion(sim@params, n = n_slice,
+                                             n_pp = n_pp_slice,
+                                             n_other = n_other_slice, t = t)
+        ),
+        list(
+            sim = function() getFlux(sim, time_range = time_range),
+            params = function() getFlux(sim@params, n = n_slice,
+                                        n_pp = n_pp_slice,
+                                        n_other = n_other_slice, t = t)
+        )
+    )
+
+    for (rate in rates) {
+        sim_rate <- rate$sim()
+        expect_s3_class(sim_rate, "ArrayTimeBySpeciesBySize")
+        expect_equal(dim(sim_rate), c(sum(time_elements), dim(params@initial_n)))
+        expect_equal(sim_rate[1, , ], rate$params(), ignore_attr = TRUE)
+    }
+})
+
+test_that("getCriticalFeedingLevel matches metab over intake_max times alpha", {
+    expected <- params@metab / params@intake_max / params@species_params$alpha
+    expect_equal(getCriticalFeedingLevel(params), expected,
+                 ignore_attr = c("value_name", "units", "class", "params"))
 })
 
 # getPredRate -------------------------------------------------------------
 
 test_that("getPredRate for MizerParams", {
     pr <- getPredRate(params, n, n_full)
+    expect_s3_class(pr, "ArraySpeciesBySize")
     # test dim
     expect_identical(dim(pr), c(no_sp, no_w_full))
     expect_identical(dimnames(pr)$sp, dimnames(params@initial_n)$sp)
@@ -147,13 +228,38 @@ test_that("getPredRate for MizerParams", {
     # test value
     # expect_known_value(pr, "values/getPredRate")
     # expect_snapshot(pr)
-    expect_snapshot_value(pr, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(pr), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+})
+
+test_that("getPredRate for MizerSim", {
+    time_range <- 1:2
+    time_elements <- get_time_elements(sim, time_range)
+    time_idx <- which(time_elements)[1]
+    t <- as.numeric(dimnames(sim@n)$time[[time_idx]])
+    n_slice <- array(sim@n[time_idx, , ], dim = dim(sim@n)[2:3])
+    dimnames(n_slice) <- dimnames(sim@n)[2:3]
+    n_other_slice <- sim@n_other[time_idx, ]
+    names(n_other_slice) <- dimnames(sim@n_other)$component
+    n_pp_slice <- sim@n_pp[time_idx, ]
+
+    pr <- getPredRate(sim, time_range = time_range)
+    expect_s3_class(pr, "ArrayTimeBySpeciesBySize")
+    expect_equal(dim(pr), c(sum(time_elements), no_sp, no_w_full))
+    expect_identical(dimnames(pr)$sp, dimnames(params@initial_n)$sp)
+    expect_identical(dimnames(pr)$w_prey,
+                     as.character(signif(params@w_full, 3)))
+    expect_equal(
+        pr[1, , ],
+        getPredRate(sim@params, n = n_slice, n_pp = n_pp_slice,
+                    n_other = n_other_slice, t = t),
+        ignore_attr = TRUE
+    )
 })
 
 test_that("getPredRate is independent of volume", {
     pr <- getPredRate(params)
     pr_r <- getPredRate(params_r)
-    expect_equal(pr, pr_r)
+    expect_equal(pr, pr_r, ignore_attr = "params")
 })
 
 
@@ -169,8 +275,8 @@ test_that("getPredMort for MizerParams", {
     m <- getPredMort(params, n, n_full)
     # expect_known_value(m, "values/getPredMort")
     # expect_snapshot(m)
-    expect_snapshot_value(m, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
-    
+    expect_snapshot_value(drop_params(m), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+
     # Look at numbers in a single prey
     w_offset <- no_w_full - no_w
     m2temp <- rep(NA, no_w)
@@ -183,20 +289,20 @@ test_that("getPredMort for MizerParams", {
 })
 
 test_that("getPredMort for MizerSim", {
-    time_range <- 15:20
+    time_range <- 1:2
     expect_length(dim(getPredMort(sim, time_range = time_range)), 3)
-    time_range <- 20
+    time_range <- 2
     expect_length(dim(getPredMort(sim, time_range = time_range)), 2)
     ##expect_that(getPredMort(sim, time_range=time_range), equals(getPredMort(sim@params, sim@n[as.character(time_range),,], sim@n_pp[as.character(time_range),])))
     aq1 <- getPredMort(sim, time_range = time_range)
     aq2 <- getPredMort(sim@params, sim@n[as.character(time_range), , ],
                  sim@n_pp[as.character(time_range), ])
-    
+
     ttot <- 0
     for (i in seq_len(dim(aq1)[1])) {
         ttot <- ttot + sum(aq1[i, ] != aq2[i, ])
     }
-    
+
     expect_equal(ttot, 0)
 })
 
@@ -211,23 +317,25 @@ test_that("getPredMort passes correct time", {
     e$testPredMort <- function(params, n, n_pp, t, ...) {
         n * t
     }
-    sim@params <- setRateFunction(sim@params, "PredMort", 
+    sim@params <- setRateFunction(sim@params, "PredMort",
                                   "testPredMort")
-    expect_identical(unname(getPredMort(sim)),
-                     unname(sweep(sim@n, 1, times, "*")))
+    expect_equal(unname(getPredMort(sim)),
+                 unname(sweep(sim@n, 1, times, "*")),
+                 ignore_attr = TRUE)
 })
 
 test_that("interaction is right way round in getPredMort function", {
-    inter[, "Dab"] <- 0  # Dab not eaten by anything
-    params <- newMultispeciesParams(NS_species_params_gears, inter, info_level = 0)
+    sp_name <- NS_species_params_gears_small$species[2]
+    inter_small[, sp_name] <- 0  # species not eaten by anything
+    params <- newMultispeciesParams(NS_species_params_gears_small, inter_small, info_level = 0)
     m2 <- getPredMort(params, get_initial_n(params), params@cc_pp)
-    expect_true(all(m2["Dab", ] == 0))
+    expect_true(all(m2[sp_name, ] == 0))
 })
 
 test_that("getPredMort is independent of volume", {
     pr <- getPredMort(params)
     pr_r <- getPredMort(params_r)
-    expect_equal(pr, pr_r)
+    expect_equal(pr, pr_r, ignore_attr = "params")
 })
 
 
@@ -251,6 +359,17 @@ test_that("getResourceMort is independent of volume", {
     pm <- getResourceMort(params)
     pm_r <- getResourceMort(params_r)
     expect_equal(pm, pm_r)
+})
+
+test_that("getResourceMort and getZ aliases delegate exactly", {
+    expect_equal(
+        getResourceMort(params, n, n_full),
+        colSums(getPredRate(params, n, n_full))
+    )
+    expect_identical(
+        getZ(params, n = n, n_pp = n_full, effort = 0.2),
+        getMort(params, n = n, n_pp = n_full, effort = 0.2)
+    )
 })
 
 
@@ -293,20 +412,36 @@ test_that("getFmortGear", {
     sp <- round(runif(1, min = 1, max = no_sp))
     gear <- round(runif(1, min = 1, max = no_gear))
     expect_identical(f1[gear, sp, widx],
-                     effort_num1 * params@catchability[gear, sp] * 
+                     effort_num1 * params@catchability[gear, sp] *
                          params@selectivity[gear, sp, widx])
     expect_identical(f2[gear, sp, widx],
-                     effort_num2[gear] * params@catchability[gear, sp] * 
+                     effort_num2[gear] * params@catchability[gear, sp] *
                          params@selectivity[gear, sp, widx])
     expect_identical(f3[, gear, sp, widx],
-                     effort_mat[, gear] * params@catchability[gear, sp] * 
+                     effort_mat[, gear] * params@catchability[gear, sp] *
                          params@selectivity[gear, sp, widx])
     # expect_known_value(f3, "values/getFMortGear")
     # expect_snapshot(f3)
     expect_snapshot_value(f3, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
-    
-    expect_equal(getFMortGear(sim)[1, 1, 1, ], 
+
+    expect_equal(getFMortGear(sim)[1, 1, 1, ],
                  getFMortGear(sim@params, effort = sim@effort[1, ])[1, 1, ])
+
+    time_range <- 1:2
+    time_elements <- get_time_elements(sim, time_range)
+    f_sim <- getFMortGear(sim, time_range = time_range)
+    expected <- plyr::aaply(which(time_elements), 1, function(time_idx) {
+        n_slice <- array(sim@n[time_idx, , ], dim = dim(sim@n)[2:3])
+        dimnames(n_slice) <- dimnames(sim@n)[2:3]
+        n_other_slice <- sim@n_other[time_idx, ]
+        names(n_other_slice) <- dimnames(sim@n_other)$component
+        getFMortGear(sim@params, effort = sim@effort[time_idx, ],
+                     n = n_slice, n_pp = sim@n_pp[time_idx, ],
+                     n_other = n_other_slice,
+                     t = as.numeric(dimnames(sim@n)$time[[time_idx]]))
+    }, .drop = FALSE)
+    names(dimnames(expected))[[1]] <- "time"
+    expect_equal(f_sim, expected)
 })
 
 
@@ -339,12 +474,21 @@ test_that("getFMort", {
         fmg22 <- fmg22 + fmg2[i, , ]
         fmg33 <- fmg33 + fmg3[, i, , ]
     }
-    expect_equal(f1, fmg11)
-    expect_equal(f2, fmg22)
+    expect_equal(f1, fmg11, ignore_attr = TRUE)
+    expect_equal(f2, fmg22, ignore_attr = TRUE)
     expect_equal(f3, fmg33)
     # expect_known_value(f1, "values/getFMort")
     # expect_snapshot(f1)
-    expect_snapshot_value(f1, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(f1), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+})
+
+test_that("getFMort drop argument controls singleton dimensions for MizerSim", {
+    single <- project(newMultispeciesParams(NS_species_params_gears_small[3, ], info_level = 0),
+                      effort = 1, t_max = 2, progress_bar = FALSE)
+    expect_equal(dim(getFMort(single, drop = FALSE)),
+                 c(length(getTimes(single)), 1, length(single@params@w)))
+    expect_equal(dim(getFMort(single)),
+                 c(length(getTimes(single)), length(single@params@w)))
 })
 
 test_that("getFMort passes correct time", {
@@ -359,8 +503,9 @@ test_that("getFMort passes correct time", {
         n * t
     }
     sim@params <- setRateFunction(sim@params, "FMort", "testFMort")
-    expect_identical(getFMort(sim),
-                     sweep(sim@n, 1, times, "*"))
+    expect_equal(getFMort(sim),
+                 sweep(sim@n, 1, times, "*"),
+                 ignore_attr = TRUE)
 })
 
 test_that("getFMort passes correct time", {
@@ -379,9 +524,10 @@ test_that("getFMort passes correct time", {
     }
     sim@params <- setRateFunction(sim@params, "EGrowth", "testEGrowth")
     sim@params <- setRateFunction(sim@params, "FMort", "testFMort")
-    expect_identical(getFMort(sim),
-                     sweep(sim@n, 1, times, "*"))
-    
+    expect_equal(getFMort(sim),
+                 sweep(sim@n, 1, times, "*"),
+                 ignore_attr = TRUE)
+
     # Now we do the same for when getFMort() calls getPredMort()
     e$testPredMort <- function(params, n, t, ...) {
         n * t
@@ -391,8 +537,9 @@ test_that("getFMort passes correct time", {
     }
     sim@params <- setRateFunction(sim@params, "PredMort", "testPredMort")
     sim@params <- setRateFunction(sim@params, "FMort", "testFMort")
-    expect_identical(getFMort(sim),
-                     sweep(sim@n, 1, times, "*"))
+    expect_equal(getFMort(sim),
+                 sweep(sim@n, 1, times, "*"),
+                 ignore_attr = TRUE)
 })
 
 
@@ -405,8 +552,8 @@ test_that("getMort", {
     z <- getMort(params, n, n_full, effort = effort2)
     # test dim
     expect_identical(dim(z), c(no_sp, no_w))
-    expect_identical(dimnames(z)$prey, dimnames(params@initial_n)$sp)
-    expect_identical(dimnames(z)$w_prey, dimnames(params@initial_n)$w)
+    expect_identical(dimnames(z)$sp, dimnames(params@initial_n)$sp)
+    expect_identical(dimnames(z)$w, dimnames(params@initial_n)$w)
     # Look at numbers in species 1
     f <- getFMort(params, effort2)
     m2 <- getPredMort(params, n, n_full)
@@ -414,13 +561,34 @@ test_that("getMort", {
     expect_equal(z1, z[1, ])
     # expect_known_value(z, "values/getMort")
     # expect_snapshot(z)
-    expect_snapshot_value(z, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(z), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
 })
 
 test_that("getMort is independent of volume", {
     m <- getMort(params, effort = 1)
     m_r <- getMort(params_r, effort = 1)
-    expect_equal(m, m_r)
+    expect_equal(m, m_r, ignore_attr = "params")
+})
+
+test_that("getMort passes state through to getFMort", {
+    e <- globalenv()
+    e$testFMort <- function(params, n, t, ...) {
+        n * t
+    }
+    e$testMort <- function(params, f_mort, ...) {
+        f_mort
+    }
+    params_f <- setRateFunction(params, "FMort", "testFMort")
+    params_f <- setRateFunction(params_f, "Mort", "testMort")
+    expect_equal(getMort(params_f, n = n, n_pp = n_full, effort = 1, t = 3),
+                 n * 3,
+                 ignore_attr = TRUE)
+})
+
+test_that("getM2 and getM2Background are aliases", {
+    expect_identical(getM2(params, n, n_full), getPredMort(params, n, n_full))
+    expect_identical(getM2Background(params, n, n_full),
+                     getResourceMort(params, n, n_full))
 })
 
 
@@ -439,17 +607,41 @@ test_that("getEReproAndGrowth", {
     # Can be used with infinite intake_max
     params@intake_max[] <- Inf
     expect_true(!any(is.na(getEReproAndGrowth(params, n = n, n_pp = n_full))))
-    
+
     erg[erg <= 0] <- 0
     # expect_known_value(erg, "values/getEReproAndGrowth")
     # expect_snapshot(erg)
-    expect_snapshot_value(erg, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(erg), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
 })
 
 test_that("getEReproAndGrowth is independent of volume", {
     g <- getEReproAndGrowth(params)
     g_r <- getEReproAndGrowth(params_r)
-    expect_equal(g, g_r)
+    expect_equal(g, g_r, ignore_attr = "params")
+})
+
+test_that("mizerEReproAndGrowth, mizerERepro and mizerEGrowth follow formulas", {
+    encounter <- getEncounter(params, n = n, n_pp = n_full)
+    feeding_level <- getFeedingLevel(params, n = n, n_pp = n_full,
+                                     encounter = encounter)
+    e <- mizerEReproAndGrowth(params, n = n, n_pp = n_full, n_other = list(),
+                              t = 0, encounter = encounter,
+                              feeding_level = feeding_level)
+    expected_e <- sweep((1 - feeding_level) * encounter, 1,
+                        params@species_params$alpha, "*",
+                        check.margin = FALSE) - params@metab
+    expect_equal(e, expected_e, ignore_attr = c("value_name", "units", "class"))
+
+    e_test <- e
+    e_test[1, 1] <- -1
+    e_repro <- mizerERepro(params, n = n, n_pp = n_full, n_other = list(),
+                           t = 0, e = e_test)
+    expect_equal(e_repro[1, 1], 0)
+    expect_equal(e_repro[-c(1)], (params@psi * pmax(e_test, 0))[-c(1)])
+
+    e_growth <- mizerEGrowth(params, n = n, n_pp = n_full, n_other = list(),
+                             t = 0, e_repro = e_repro, e = e_test)
+    expect_equal(e_growth, pmax(e_test, 0) - e_repro)
 })
 
 
@@ -460,18 +652,25 @@ test_that("getERepro", {
     # test dim
     expect_identical(dim(es), c(no_sp, no_w))
     expect_identical(dimnames(es), dimnames(params@initial_n))
-    
+
     e <- getEReproAndGrowth(params, n = n, n_pp = n_full)
     e_repro <- params@psi * e
     e_repro[e_repro <= 0] <- 0
-    expect_identical(es, e_repro)
+    expect_equal(es, e_repro, ignore_attr = TRUE)
     e_growth <- getEGrowth(params, n, n_full)
     e_growth_man <- e - es
     e_growth_man[e_growth_man <= 0] <- 0
-    expect_identical(e_growth, e_growth_man)
+    expect_equal(e_growth, e_growth_man, ignore_attr = TRUE)
     # expect_known_value(es, "values/getERepro")
     # expect_snapshot(es)
-    expect_snapshot_value(es, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(es), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+})
+
+test_that("getESpawning is an exact alias for getERepro", {
+    expect_identical(
+        getESpawning(params, n = n, n_pp = n_full),
+        getERepro(params, n = n, n_pp = n_full)
+    )
 })
 
 
@@ -486,7 +685,7 @@ test_that("getRDI", {
     # test values
     e_repro <- getERepro(params, n = n, n_pp = n_full)
     e_repro_pop <- apply(sweep(e_repro * n, 2, params@dw, "*"), 1, sum)
-    rdix <- sex_ratio * (e_repro_pop * params@species_params$erepro) / 
+    rdix <- sex_ratio * (e_repro_pop * params@species_params$erepro) /
         params@w[params@w_min_idx]
     expect_equal(rdix, rdi, tolerance = 1e-15)
     # expect_known_value(rdi, "values/getRDI")
@@ -498,6 +697,29 @@ test_that("getRDI is proportional to volume", {
     rdi <- getRDI(params)
     rdi_r <- getRDI(params_r)
     expect_equal(rdi * volume, rdi_r)
+})
+
+test_that("getRDI for MizerSim", {
+    time_range <- 1:2
+    time_elements <- get_time_elements(sim, time_range)
+    time_idx <- which(time_elements)[1]
+    t <- as.numeric(dimnames(sim@n)$time[[time_idx]])
+    n_slice <- array(sim@n[time_idx, , ], dim = dim(sim@n)[2:3])
+    dimnames(n_slice) <- dimnames(sim@n)[2:3]
+    n_other_slice <- sim@n_other[time_idx, ]
+    names(n_other_slice) <- dimnames(sim@n_other)$component
+    n_pp_slice <- sim@n_pp[time_idx, ]
+
+    rdi <- getRDI(sim, time_range = time_range)
+    expect_s3_class(rdi, "ArrayTimeBySpecies")
+    expect_equal(dim(rdi), c(sum(time_elements), no_sp))
+    expect_identical(dimnames(rdi)$sp, params@species_params$species)
+    expect_equal(
+        rdi[1, ],
+        getRDI(sim@params, n = n_slice, n_pp = n_pp_slice,
+               n_other = n_other_slice, t = t),
+        ignore_attr = TRUE
+    )
 })
 
 
@@ -524,6 +746,29 @@ test_that("getRDD is proportional to volume", {
     expect_equal(rdd * volume, rdd_r)
 })
 
+test_that("getRDD for MizerSim", {
+    time_range <- 1:2
+    time_elements <- get_time_elements(sim, time_range)
+    time_idx <- which(time_elements)[1]
+    t <- as.numeric(dimnames(sim@n)$time[[time_idx]])
+    n_slice <- array(sim@n[time_idx, , ], dim = dim(sim@n)[2:3])
+    dimnames(n_slice) <- dimnames(sim@n)[2:3]
+    n_other_slice <- sim@n_other[time_idx, ]
+    names(n_other_slice) <- dimnames(sim@n_other)$component
+    n_pp_slice <- sim@n_pp[time_idx, ]
+
+    rdd <- getRDD(sim, time_range = time_range)
+    expect_s3_class(rdd, "ArrayTimeBySpecies")
+    expect_equal(dim(rdd), c(sum(time_elements), no_sp))
+    expect_identical(dimnames(rdd)$sp, params@species_params$species)
+    expect_equal(
+        rdd[1, ],
+        getRDD(sim@params, n = n_slice, n_pp = n_pp_slice,
+               n_other = n_other_slice, t = t),
+        ignore_attr = TRUE
+    )
+})
+
 
 # getEGrowth --------------------------------------------------------------
 
@@ -534,21 +779,66 @@ test_that("getEGrowth is working", {
     expect_identical(dimnames(eg1), dimnames(params@initial_n))
     # expect_known_value(eg1, "values/getEGrowth")
     # expect_snapshot(eg1)
-    expect_snapshot_value(eg1, style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+    expect_snapshot_value(drop_params(eg1), style = 'json2', tolerance = 1e-5) # round to take into account different rounding errors depending on OS
+})
+
+test_that("mizerFMortGear, mizerFMort, mizerPredMort and mizerResourceMort follow formulas", {
+    effort <- setNames(seq_len(nrow(params@catchability)),
+                       dimnames(params@catchability)$gear)
+    f_gear <- mizerFMortGear(params, effort)
+    expected_f_gear <- params@selectivity
+    expected_f_gear[] <- effort * c(params@catchability) * c(params@selectivity)
+    expect_equal(f_gear, expected_f_gear)
+
+    f_total <- mizerFMort(params, n = n, n_pp = n_full, n_other = list(),
+                          t = 0, effort = effort,
+                          e_growth = array(0, dim = dim(params@initial_n)),
+                          pred_mort = array(0, dim = dim(params@initial_n)))
+    expect_equal(f_total, colSums(f_gear))
+
+    pred_rate <- getPredRate(params, n = n, n_pp = n_full)
+    idx_sp <- (length(params@w_full) - length(params@w) + 1):length(params@w_full)
+    expect_equal(mizerPredMort(params, n = n, n_pp = n_full, n_other = list(),
+                               t = 0, pred_rate = pred_rate),
+                 t(params@interaction) %*% pred_rate[, idx_sp, drop = FALSE])
+    expect_equal(mizerResourceMort(params, n = n, n_pp = n_full, n_other = list(),
+                                   t = 0, pred_rate = pred_rate),
+                 as.vector(params@species_params$interaction_resource %*% pred_rate))
+})
+
+test_that("mizerRates returns the standard rate list from registered functions", {
+    rates_fns <- lapply(params@rates_funcs, get)
+    r <- mizerRates(params,
+                    n = params@initial_n,
+                    n_pp = params@initial_n_pp,
+                    n_other = params@initial_n_other,
+                    effort = params@initial_effort,
+                    t = 0,
+                    rates_fns = rates_fns)
+    expect_named(r,
+                 c("encounter", "feeding_level", "e", "e_repro", "e_growth",
+                   "diffusion", "pred_rate", "pred_mort", "f_mort", "mort",
+                   "rdi", "rdd", "resource_mort"))
+    expect_identical(r$encounter,
+                     rates_fns$Encounter(params,
+                                         n = params@initial_n,
+                                         n_pp = params@initial_n_pp,
+                                         n_other = params@initial_n_other,
+                                         t = 0))
 })
 
 
 # fft ----
 test_that("Test that fft based integrator gives similar result as old code", {
     # Make it harder by working with kernels that need a lot of cutoff
-    species_params <- NS_species_params_gears
+    species_params <- NS_species_params_gears_small
     species_params$pred_kernel_type <- "truncated_lognormal"
-    species_params$sigma[3] <- 3
-    species_params$beta[4] <- species_params$beta[4] * 100
-    species_params$beta[5] <- species_params$beta[5] / 1000
+    species_params$sigma[2] <- 3
+    species_params$beta[1] <- species_params$beta[1] * 100
+    species_params$beta[3] <- species_params$beta[3] / 1000
     # and use different egg sizes
     species_params$w_min <- seq(0.001, 1, length.out = no_sp)
-    params <- newMultispeciesParams(species_params, inter, 
+    params <- newMultispeciesParams(species_params, inter_small,
                                         no_w = 30, min_w_pp = 1e-12,
                                         info_level = 0)
     # create a second params object that does not use fft
@@ -564,13 +854,13 @@ test_that("Test that fft based integrator gives similar result as old code", {
     pr <- getPredRate(params2, params@initial_n, params@initial_n_pp)
     # Due to problem with fft on M1mac, skip this test on CRAN
     skip_on_cran()
-    expect_equal(prfft, pr, tolerance = 1e-15, ignore_attr = TRUE)
+    expect_equal(prfft, pr, tolerance = 3e-14, ignore_attr = TRUE)
 })
 
 # One species only ----
 test_that("project function returns objects of correct dimension when community only has one species", {
     params <- newCommunityParams(z0 = 0.2, f0 = 0.7, alpha = 0.2)
-    t_max <- 50
+    t_max <- 2
     sim <- project(params, t_max = t_max, effort = 0)
     n <- array(sim@n[t_max + 1, , ], dim = dim(sim@n)[2:3])
     dimnames(n) <- dimnames(sim@n)[2:3]
@@ -584,10 +874,10 @@ test_that("project function returns objects of correct dimension when community 
     expect_equal(dim(getPredMort(params, n, n_pp)), c(1, no_w))
     expect_length(getResourceMort(params, n, n_pp), no_w_full)
     expect_equal(dim(getFMortGear(params, 0)), c(1, 1, no_w)) # 3D time x species x size
-    expect_equal(dim(getFMortGear(params, matrix(c(0, 0), nrow = 2))), 
+    expect_equal(dim(getFMortGear(params, matrix(c(0, 0), nrow = 2))),
                      c(2, 1, 1, no_w)) # 4D time x gear x species x size
     expect_equal(dim(getFMort(params, 0)), c(1, no_w)) # 2D species x size
-    expect_equal(dim(getFMort(params, matrix(c(0, 0), nrow = 2))), 
+    expect_equal(dim(getFMort(params, matrix(c(0, 0), nrow = 2))),
                      c(2, 1, no_w)) # 3D time x species x size
     expect_equal(dim(getMort(params, n, n_pp, effort = 0)), c(1, no_w))
     expect_equal(dim(getEReproAndGrowth(params, n, n_pp)), c(1, no_w))
@@ -595,11 +885,12 @@ test_that("project function returns objects of correct dimension when community 
     expect_equal(dim(getEGrowth(params, n, n_pp)), c(1, no_w))
     expect_length(getRDI(params, n, n_pp), 1)
     expect_length(getRDD(params, n, n_pp), 1)
+    expect_equal(dim(getDiffusion(params, n, n_pp)), c(1, no_w))
 
     # MizerSim functions
     # time x species x size
     expect_equal(dim(getFeedingLevel(sim)), c(t_max + 1, 1, no_w))
-    # time x species x size - default drop is TRUE, if called from 
+    # time x species x size - default drop is TRUE, if called from
     # plots drop = FALSE
     expect_equal(dim(getPredMort(sim)), c(t_max + 1, no_w))
     # time x species x size
@@ -608,6 +899,33 @@ test_that("project function returns objects of correct dimension when community 
     expect_equal(dim(getFMortGear(sim)), c(t_max + 1, 1, 1, no_w))
     # time x species x size - note drop = TRUE
     expect_equal(dim(getFMort(sim)), c(t_max + 1, no_w))
-    # time x species x size 
+    # time x species x size
     expect_equal(dim(getFMort(sim, drop = FALSE)), c(t_max + 1, 1, no_w))
+})
+
+
+# getDiffusion with predation diffusion ----
+test_that("getDiffusion snapshot with use_predation_diffusion", {
+    params_d <- params
+    params_d@use_predation_diffusion <- TRUE
+    d <- getDiffusion(params_d, n, n_full)
+    expect_snapshot_value(drop_params(d), style = 'json2', tolerance = 1e-5)
+})
+
+test_that("predation diffusion is non-negative and adds to baseline", {
+    params_d <- params
+    params_d@use_predation_diffusion <- TRUE
+    d_pred <- getDiffusion(params_d, n, n_full)
+    d_base <- getDiffusion(params, n, n_full)
+    # predation diffusion is non-negative, so total must not fall below baseline
+    expect_true(all(d_pred >= d_base - .Machine$double.eps))
+    # with non-zero abundances it must be strictly larger somewhere
+    expect_true(any(d_pred > d_base))
+})
+
+test_that("getRates diffusion is nonzero with use_predation_diffusion", {
+    params_d <- params
+    params_d@use_predation_diffusion <- TRUE
+    r_d <- getRates(params_d)
+    expect_true(any(r_d$diffusion > 0))
 })

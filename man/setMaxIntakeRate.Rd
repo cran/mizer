@@ -22,8 +22,7 @@ intake_max(params) <- value
 intake rate for each species at size. If not supplied, a default is set as
 described in the section "Setting maximum intake rate".}
 
-\item{reset}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If set to TRUE, then the intake rate will be reset to the value
+\item{reset}{If set to TRUE, then the intake rate will be reset to the value
 calculated from the species parameters, even if it was previously
 overwritten with a custom value. If set to FALSE (default) then a
 recalculation from the species parameters will take place only if no
@@ -34,11 +33,11 @@ custom value has been set.}
 \item{value}{intake_max}
 }
 \value{
-\code{setReproduction()}: A MizerParams object with updated maximum
+\code{setMaxIntakeRate()}: A MizerParams object with updated maximum
 intake rate.
 
-\code{getMaxIntakeRate()} or equivalently \code{intake_max()}: An array
-(species x size) with the maximum intake rate.
+\code{getMaxIntakeRate()} or equivalently \code{intake_max()}: A
+\code{ArraySpeciesBySize} object (species x size) with the maximum intake rate.
 }
 \description{
 Set maximum intake rate
@@ -55,25 +54,41 @@ The values of \eqn{h_i} (the maximum intake rate of an individual of size 1
 gram) and \eqn{n_i} (the allometric exponent for the intake rate) are taken
 from the \code{h} and \code{n} columns in the species parameter dataframe. If
 the \code{h} column is not supplied in the species parameter dataframe, it is
-calculated by the \code{\link[=get_h_default]{get_h_default()}} function.
+calculated by the \code{\link[=get_h_default]{get_h_default()}} function. If the \code{n} column is not
+supplied, a default of \eqn{n_i = 3/4} is used.
 
 If \eqn{h_i} is set to \code{Inf}, fish of species i will consume all encountered
 food.
+
+If the \code{intake_max} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
+\examples{
+# Inspect the current maximum intake rate
+getMaxIntakeRate(NS_params)["Cod", 1:5]
+
+# Increase intake rate for Cod by 50\%
+intake_max <- getMaxIntakeRate(NS_params)
+intake_max["Cod", ] <- intake_max["Cod", ] * 1.5
+params <- setMaxIntakeRate(NS_params, intake_max = intake_max)
+getMaxIntakeRate(params)["Cod", 1:5]
+}
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

@@ -2,9 +2,12 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerRates}
 \alias{mizerRates}
+\alias{projectRates}
 \title{Get all rates needed to project standard mizer model}
 \usage{
 mizerRates(params, n, n_pp, n_other, t = 0, effort, rates_fns, ...)
+
+projectRates(params, n, n_pp, n_other, t = 0, effort, rates_fns, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -32,6 +35,11 @@ List of rates.
 }
 \description{
 Calls other rate functions in sequence and collects the results in a list.
+
+\code{projectRates()} is an S3 generic used by extension-aware
+projections to calculate all rates. Models without extensions keep using
+\code{\link[=mizerRates]{mizerRates()}} directly. The base method mirrors \code{\link[=mizerRates]{mizerRates()}} but calls
+migrated projection hooks directly, starting with \code{\link[=projectEncounter]{projectEncounter()}}.
 }
 \details{
 By default this function returns a list with the following components:
@@ -53,18 +61,18 @@ However you can replace any of these rate functions by your own rate
 function if you wish, see \code{\link[=setRateFunction]{setRateFunction()}} for details.
 }
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

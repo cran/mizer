@@ -3,6 +3,7 @@
 \name{setComponent}
 \alias{setComponent}
 \alias{removeComponent}
+\alias{getComponent}
 \title{Add a dynamical ecosystem component}
 \usage{
 setComponent(
@@ -12,15 +13,20 @@ setComponent(
   dynamics_fun,
   encounter_fun,
   mort_fun,
-  component_params
+  component_params,
+  colour = "grey",
+  linetype = "solid"
 )
 
 removeComponent(params, component)
+
+getComponent(params, component)
 }
 \arguments{
 \item{params}{A MizerParams object}
 
-\item{component}{Name of the component}
+\item{component}{Name of the component of interest. If missing, a list of
+all components will be returned.}
 
 \item{initial_value}{Initial value of the component}
 
@@ -34,9 +40,21 @@ mortality rate. Optional.}
 
 \item{component_params}{Object holding the parameters needed by the component
 functions. This could for example be a named list of parameters. Optional.}
+
+\item{colour}{Line colour to use for the component in plots. Defaults to
+\code{"grey"}.}
+
+\item{linetype}{Line type to use for the component in plots. Defaults to
+\code{"solid"}.}
 }
 \value{
 The updated MizerParams object
+
+For \code{getComponent}: A list with the entries \code{initial_value}, \code{dynamics_fun},
+\code{encounter_fun}, \code{mort_fun}, \code{component_params} for the requested
+component. If the requested component does not exist, \code{NULL} is returned.
+If no \code{component} argument is given, then a list of lists for all
+components is returned.
 }
 \description{
 By default, mizer models any number of size-resolved consumer species
@@ -50,6 +68,23 @@ data structure you like.
 
 If you set a component with a new name, the new component will be added
 to the existing components. If you set a component with an existing name,
-that component will be overwritten. You can remove a component with
+the \code{initial_value} and \code{dynamics_fun} are overwritten, while the optional
+\code{encounter_fun}, \code{mort_fun} and \code{component_params} are only changed if the
+corresponding arguments are supplied. You can remove a component with
 \code{removeComponent()}.
 }
+\seealso{
+"Extending mizer":
+\code{vignette("extending-mizer", package = "mizer")}
+
+Other extension tools:
+\code{\link[=NOther]{NOther()}},
+\code{\link[=clearExtensionChain]{clearExtensionChain()}},
+\code{\link[=coerceToExtensionClass]{coerceToExtensionClass()}},
+\code{\link[=getRegisteredExtensions]{getRegisteredExtensions()}},
+\code{\link[=initialNOther<-]{initialNOther<-()}},
+\code{\link[=registerExtension]{registerExtension()}},
+\code{\link[=registerExtensions]{registerExtensions()}},
+\code{\link[=setRateFunction]{setRateFunction()}}
+}
+\concept{extension tools}

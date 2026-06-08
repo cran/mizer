@@ -9,7 +9,10 @@ addSpecies(
   species_params,
   gear_params = data.frame(),
   initial_effort,
-  interaction
+  interaction,
+  steady = TRUE,
+  info_level = 3,
+  ...
 )
 }
 \arguments{
@@ -32,21 +35,32 @@ interaction coefficients between all species or only those between the new
 species. In the latter case all interaction between an old and a new
 species are set to 1. If this argument is missing, all interactions
 involving a new species are set to 1.}
+
+\item{steady}{If \code{TRUE} (default), runs \code{\link[=steadySingleSpecies]{steadySingleSpecies()}} to
+initialise the new species at their single-species steady state and
+retuning their reproductive efficiencies. Set to \code{FALSE} when the caller
+(e.g. an extension package using \code{NextMethod()}) needs to make further
+changes to the params object before that steady-state calculation can be
+run successfully.}
+
+\item{info_level}{Controls the amount of information messages that are shown
+when the function sets default values for parameters. Higher levels lead
+to more messages. Set to 0 to suppress all such messages.}
+
+\item{...}{Currently unused.}
 }
 \value{
 An object of type \linkS4class{MizerParams}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-
 Takes a \linkS4class{MizerParams} object and adds additional species with
 given parameters to the ecosystem. It sets the initial values for these new
 species to their steady-state solution in the given initial state of the
 existing ecosystem. This will be close to the true steady state if the
 abundances of the new species are sufficiently low. Hence the abundances of
 the new species are set so that they are at most 1/100th of the resource
-power law. Their reproductive efficiencies are set so as to keep them at
-that low level.
+power law. Their reproductive efficiencies are set so as to keep them at that
+low level.
 }
 \details{
 The resulting MizerParams object will use the same size grid where
@@ -81,5 +95,5 @@ params <- addSpecies(params, species_params)
 plotSpectra(params)
 }
 \seealso{
-\code{\link[=removeSpecies]{removeSpecies()}}
+\code{\link[=removeSpecies]{removeSpecies()}}, \code{\link[=renameSpecies]{renameSpecies()}}
 }

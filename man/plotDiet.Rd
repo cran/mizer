@@ -2,26 +2,62 @@
 % Please edit documentation in R/plots.R
 \name{plotDiet}
 \alias{plotDiet}
+\alias{plotDiet.MizerSim}
+\alias{plotDiet.MizerParams}
+\alias{plotlyDiet}
 \title{Plot diet, resolved by prey species, as function of predator at size.}
 \usage{
-plotDiet(object, species = NULL, return_data = FALSE)
+plotDiet(
+  object,
+  species = NULL,
+  wlim = c(NA, NA),
+  llim = c(NA, NA),
+  size_axis = c("w", "l"),
+  return_data = FALSE,
+  log_x = TRUE,
+  log_y = FALSE,
+  log = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{An object of class \linkS4class{MizerSim} or
 \linkS4class{MizerParams}.}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
+
+\item{wlim}{A numeric vector of length two providing lower and upper limits
+for the weight (x) axis. Use \code{NA} to auto-scale to the data range.}
+
+\item{llim}{A numeric vector of length two providing lower and upper limits
+for the length (x) axis when \code{size_axis = "l"}. Use \code{NA} to auto-scale to
+the data range.}
+
+\item{size_axis}{Whether to plot size as weight (\code{"w"}, default) or length
+(\code{"l"}), using the allometric weight-length relationship.}
 
 \item{return_data}{A boolean value that determines whether the formatted data
-used for the plot is returned instead of the plot itself. Default value is FALSE}
+used for the plot is returned instead of the plot itself. Default is FALSE.}
+
+\item{log_x}{If \code{TRUE} (default), use a log10 x-axis.}
+
+\item{log_y}{If \code{TRUE}, use a log10 y-axis. Default is \code{FALSE}.}
+
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.}
+
+\item{...}{Unused.}
 }
 \value{
 A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
-frame with the four variables 'Predator', 'w', 'Proportion', 'Prey' is
-returned.
+frame with the four variables 'Predator', 'w' (or 'l' if
+\code{size_axis = "l"}), 'Proportion', 'Prey' is returned.
+
+\code{plotlyDiet()} returns a plotly object.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} Plots the proportions with which each
@@ -51,18 +87,26 @@ str(fr)
 \seealso{
 \code{\link[=getDiet]{getDiet()}}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotBiomass}()},
-\code{\link{plotFMort}()},
-\code{\link{plotFeedingLevel}()},
-\code{\link{plotGrowthCurves}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotSpectra}()},
-\code{\link{plotYield}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotBiomass]{plotBiomass()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotFeedingLevel]{plotFeedingLevel()}},
+\code{\link[=plotGrowthCurves]{plotGrowthCurves()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra]{plotSpectra()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYield]{plotYield()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

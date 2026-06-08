@@ -1,6 +1,5 @@
 #' Set Beverton-Holt reproduction without changing the steady state
 #'
-#' `r lifecycle::badge("experimental")`
 #' Takes a MizerParams object `params` with arbitrary density dependence in
 #' reproduction and
 #' returns a MizerParams object with Beverton-Holt density-dependence in such a
@@ -101,7 +100,7 @@
 #' up to `Inf`. If a smaller value is requested a warning is issued and the
 #' value is increased to the value required for a reproduction level of 0.99.
 #'
-#' The values for the `reproduction_level` must be positive and
+#' The values for the `reproduction_level` must be non-negative and
 #' less than 1. The values for `erepro` must be large enough to allow the
 #' required reproduction rate. If a smaller value is requested a warning is
 #' issued and the value is increased to the smallest possible value. The values
@@ -120,8 +119,11 @@
 #' @param R_max Maximum reproduction rate. See details.
 #' @param reproduction_level Sets `R_max` so that the reproduction rate at
 #'   the initial state is `R_max * reproduction_level`.
-#' @param R_factor `r lifecycle::badge("deprecated")` Use
-#'   `reproduction_level = 1 / R_factor` instead.
+#' @param ... Unused
+#'   \itemize{
+#'     \item `R_factor`: Legacy alternative for specifying
+#'       `reproduction_level = 1 / R_factor`.
+#'   }
 #'
 #' @return A MizerParams object
 #' @examples
@@ -141,14 +143,23 @@
 #' params <- setBevertonHolt(params, reproduction_level = 0.3)
 #' t(species_params(params)[, c("erepro", "R_max")])
 #' @export
-setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
-                            R_max, reproduction_level) {
-    assert_that(is(params, "MizerParams"))
+setBevertonHolt <- function(params, erepro,
+                            R_max, reproduction_level, ...) {
+    UseMethod("setBevertonHolt")
+}
+#' @export
+setBevertonHolt.MizerParams <- function(params, erepro,
+                            R_max, reproduction_level, ...) {
     no_sp <- nrow(params@species_params)
+
+    args <- list(...)
+    if ("R_factor" %in% names(args)) {
+        R_factor <- args[["R_factor"]]
+    }
 
     # check number of arguments
     num_args <- hasArg("erepro") + hasArg("R_max") +
-        hasArg("reproduction_level") + hasArg("R_factor")
+        hasArg("reproduction_level") + exists("R_factor")
     if (num_args > 1) {
         stop("You should only provide `params` and one other argument.")
     }
@@ -161,7 +172,7 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
     if (!missing("erepro")) values <- erepro
     if (hasArg("R_max")) values <- R_max
     if (hasArg("reproduction_level")) values <- reproduction_level
-    if (hasArg("R_factor")) values <- R_factor
+    if (exists("R_factor")) values <- R_factor
 
     if (length(values) == 1 && is.null(names(values))) {
         values <- rep(values, no_sp)
@@ -181,6 +192,14 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
     # select the species that are affected
     species <- valid_species_arg(params, names(values))
     sp_idx <- match(species, params@species_params$species)
+
+    # Ensure given_species_params has erepro column before partial assignment.
+    # Full-species updates work without this (R creates the column automatically),
+    # but partial updates fail when the column is absent.
+    if (!"erepro" %in% names(params@given_species_params) &&
+            length(sp_idx) < no_sp) {
+        params@given_species_params$erepro <- params@species_params$erepro
+    }
 
     rdi <- getRDI(params)[species]
     if (any(rdi == 0)) { # This should never happen, but did happen in the past.
@@ -213,6 +232,9 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
         # user chose to have them calculated this way and won't want them
         # changed by the next call to `setParams()` or `given_species_params()`.
         params@given_species_params$erepro[sp_idx] <- erepro_new
+        if (!"R_max" %in% names(params@given_species_params)) {
+            params@given_species_params$R_max <- rep(NA_real_, no_sp)
+        }
         params@given_species_params$R_max[sp_idx] <- r_max_new
 
         params@time_modified <- lubridate::now()
@@ -227,7 +249,7 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
         }
         r_max_new <- rdd_new / values
     }
-    if (!missing(R_factor)) {
+    if (exists("R_factor")) {
         if (!all(values > 1)) {
             stop("The R_factor must be greater than 1.")
         }
@@ -257,6 +279,9 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
     # changed by the next call to `setParams()` or `given_species_params()`.
     params@given_species_params$erepro[sp_idx] <-
         params@species_params$erepro[sp_idx]
+    if (!"R_max" %in% names(params@given_species_params)) {
+        params@given_species_params$R_max <- rep(NA_real_, no_sp)
+    }
     params@given_species_params$R_max[sp_idx] <-
         params@species_params$R_max[sp_idx]
 
@@ -271,32 +296,9 @@ setBevertonHolt <- function(params, R_factor = deprecated(), erepro,
     return(params)
 }
 
-getRequiredRDD <- function(params) {
-    # Calculate required rdd
-    mumu <- getMort(params)
-    gg <- getEGrowth(params)
-    rdd_new <- getRDD(params) # to get the right structure
-    for (i in seq_len(nrow(params@species_params))) {
-        gg0 <- gg[i, params@w_min_idx[i]]
-        if (!(gg0 > 0)) {
-            warning("Eggs of species ", params@species_params$species[i],
-                    " have zero growth rate.")
-        }
-        mumu0 <- mumu[i, params@w_min_idx[i]]
-        DW <- params@dw[params@w_min_idx[i]]
-        n0 <- params@initial_n[i, params@w_min_idx[i]]
-        if (!(n0 > 0)) {
-            warning("Species ", params@species_params$species[i],
-                    "appears to have no eggs.")
-        }
-        rdd_new[i] <- n0 * (gg0 + DW * mumu0)
-    }
-    rdd_new
-}
 
 #' Get reproduction level
 #'
-#' `r lifecycle::badge("experimental")`
 #' The reproduction level is the ratio between the density-dependent
 #' reproduction rate and the maximal reproduction rate.
 #'
@@ -315,7 +317,10 @@ getRequiredRDD <- function(params) {
 #' identical(getRDD(params) / species_params(params)$R_max,
 #'           getReproductionLevel(params))
 getReproductionLevel <- function(params) {
-    assert_that(is(params, "MizerParams"))
+    UseMethod("getReproductionLevel")
+}
+#' @export
+getReproductionLevel.MizerParams <- function(params) {
     if (!"R_max" %in% names(params@species_params)) {
         stop("No `R_max` is included in the species parameters.")
     }

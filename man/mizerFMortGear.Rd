@@ -13,8 +13,8 @@ mizerFMortGear(params, effort)
 \item{effort}{A vector with the effort for each fishing gear.}
 }
 \value{
-An three dimensional array (gear x species x size) with the
-fishing mortality
+A three dimensional array (gear x species x size) with the fishing
+mortality.
 }
 \description{
 Calculates the fishing mortality rate \eqn{F_{g,i,w}} by gear, species and
@@ -27,18 +27,18 @@ Here: fishing mortality = catchability x selectivity x effort.
 \seealso{
 \code{\link[=setFishing]{setFishing()}}
 
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

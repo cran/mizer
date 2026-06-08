@@ -10,10 +10,10 @@ getYield(object)
 \item{object}{An object of class \code{MizerParams} or \code{MizerSim}.}
 }
 \value{
-If called with a MizerParams object, a vector with the yield rate in
-grams per year for each species in the model. If called with a MizerSim
-object, an array (time x species) containing the yield rate at each time
-step for all species.
+If called with a \code{MizerParams} object, a named numeric vector with
+the yield rate in grams per year for each species in the model. If called
+with a \code{MizerSim} object, an \code{ArrayTimeBySpecies} object (time x species)
+containing the yield rate in grams per year at each saved time step.
 }
 \description{
 This yield rate is given in grams per year. It is calculated at each time
@@ -45,24 +45,26 @@ yield <- getYield(NS_sim)
 yield[c("1972", "2010"), c("Herring", "Cod")]
 
 # Running simulation for another year, saving intermediate time steps
-params <- setInitialValues(getParams(NS_sim), NS_sim)
-sim <- project(params, t_save = 0.1, t_max = 1, 
+params <- finalParams(NS_sim)
+sim <- project(params, t_save = 0.1, t_max = 1,
                t_start = 2010, progress_bar = FALSE)
 # The yield rate for Herring decreases during the year
 getYield(sim)[, "Herring"]
-# We get the total catch in the year by averaging over the year
+# We approximate the total catch in the year by averaging over the year
 sum(getYield(sim)[1:10, "Herring"] / 10)
 }
 \seealso{
 \code{\link[=getYieldGear]{getYieldGear()}}
 
-Other summary functions: 
-\code{\link{getBiomass}()},
-\code{\link{getDiet}()},
-\code{\link{getGrowthCurves}()},
-\code{\link{getN}()},
-\code{\link{getSSB}()},
-\code{\link{getYieldGear}()}
+Other summary functions:
+\code{\link[=getBiomass]{getBiomass()}},
+\code{\link[=getDiet]{getDiet()}},
+\code{\link[=getGrowthCurves]{getGrowthCurves()}},
+\code{\link[=getN]{getN()}},
+\code{\link[=getSSB]{getSSB()}},
+\code{\link[=getTrophicLevel]{getTrophicLevel()}},
+\code{\link[=getTrophicLevelBySpecies]{getTrophicLevelBySpecies()}},
+\code{\link[=getYieldGear]{getYieldGear()}}
 }
 \concept{summary functions}
 \concept{summary_function}

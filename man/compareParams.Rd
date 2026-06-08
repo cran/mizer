@@ -4,18 +4,22 @@
 \alias{compareParams}
 \title{Compare two MizerParams objects and print out differences}
 \usage{
-compareParams(params1, params2)
+compareParams(params1, params2, ...)
 }
 \arguments{
 \item{params1}{First MizerParams object}
 
 \item{params2}{Second MizerParams object}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
-String describing the differences
+Invisibly returns a character vector of difference messages, one
+element per difference. As a side effect, prints the differences in a
+human-readable format.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+Compare two MizerParams objects and print out differences
 }
 \examples{
 params1 <- NS_params

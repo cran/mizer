@@ -10,7 +10,7 @@ getN(object, ...)
 \item{object}{An object of class \code{MizerParams} or \code{MizerSim}.}
 
 \item{...}{
-  Arguments passed on to \code{\link[=get_size_range_array]{get_size_range_array}}
+  Arguments passed on to \code{\link{get_size_range_array}}
   \describe{
     \item{\code{min_w}}{Smallest weight in size range. Defaults to smallest weight in
 the model.}
@@ -23,9 +23,10 @@ over \code{max_w}.}
   }}
 }
 \value{
-If called with a MizerParams object, a vector with the numbers for
-each species in the model. If called with a MizerSim object, an array (time
-x species) containing the numbers at each time step for all species.
+If called with a MizerParams object, a named vector with the numbers
+for each species in the model. If called with a MizerSim object, a
+\code{ArrayTimeBySpecies} object (time x species) containing the numbers at
+each time step for all species.
 }
 \description{
 Calculates the number of individuals within user-defined size limits. The
@@ -42,13 +43,15 @@ numbers <- getN(NS_sim, min_w = 10, max_w = 1000)
 numbers["1972", "Herring"]
 }
 \seealso{
-Other summary functions: 
-\code{\link{getBiomass}()},
-\code{\link{getDiet}()},
-\code{\link{getGrowthCurves}()},
-\code{\link{getSSB}()},
-\code{\link{getYield}()},
-\code{\link{getYieldGear}()}
+Other summary functions:
+\code{\link[=getBiomass]{getBiomass()}},
+\code{\link[=getDiet]{getDiet()}},
+\code{\link[=getGrowthCurves]{getGrowthCurves()}},
+\code{\link[=getSSB]{getSSB()}},
+\code{\link[=getTrophicLevel]{getTrophicLevel()}},
+\code{\link[=getTrophicLevelBySpecies]{getTrophicLevelBySpecies()}},
+\code{\link[=getYield]{getYield()}},
+\code{\link[=getYieldGear]{getYieldGear()}}
 }
 \concept{summary functions}
 \concept{summary_function}

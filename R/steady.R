@@ -12,11 +12,16 @@
 #' @param previous A named list with entries `n`, `n_pp` and `n_other`
 #'   describing the previous state
 #' @return The largest absolute relative change in rdi:
-#'   `max(abs((current_rdi - previous_rdi) / previous_rdi))`
+#'   `max(abs((current_rdi - previous_rdi) / previous_rdi))`. If any entry of
+#'   `previous_rdi` is zero, the result can be infinite.
 #' @family distance functions
 #' @concept helper
 #' @export
 distanceMaxRelRDI <- function(params, current, previous) {
+    UseMethod("distanceMaxRelRDI")
+}
+#' @export
+distanceMaxRelRDI.MizerParams <- function(params, current, previous) {
     current_rdi <- getRDI(params, n = current$n, n_pp = current$n_pp,
                           n_other = current$n_other)
     previous_rdi <- getRDI(params, n = previous$n, n_pp = previous$n_pp,
@@ -39,12 +44,17 @@ distanceMaxRelRDI <- function(params, current, previous) {
 #' @param previous A named list with entries `n`, `n_pp` and `n_other`
 #'   describing the previous state
 #' @return The sum of squares of the difference in the logs of the (nonzero)
-#'   fish abundances n:
+#'   fish abundances `n`, ignoring entries where either state has zero
+#'   abundance:
 #'   `sum((log(current$n) - log(previous$n))^2)`
 #' @family distance functions
 #' @concept helper
 #' @export
 distanceSSLogN <- function(params, current, previous) {
+    UseMethod("distanceSSLogN")
+}
+#' @export
+distanceSSLogN.MizerParams <- function(params, current, previous) {
     sel <- current$n > 0 & previous$n > 0
     sum((log(current$n[sel]) - log(previous$n[sel]))^2)
 }
@@ -61,15 +71,24 @@ distanceSSLogN <- function(params, current, previous) {
 #'
 #' @inheritParams steady
 #' @param effort The fishing effort to be used throughout the simulation.
-#'   This must be a vector or list with one named entry per fishing gear.
+#'   This is validated by [validEffortVector()] and can therefore be `NULL`, a
+#'   single numeric value used for all gears, an unnamed numeric vector with one
+#'   entry per gear, or a named numeric vector for some or all gears.
 #' @param distance_func A function that will be called after every `t_per` years
 #'   with both the previous and the new state and that should return a number
 #'   that in some sense measures the distance between the states. By default
 #'   this uses the function [distanceSSLogN()] that you can use as a model for your
 #'   own distance function.
+#' @param info_level Controls the amount of information messages that are shown.
+#'   Higher levels lead to more messages.
+#' @param method The numerical method to use for the consumer density update.
+#'   See [project()].
 #' @param ... Further arguments will be passed on to your distance function.
 #' 
-#' @return A MizerParams or a MizerSim object
+#' @return If `return_sim = FALSE`, a `MizerParams` object with the initial
+#'   state replaced by the final state found by the steady-state search. If
+#'   `return_sim = TRUE`, a `MizerSim` object containing the intermediate states
+#'   saved every `t_per` years.
 #' @seealso [distanceSSLogN()], [distanceMaxRelRDI()]
 #' @export
 projectToSteady <- function(params,
@@ -80,8 +99,25 @@ projectToSteady <- function(params,
                             dt = 0.1,
                             tol = 0.1 * t_per,
                             return_sim = FALSE,
-                            progress_bar = TRUE, ...) {
+                            progress_bar = TRUE,
+                            info_level = 3,
+                            method = c("euler", "predictor_corrector"), ...) {
+    UseMethod("projectToSteady")
+}
+#' @export
+projectToSteady.MizerParams <- function(params,
+                            effort = params@initial_effort,
+                            distance_func = distanceSSLogN,
+                            t_per = 1.5,
+                            t_max = 100,
+                            dt = 0.1,
+                            tol = 0.1 * t_per,
+                            return_sim = FALSE,
+                            progress_bar = TRUE,
+                            info_level = 3,
+                            method = c("euler", "predictor_corrector"), ...) {
     params <- validParams(params)
+    method <- normalise_project_method(method)
     effort <- validEffortVector(effort, params = params)
     params@initial_effort <- effort
     assert_that(t_max >= t_per,
@@ -100,6 +136,7 @@ projectToSteady <- function(params,
     if (return_sim) {
         # create MizerSim object
         sim <- MizerSim(params, t_dimnames =  t_dimnames)
+        sim@sim_params <- list(method = method, dt = dt)
         sim@n[1, , ] <- params@initial_n
         sim@n_pp[1, ] <- params@initial_n_pp
         sim@n_other[1, ] <- params@initial_n_other
@@ -109,7 +146,7 @@ projectToSteady <- function(params,
     # get functions
     resource_dynamics_fn <- get(params@resource_dynamics)
     other_dynamics_fns <- lapply(params@other_dynamics, get)
-    rates_fns <- lapply(params@rates_funcs, get)
+    rates_fns <- projectRateFunctions(params)
     r <- rates_fns$Rates(
         params, n = params@initial_n,
         n_pp = params@initial_n_pp,
@@ -133,7 +170,8 @@ projectToSteady <- function(params,
                                   effort = params@initial_effort,
                                   resource_dynamics_fn = resource_dynamics_fn,
                                   other_dynamics_fns = other_dynamics_fns,
-                                  rates_fns = rates_fns)
+                                  rates_fns = rates_fns,
+                                  method = method)
         if (return_sim) {
             # Store result
             sim@n[i, , ] <- current$n
@@ -162,12 +200,16 @@ projectToSteady <- function(params,
         previous <- current
     }
     if (!success) {
-        message("Simulation run did not converge after ",
-                (i - 1) * t_per,
-                " years. Value returned by the distance function was: ",
-                distance)
+        if (info_level >= 3) {
+            message("Simulation run did not converge after ",
+                    (i - 1) * t_per,
+                    " years. Value returned by the distance function was: ",
+                    distance)
+        }
     } else {
-        message("Convergence was achieved in ", (i - 1) * t_per, " years.")
+        if (info_level >= 3) {
+            message("Convergence was achieved in ", (i - 1) * t_per, " years.")
+        }
     }
     
     params@initial_n[] <- current$n
@@ -218,7 +260,13 @@ projectToSteady <- function(params,
 #'   of the `reproduction_level`.
 #' @param progress_bar A shiny progress object to implement a progress bar in a
 #'   shiny app. Default FALSE.
-#' @return A MizerParams or a MizerSim object
+#' @param info_level Controls the amount of information messages that are shown.
+#'   Higher levels lead to more messages.
+#' @param method The numerical method to use for the consumer density update.
+#'   See [project()].
+#' @return If `return_sim = FALSE`, a `MizerParams` object with the initial
+#'   state replaced by the steady state. If `return_sim = TRUE`, a `MizerSim`
+#'   object containing the intermediate states saved every `t_per` years.
 #' @export
 #' @examples
 #' \donttest{
@@ -228,10 +276,22 @@ projectToSteady <- function(params,
 #' plotSpectra(params)
 #' }
 steady <- function(params, t_max = 100, t_per = 1.5, dt = 0.1,
-                   tol = 0.1 * dt, return_sim = FALSE, 
+                   tol = 0.1 * dt, return_sim = FALSE,
                    preserve = c("reproduction_level", "erepro", "R_max"),
-                   progress_bar = TRUE) {
-    params <- validParams(params)
+                   progress_bar = TRUE,
+                   info_level = 3,
+                   method = c("euler", "predictor_corrector")) {
+    UseMethod("steady")
+}
+
+#' @export
+steady.MizerParams <- function(params, t_max = 100, t_per = 1.5, dt = 0.1,
+                   tol = 0.1 * dt, return_sim = FALSE,
+                   preserve = c("reproduction_level", "erepro", "R_max"),
+                   progress_bar = TRUE,
+                   info_level = 3,
+                   method = c("euler", "predictor_corrector")) {
+    method <- normalise_project_method(method)
     
     if (params@rates_funcs$RDD == "BevertonHoltRDD") {
         preserve <- match.arg(preserve)
@@ -262,7 +322,9 @@ steady <- function(params, t_max = 100, t_per = 1.5, dt = 0.1,
                               dt = dt,
                               tol = tol,
                               return_sim = return_sim,
-                              progress_bar = progress_bar)
+                              progress_bar = progress_bar,
+                              info_level = info_level,
+                              method = method)
     if (return_sim) {
         params <- object@params
     } else {
@@ -348,7 +410,7 @@ valid_species_arg <- function(object, species = NULL, return.logical = FALSE,
     no_sp <- nrow(params@species_params)
     # Set species if missing to list of all non-background species
     if (is.null(species)) {
-        species <- dimnames(params@initial_n)$sp[!is.na(params@A)]
+        species <- dimnames(params@initial_n)$sp[!params@species_params$is_background]
         if (length(species) == 0) {  # There are no non-background species.
             if (error_on_empty) {
                 stop("No species have been selected.")
@@ -413,11 +475,13 @@ valid_species_arg <- function(object, species = NULL, return.logical = FALSE,
 #' @param error_on_empty Whether to throw an error if there are zero valid
 #'   gears. Default FALSE.
 #'   
-#' @return A vector of gear names.
+#' @return A vector of gear names in the same order as supplied in `gears`,
+#'   with invalid names removed. If `gears` is `NULL`, all gears are returned
+#'   in the order stored in the model.
 #' @export
 #' @concept helper
 valid_gears_arg <- function(object, gears = NULL,
-                              error_on_empty = FALSE) {
+                            error_on_empty = FALSE) {
     if (is(object, "MizerSim")) {
         params <- object@params
     } else if (is(object, "MizerParams")) {

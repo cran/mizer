@@ -10,13 +10,14 @@ get_initial_n(params, n0_mult = NULL, a = 0.35)
 \item{params}{The model parameters. An object of type
 \linkS4class{MizerParams}.}
 
-\item{n0_mult}{Multiplier for the abundance at size 0. Default value is
-kappa/1000.}
+\item{n0_mult}{Multiplier for the abundance at size 0 when using defaults
+edition 1. If not supplied, \code{kappa / 1000} is used. This argument is
+ignored for defaults edition 2 and later.}
 
 \item{a}{A parameter with a default value of 0.35.}
 }
 \value{
-A matrix (species x size) of population abundances.
+An \code{ArraySpeciesBySize} object (species x size) of population abundances.
 }
 \description{
 This function uses the model parameters and other parameters to calculate

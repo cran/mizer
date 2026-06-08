@@ -12,7 +12,9 @@ steady(
   tol = 0.1 * dt,
   return_sim = FALSE,
   preserve = c("reproduction_level", "erepro", "R_max"),
-  progress_bar = TRUE
+  progress_bar = TRUE,
+  info_level = 3,
+  method = c("euler", "predictor_corrector")
 )
 }
 \arguments{
@@ -42,9 +44,17 @@ of the \code{reproduction_level}.}
 
 \item{progress_bar}{A shiny progress object to implement a progress bar in a
 shiny app. Default FALSE.}
+
+\item{info_level}{Controls the amount of information messages that are shown.
+Higher levels lead to more messages.}
+
+\item{method}{The numerical method to use for the consumer density update.
+See \code{\link[=project]{project()}}.}
 }
 \value{
-A MizerParams or a MizerSim object
+If \code{return_sim = FALSE}, a \code{MizerParams} object with the initial
+state replaced by the steady state. If \code{return_sim = TRUE}, a \code{MizerSim}
+object containing the intermediate states saved every \code{t_per} years.
 }
 \description{
 The steady state is found by running the dynamics while keeping reproduction,

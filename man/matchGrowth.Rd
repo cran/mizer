@@ -4,7 +4,7 @@
 \alias{matchGrowth}
 \title{Adjust model to produce observed growth}
 \usage{
-matchGrowth(params, species = NULL, keep = c("egg", "biomass", "number"))
+matchGrowth(params, species = NULL, keep = c("egg", "biomass", "number"), ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -19,6 +19,8 @@ not.}
 choices are "egg" which keeps the egg density constant, "biomass" which
 keeps the total biomass of the species constant and "number" which keeps
 the total number of individuals constant.}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
 A modified MizerParams object with rescaled search volume, maximum
@@ -26,6 +28,7 @@ consumption rate and metabolic rate and rescaled species parameters
 \code{gamma},\code{h}, \code{ks} and \code{k}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 Scales the search volume, the maximum consumption rate, the metabolic rate
 and the external encounter rate
 all by the same factor in order to achieve a growth rate that allows
@@ -39,4 +42,12 @@ species_params data frame. If \code{age_mat} is missing, mizer calculates it fro
 the von Bertalanffy growth curve parameters using \code{age_mat_vB()}. If those
 are not available either for a species, the growth rate for that species will
 not be changed.
+}
+\examples{
+# Rescale rates so all species reach maturity by their maturity age.
+# The search volume gamma is adjusted to achieve the correct growth rate.
+species_params(NS_params)["Cod", "gamma"]
+params <- matchGrowth(NS_params)
+species_params(params)["Cod", "gamma"]
+age_mat(params)["Cod"]
 }

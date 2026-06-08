@@ -29,10 +29,12 @@ abundances or harvest effort through time. These are held in
 \item{\code{mizer_version}}{The package version of mizer (as returned by
 \code{packageVersion("mizer")}) that created or upgraded the model.}
 
-\item{\code{extensions}}{A named vector of strings where each name is the name of
-and extension package needed to run the model and each value is a string
-giving the information that the remotes package needs to install the
-correct version of the extension package, see https://remotes.r-lib.org/.}
+\item{\code{extensions}}{A named vector of strings describing the extension chain
+needed to run the model. The names are extension identifiers and S4 marker
+class names. The order is the S3 dispatch order, from outermost to
+innermost extension. The values are version strings, installation
+specifications, or \code{NA_character_}. Extension subclasses are marker
+classes only and must not add slots.}
 
 \item{\code{time_created}}{A POSIXct date-time object with the creation time.}
 
@@ -78,6 +80,11 @@ for each species at size. Changed with \code{\link[=setMetabolicRate]{setMetabol
 
 \item{\code{ext_encounter}}{An array (species x size) that holds the external encounter rate
 \eqn{E_{ext.i}(w)}. Changed with \code{\link[=setExtEncounter]{setExtEncounter()}}.}
+
+\item{\code{ext_diffusion}}{An array (species x size) that holds the external rate at
+which the
+abundance density is redistributed over body size due to mixing, beyond the
+deterministic growth dynamics. Changed with \code{\link[=ext_diffusion]{ext_diffusion()}}.}
 
 \item{\code{pred_kernel}}{An array (species x predator size x prey size) that holds
 the predation coefficient of each predator at size on each prey size. If
@@ -161,8 +168,10 @@ ecosystem components. Has length zero if there are no other components.}
 
 \item{\code{resource_params}}{List with parameters for resource.}
 
-\item{\code{A}}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-Abundance multipliers.}
+\item{\code{A}}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+Formerly used to flag background species via \code{NA} values. Replaced by the
+\code{is_background} column in \code{species_params}. Will be removed in a future
+version.}
 
 \item{\code{linecolour}}{A named vector of colour values, named by species.
 Used to give consistent colours in plots.}
@@ -173,6 +182,11 @@ Used to give consistent line types in plots.}
 \item{\code{ft_mask}}{An array (species x w_full) with zeros for weights larger than
 the maximum weight of each species. Used to efficiently minimize
 wrap-around errors in Fourier transform calculations.}
+
+\item{\code{use_predation_diffusion}}{A logical flag controlling whether predation-induced
+diffusion is included when calculating rates with \code{\link[=mizerDiffusion]{mizerDiffusion()}}.
+Defaults to \code{FALSE} to preserve the behaviour of previous mizer versions.
+Set to \code{TRUE} to enable the diffusion term from the jump-growth equation.}
 }}
 
 \seealso{

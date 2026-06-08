@@ -1,24 +1,30 @@
 #' Compare two MizerParams objects and print out differences
 #'
-#'`r lifecycle::badge("experimental")`
-#'
 #' @param params1 First MizerParams object
 #' @param params2 Second MizerParams object
-#' @return String describing the differences
+#' @param ... Additional arguments passed to the method.
+#'
+#' @return Invisibly returns a character vector of difference messages, one
+#'   element per difference. As a side effect, prints the differences in a
+#'   human-readable format.
 #' @export
 #' @examples
 #' params1 <- NS_params
 #' params2 <- params1
 #' species_params(params2)$w_mat[1] <- 10
 #' compareParams(params1, params2)
-compareParams <- function(params1, params2) {
-    assert_that(is(params1, "MizerParams"))
-    assert_that(is(params2, "MizerParams"))
+compareParams <- function(params1, params2, ...)
+    UseMethod("compareParams")
+
+#' @export
+compareParams.MizerParams <- function(params1, params2, ...) {
+    params1 <- validParams(params1)
+    params2 <- validParams(params2)
 
     result <- character()
 
     # species parameters ----
-    result <- c(result, 
+    result <- c(result,
                 compareSpeciesParams(params1@species_params,
                                      params2@species_params),
                 compareSpeciesParams(params1@given_species_params,
@@ -59,25 +65,67 @@ compareParams <- function(params1, params2) {
 
     # other slots ----
     for (sl in slotNames(params1)) {
-        if (sl %in% c("w", "w_full", "species_params", 
+        if (sl %in% c("w", "w_full", "species_params",
                       "given_species_params", "resource_params")) {
             next
         }
-        eq <- all.equal(slot(params1, sl), slot(params2, sl), scale = 1)
+        s1 <- slot(params1, sl)
+        s2 <- slot(params2, sl)
+        eq <- all.equal(s1, s2, scale = 1)
         if (!isTRUE(eq)) {
-            msg <- paste("The", sl, "slots do not agree:",
-                         toString(eq))
+            attr(s1, "comment") <- NULL
+            attr(s2, "comment") <- NULL
+            eq_no_comment <- all.equal(s1, s2, scale = 1)
+            if (isTRUE(eq_no_comment)) {
+                c1 <- comment(slot(params1, sl))
+                c2 <- comment(slot(params2, sl))
+                msg <- paste0('The "', sl, '" slots differ only in their ',
+                              "comment attributes.",
+                              "\n  params1: ", if (is.null(c1)) "<none>" else paste(c1, collapse = " "),
+                              "\n  params2: ", if (is.null(c2)) "<none>" else paste(c2, collapse = " "))
+            } else {
+                msg <- paste("The", sl, "slots do not agree:",
+                             toString(eq))
+                if (is.array(s1)) {
+                    detail <- summariseArrayDiff(s1, s2)
+                    if (length(detail) > 0) {
+                        msg <- paste0(msg, "\n", detail)
+                    }
+                }
+            }
             result <- c(result, msg)
         }
     }
     if (length(result) == 0) {
-        result <- "No differences"
+        cat("No differences\n")
+        return(invisible("No differences"))
     }
-    result
+    cat(result, sep = "\n\n")
+    cat("\n")
+    invisible(result)
 }
 
-compareSpeciesParams <- function(species_params1, 
-                                 species_params2, 
+summariseArrayDiff <- function(a1, a2) {
+    abs_diff <- abs(a2 - a1)
+    dn <- dimnames(a1)
+    if (!is.null(dn) && !is.null(dn[[1]])) {
+        row_max <- apply(abs_diff, 1, max)
+        affected <- row_max[row_max > 0]
+        if (length(affected) > 0) {
+            detail <- paste(names(affected), signif(affected, 3),
+                            sep = ": ", collapse = ", ")
+            return(paste0("  Max |diff|: ", detail))
+        }
+    } else {
+        return(paste0("  Max |diff|: ", signif(max(abs_diff), 3),
+                      " (", sum(abs_diff > 0), " of ", length(abs_diff),
+                      " elements differ)"))
+    }
+    character()
+}
+
+compareSpeciesParams <- function(species_params1,
+                                 species_params2,
                                  text = "species parameters") {
 
     result <- character()
@@ -110,6 +158,6 @@ compareSpeciesParams <- function(species_params1,
         #                       keep_unchanged_cols = FALSE)
         # print(ctable$comparison_df)
     }
-    
+
     result
 }

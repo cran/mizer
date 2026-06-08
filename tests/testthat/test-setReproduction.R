@@ -1,4 +1,4 @@
-params <- NS_params
+params <- setReproduction(NS_params_small)
 no_sp <- nrow(params@species_params)
 
 # setReproduction ----
@@ -28,10 +28,12 @@ test_that("setReproduction works", {
     expect_equal(getRDI(p2), getRDD(p2))
 })
 test_that("setReproduction checks arguments", {
-    params <- NS_params
+    params <- NS_params_small
     params@species_params$w_max[[2]] <- NA
+    params@species_params$w_max[[2]] <- NA
+    sp_name <- params@species_params$species[2]
     expect_error(setReproduction(params),
-                 "The following species are missing data for their maximum size w_max: Sandeel")
+                 paste0("The following species are missing data for their maximum size w_max: ", sp_name))
     params@species_params$w_max[[2]] <- 1e-5
     expect_error(setReproduction(params),
                  "Some of the maximum sizes are smaller than the egg sizes.")
@@ -39,15 +41,16 @@ test_that("setReproduction checks arguments", {
     expect_error(setReproduction(params),
                  "The maximum sizes of the species must be specified in the w_max column of the species parameter data frame.")
 
-    params <- NS_params
-    params@species_params$w_mat[[2]] <- NA
+    params <- NS_params_small
+    params@species_params$w_mat[[3]] <- NA
+    sp_name <- params@species_params$species[3]
     expect_message(pa <- setReproduction(params),
-                 "Note: The following species were missing data for their maturity size w_mat: Sandeel.")
+                 paste0("Note: The following species were missing data for their maturity size w_mat: ", sp_name, "."))
 })
 
 # * Comments ----
 test_that("Comment works on maturity", {
-    params <- NS_params
+    params <- NS_params_small
     # if no comment, it is set automatically
     maturity <- params@maturity
     params <- setReproduction(params, maturity = maturity)
@@ -78,21 +81,21 @@ test_that("Comment works on maturity", {
 })
 
 test_that("Comment works on psi", {
-    params <- NS_params
+    params <- NS_params_small
     # if no comment, it is set automatically
     repro_prop <- getReproductionProportion(params)
     params <- setReproduction(params, repro_prop = repro_prop)
-    expect_identical(comment(getReproductionProportion(params)), "set manually")
+    expect_identical(comment(params@psi), "set manually")
 
     # comment is stored
     comment(repro_prop) <- "test"
     params <- setReproduction(params, repro_prop = repro_prop)
-    expect_identical(comment(getReproductionProportion(params)), "test")
+    expect_identical(comment(params@psi), "test")
 
     # if no comment, previous comment is kept
     comment(repro_prop) <- NULL
     params <- setReproduction(params, repro_prop = repro_prop)
-    expect_identical(comment(getReproductionProportion(params)), "test")
+    expect_identical(comment(params@psi), "test")
 
     # no message when nothing changes
     expect_message(setReproduction(params), NA)
@@ -111,8 +114,9 @@ test_that("Comment works on psi", {
 
 # getMaturityProportion ----
 test_that("getMaturityProportion works", {
-    params <- setReproduction(NS_params)
+    params <- setReproduction(NS_params_small)
     maturity <- getMaturityProportion(params)
+    expect_identical(maturity(params), maturity)
     params2 <- setReproduction(params, maturity =  maturity)
     comment(params2@maturity) <- NULL
     expect_unchanged(params, params2)
@@ -120,15 +124,16 @@ test_that("getMaturityProportion works", {
 
 # getReproductionProportion ----
 test_that("getReproductionProportion works", {
-    params <- setReproduction(NS_params)
+    params <- setReproduction(NS_params_small)
     repro_prop <- getReproductionProportion(params)
+    expect_identical(repro_prop(params), repro_prop)
     params2 <- setReproduction(params, repro_prop = repro_prop)
     comment(params2@psi) <- NULL
     expect_unchanged(params, params2)
 })
 
 test_that("getReproductionProportion returns a proportion",{
-    params <- NS_params
+    params <- NS_params_small
     # Make extremely wide maturity ogive
     species_params(params)$w_mat25 <- 1
     repro_prop <- getReproductionProportion(params)
@@ -137,17 +142,20 @@ test_that("getReproductionProportion returns a proportion",{
 })
 
 test_that("Can get and set repro_prop", {
-    params <- NS_params
+    params <- NS_params_small
     new <- repro_prop(params) ^ 2
     comment(new) <- "test"
     repro_prop(params) <- new
-    expect_equal(repro_prop(params)[2, 50], new[2, 50])
+    expect_equal(repro_prop(params)[2, 10], new[2, 10])
+    expect_equal(getReproductionProportion(params)[2, 10], new[2, 10])
 })
 
 test_that("Can get and set maturity", {
-    params <- NS_params
+    params <- NS_params_small
     new <- 1/2 * maturity(params)
     comment(new) <- "test"
     maturity(params) <- new
-    expect_identical(maturity(params), new)
+    expect_equal(maturity(params), new, ignore_attr = TRUE)
+    expect_equal(getMaturityProportion(params), new, ignore_attr = TRUE)
+    expect_identical(comment(params@maturity), "test")
 })

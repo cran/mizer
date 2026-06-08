@@ -1,6 +1,8 @@
+trait_resource_logistic_params <- trait_params_small
+
 test_that("resource_logistic preserves steady state", {
     # Set resource parameters so that we are at steady state
-    params <- newTraitParams()
+    params <- trait_resource_logistic_params
     params <- setResource(
         params,
         resource_dynamics = "resource_logistic",
@@ -27,7 +29,7 @@ test_that("resource_logistic evolves towards steady state", {
     # a large factor s and simultaneously scaling up the plankton abundance
     # so as to keep the income of the fish constant.
     s <- 1e10
-    params <- newTraitParams()
+    params <- trait_resource_logistic_params
     species_params(params)$gamma <- species_params(params)$gamma / s
     initialNResource(params) <- initialNResource(params) * s
     # Set resource parameters so that we are at steady state
@@ -61,7 +63,7 @@ test_that("balance_resource_logistic works", {
         all.equal(N_steady[sel], N[sel])
     }
     
-    params <- NS_params
+    params <- NS_params_small
     
     # setting rate
     rate <- getResourceMort(params) * 1.1
@@ -76,4 +78,52 @@ test_that("balance_resource_logistic works", {
     expect_identical(p1@cc_pp, capacity)
     expect_true(sc(p1))
     
+})
+
+test_that("balance_resource_logistic validates balancing inputs", {
+    params <- NS_params_small
+
+    rate <- getResourceMort(params)
+    rate[1] <- rate[1] * 0.9
+    expect_error(balance_resource_logistic(params,
+                                           resource_rate = rate,
+                                           resource_capacity = NULL),
+                 "resource rate is less than the mortality rate")
+
+    expect_error(balance_resource_logistic(params,
+                                           resource_rate = NULL,
+                                           resource_capacity =
+                                               initialNResource(params) * 0.9),
+                 "capacity is less than the current abundance")
+})
+
+test_that("balance_resource_logistic nudges capacity to avoid division by zero", {
+    params <- NS_params_small
+    capacity <- initialNResource(params)
+    death <- getResourceMort(params) * capacity != 0
+
+    expect_warning(
+        balanced <- balance_resource_logistic(params,
+                                              resource_rate = NULL,
+                                              resource_capacity = capacity),
+        "division by zero"
+    )
+
+    expect_true(all(is.finite(balanced$resource_rate)))
+    expect_true(all(balanced$resource_capacity[death] > capacity[death]))
+})
+
+test_that("balance_resource_logistic keeps current capacity when unidentifiable", {
+    params <- trait_resource_logistic_params
+    initialN(params)[] <- 0
+    keep <- params@cc_pp[1]
+    rate <- getResourceMort(params)
+    rate[1] <- 0
+
+    balanced <- balance_resource_logistic(params,
+                                          resource_rate = rate,
+                                          resource_capacity = NULL)
+
+    expect_identical(balanced$resource_capacity[1], keep)
+    expect_equal(unname(balanced$resource_rate[1]), 0)
 })

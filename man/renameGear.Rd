@@ -4,20 +4,20 @@
 \alias{renameGear}
 \title{Rename gears}
 \usage{
-renameGear(params, replace)
+renameGear(params, replace, ...)
 }
 \arguments{
 \item{params}{A mizer params object}
 
 \item{replace}{A named character vector, with new names as values, and old
 names as names.}
+
+\item{...}{Currently unused.}
 }
 \value{
 An object of type \linkS4class{MizerParams}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-
 Changes the names of gears in a MizerParams object. This involves for
 example changing the gear dimension names of selectivity and catchability
 arrays appropriately.
@@ -26,4 +26,7 @@ arrays appropriately.
 replace <- c(Industrial = "Trawl", Otter = "Beam_Trawl")
 params <- renameGear(NS_params, replace)
 gear_params(params)$gear
+}
+\seealso{
+\code{\link[=renameSpecies]{renameSpecies()}}
 }

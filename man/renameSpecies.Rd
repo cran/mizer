@@ -4,20 +4,20 @@
 \alias{renameSpecies}
 \title{Rename species}
 \usage{
-renameSpecies(params, replace)
+renameSpecies(params, replace, ...)
 }
 \arguments{
 \item{params}{A mizer params object}
 
 \item{replace}{A named character vector, with new names as values, and old
 names as names.}
+
+\item{...}{Currently unused.}
 }
 \value{
 An object of type \linkS4class{MizerParams}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-
 Changes the names of species in a MizerParams object. This involves for
 example changing the species dimension names of rate arrays appropriately.
 }
@@ -25,4 +25,7 @@ example changing the species dimension names of rate arrays appropriately.
 replace <- c(Cod = "Kabeljau", Haddock = "Schellfisch")
 params <- renameSpecies(NS_params, replace)
 species_params(params)$species
+}
+\seealso{
+\code{\link[=renameGear]{renameGear()}}
 }

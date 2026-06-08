@@ -4,7 +4,7 @@
 \alias{constantEggRDI}
 \title{Choose egg production to keep egg density constant}
 \usage{
-constantEggRDI(params, n, e_growth, mort, ...)
+constantEggRDI(params, n, e_growth, mort, diffusion, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
@@ -16,6 +16,9 @@ available for growth as calculated by \code{\link[=mizerEGrowth]{mizerEGrowth()}
 
 \item{mort}{A two dimensional array (species x size) holding the mortality
 rate as calculated by \code{\link[=mizerMort]{mizerMort()}}.}
+
+\item{diffusion}{A two dimensional array (species x size) holding the
+diffusion rate as calculated by \code{\link[=mizerDiffusion]{mizerDiffusion()}}.}
 
 \item{...}{Unused}
 }
@@ -47,11 +50,11 @@ all.equal(finalN(sim)[idx], initialN(params)[idx])
 }
 }
 \seealso{
-Other functions calculating density-dependent reproduction rate: 
-\code{\link{BevertonHoltRDD}()},
-\code{\link{RickerRDD}()},
-\code{\link{SheperdRDD}()},
-\code{\link{constantRDD}()},
-\code{\link{noRDD}()}
+Other functions calculating density-dependent reproduction rate:
+\code{\link[=BevertonHoltRDD]{BevertonHoltRDD()}},
+\code{\link[=RickerRDD]{RickerRDD()}},
+\code{\link[=SheperdRDD]{SheperdRDD()}},
+\code{\link[=constantRDD]{constantRDD()}},
+\code{\link[=noRDD]{noRDD()}}
 }
 \concept{functions calculating density-dependent reproduction rate}

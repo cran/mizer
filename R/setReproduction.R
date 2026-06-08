@@ -37,17 +37,16 @@
 #' w_mat25).}
 #'
 #' The sigmoidal function given above would strictly reach 1 only
-#' asymptotically. Mizer instead sets the function equal to 1 already at a size
-#' taken from the `w_repro_max` column in the species parameter data frame, if it
-#' exists, or otherwise from the `w_max` column. Also, for computational
-#' simplicity, any proportion smaller than `1e-8` is set to `0`.
+#' asymptotically. For computational simplicity, any proportion smaller than
+#' `1e-8` is set to `0`.
 #' }
 #'
 #' \subsection{Investment into reproduction}{
 #' If the the energy available to a mature individual that is
 #' invested into reproduction is not supplied via the `repro_prop` argument,
 #' it is set to the allometric form
-#' \deqn{{\tt repro\_prop}(w) = \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
+#' \deqn{{\tt repro\_prop}(w) =
+#'   \left(\frac{w}{w_{\tt{repro\_max}}}\right)^{m-n}.}{
 #'   repro_prop(w) = (w/w_repro_max)^(m - n).}
 #' Here \eqn{n} is the scaling exponent of the energy income rate. Hence
 #' the exponent \eqn{m} determines the scaling of the investment into
@@ -60,7 +59,13 @@
 #'
 #' The total proportion of energy invested into reproduction of an individual
 #' of size \eqn{w} is then
-#' \deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{psi(w) = maturity(w) * repro_prop(w)}
+#' \deqn{\psi(w) = {\tt maturity}(w){\tt repro\_prop}(w)}{
+#'   psi(w) = maturity(w) * repro_prop(w)}
+#' In mizer edition 1, at sizes above `w_repro_max` the value of \eqn{\psi}
+#' is additionally forced to 1, so that all available energy is invested into
+#' reproduction and growth stops. In edition 2 and above this forcing is not
+#' applied, and \eqn{\psi} is determined entirely by the maturity ogive and the
+#' reproductive proportion.
 #' }
 #'
 #' \subsection{Reproductive efficiency}{
@@ -100,10 +105,11 @@
 #'   of individuals of each species at size that are mature. If not supplied, a
 #'   default is set as described in the section "Setting reproduction".
 #' @param repro_prop Optional. An array (species x size) that holds the
-#'   proportion of consumed energy that a mature individual allocates to
-#'   reproduction for each species at size. If not supplied, a default is set as
-#'   described in the section "Setting reproduction".
-#' @param reset `r lifecycle::badge("experimental")`
+#'   proportion of the energy available for growth and reproduction that a mature
+#'   individual allocates to reproduction for each species at size. If not
+#'   supplied, a default is set as described in the section "Setting
+#'   reproduction".
+#' @param reset
 #'   If set to TRUE, then both `maturity` and `repro_prop` will be
 #'   reset to the value calculated from the species parameters, even if they
 #'   were previously overwritten with custom values. If set to FALSE (default)
@@ -112,6 +118,7 @@
 #' @param RDD The name of the function calculating the density-dependent
 #'   reproduction rate from the density-independent rate. Defaults to
 #'   "[BevertonHoltRDD()]".
+#' @param value The desired new value for the respective parameter.
 #' @param ... Unused
 #'
 #' @return `setReproduction()`: A MizerParams object with updated reproduction
@@ -127,18 +134,22 @@
 #'                  Reproduction = repro_prop,
 #'                  Maturity = maturity,
 #'                  Total = maturity * repro_prop)
-#' dff <- melt(df, id.vars = "Size",
+#' dff <- reshape2::melt(df, id.vars = "Size",
 #'             variable.name = "Type",
 #'             value.name = "Proportion")
 #' library(ggplot2)
 #' ggplot(dff) + geom_line(aes(x = Size, y = Proportion, colour = Type))
 #' }
-setReproduction <- function(params, maturity = NULL,
+setReproduction <- function(params, maturity = NULL, repro_prop = NULL,
+                           reset = FALSE, RDD = NULL, ...) {
+    UseMethod("setReproduction")
+}
+#' @export
+setReproduction.MizerParams <- function(params, maturity = NULL,
                             repro_prop = NULL, reset = FALSE,
                             RDD = NULL, ...) {
     # check arguments ----
-    assert_that(is(params, "MizerParams"),
-                is.flag(reset))
+    assert_that(is.flag(reset))
     if (is.null(RDD)) RDD <- params@rates_funcs[["RDD"]]
     assert_that(is.string(RDD),
                 exists(RDD),
@@ -300,8 +311,10 @@ setReproduction <- function(params, maturity = NULL,
     psi <- params@maturity * repro_prop
     # psi should never be larger than 1
     psi[psi > 1] <- 1
-    # Set psi for all w > w_repro_max to 1
-    psi[outer(species_params$w_repro_max, params@w, "<")] <- 1
+    if (defaults_edition() < 2) {
+        # Set psi for all w > w_repro_max to 1
+        psi[outer(species_params$w_repro_max, params@w, "<")] <- 1
+    }
     assert_that(all(psi >= 0 & psi <= 1))
 
     # if the slot is protected and the user did not supply a new repro_prop
@@ -346,42 +359,58 @@ setReproduction <- function(params, maturity = NULL,
 }
 
 #' @rdname setReproduction
-#' @return `getMaturityProportion()` or equivalently `maturity():
-#'   An array (species x size) that holds the proportion
+#' @return `getMaturityProportion()` or equivalently `maturity()`:
+#'   An `ArraySpeciesBySize` object (species x size) that holds the proportion
 #'   of individuals of each species at size that are mature.
 #' @export
 getMaturityProportion <- function(params) {
-    assert_that(is(params, "MizerParams"))
-    params@maturity
+    UseMethod("getMaturityProportion")
+}
+#' @export
+getMaturityProportion.MizerParams <- function(params) {
+    ArraySpeciesBySize(params@maturity,
+                       value_name = "Maturity proportion",
+                       params = params)
 }
 
 #' @rdname setReproduction
 #' @export
 maturity <- function(params) {
-    params@maturity
+    UseMethod("maturity")
+}
+#' @export
+maturity.MizerParams <- function(params) {
+    getMaturityProportion(params)
 }
 
 #' @rdname setReproduction
-#' @param value .
 #' @export
 `maturity<-` <- function(params, value) {
+    UseMethod("maturity<-")
+}
+#' @export
+`maturity<-.MizerParams` <- function(params, value) {
     setReproduction(params, maturity = value)
 }
 
 #' @rdname setReproduction
 #' @return `getReproductionProportion()` or equivalently `repro_prop()`:
-#'   An array (species x size) that holds the
-#'   proportion of consumed energy that a mature individual allocates to
-#'   reproduction for each species at size. For sizes where the maturity
-#'   proportion is zero, also the reproduction proportion is returned as zero.
+#'   An `ArraySpeciesBySize` object (species x size) that holds the proportion
+#'   of the energy available for growth and reproduction that a mature
+#'   individual allocates to reproduction for each species at size. For sizes
+#'   where the maturity proportion is zero, also the reproduction proportion is
+#'   returned as zero.
 #' @export
 getReproductionProportion <- function(params) {
-    assert_that(is(params, "MizerParams"))
-    repro_prop <- params@psi / params@maturity
-    repro_prop[is.nan(repro_prop)] <- 0
-    repro_prop[repro_prop > 1] <- 1
-    comment(repro_prop) <- comment(params@psi)
-    repro_prop
+    UseMethod("getReproductionProportion")
+}
+#' @export
+getReproductionProportion.MizerParams <- function(params) {
+    rp <- params@psi / params@maturity
+    rp[is.nan(rp)] <- 0
+    rp[rp > 1] <- 1
+    ArraySpeciesBySize(rp, value_name = "Reproductive proportion",
+                       params = params)
 }
 
 #' @rdname setReproduction
@@ -391,8 +420,15 @@ repro_prop <- function(params) {
 }
 
 #' @rdname setReproduction
-#' @param value .
 #' @export
 `repro_prop<-` <- function(params, value) {
     setReproduction(params, repro_prop = value)
+}
+
+#' @rdname setReproduction
+#' @export
+psi <- function(params) {
+    ArraySpeciesBySize(params@psi,
+                       value_name = "Population-level reproductive proportion",
+                       params = params)
 }

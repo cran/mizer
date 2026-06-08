@@ -2,56 +2,44 @@
 % Please edit documentation in R/plots.R
 \name{plotBiomass}
 \alias{plotBiomass}
+\alias{plotBiomass.MizerSim}
 \alias{plotlyBiomass}
 \title{Plot the biomass of species through time}
 \usage{
 plotBiomass(
-  sim,
+  object,
   species = NULL,
-  start_time,
-  end_time,
+  tlim = c(NA, NA),
   y_ticks = 6,
   ylim = c(NA, NA),
   total = FALSE,
   background = TRUE,
   highlight = NULL,
+  log = NULL,
   return_data = FALSE,
-  ...
-)
-
-plotlyBiomass(
-  sim,
-  species = NULL,
-  start_time,
-  end_time,
-  y_ticks = 6,
-  ylim = c(NA, NA),
-  total = FALSE,
-  background = TRUE,
-  highlight = NULL,
+  log_x = FALSE,
+  log_y = TRUE,
+  use_cutoff = FALSE,
   ...
 )
 }
 \arguments{
-\item{sim}{An object of class \linkS4class{MizerSim}}
+\item{object}{An object of class \linkS4class{MizerSim}}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
 
-\item{start_time}{The first time to be plotted. Default is the beginning
-of the time series.}
+\item{tlim}{A numeric vector of length two providing lower and upper limits
+for the time axis, e.g. \code{c(1980, 2000)}. Use \code{NA} to apply no limit at
+that end. Default is \code{c(NA, NA)}.}
 
-\item{end_time}{The last time to be plotted. Default is the end of the
-time series.}
-
-\item{y_ticks}{The approximate number of ticks desired on the y axis}
+\item{y_ticks}{The approximate number of ticks desired on the y axis.}
 
 \item{ylim}{A numeric vector of length two providing lower and upper limits
-for the y axis. Use NA to refer to the existing minimum or maximum. Any
-values below 1e-20 are always cut off. Data is filtered to this range and
-the axis limits are set accordingly.}
+for the y axis. Use \code{NA} to refer to the existing minimum or maximum. Any
+values below 1e-20 are always cut off.}
 
 \item{total}{A boolean value that determines whether the total biomass from
 all species is plotted as well. Default is FALSE.}
@@ -62,21 +50,34 @@ Default is TRUE.}
 
 \item{highlight}{Name or vector of names of the species to be highlighted.}
 
-\item{return_data}{A boolean value that determines whether the formatted data
-used for the plot is returned instead of the plot itself. Default value is FALSE}
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.
+For backward compatibility, \code{TRUE} and \code{FALSE} are interpreted as setting
+only \code{log_y}.}
 
-\item{...}{
-  Arguments passed on to \code{\link[=get_size_range_array]{get_size_range_array}}
-  \describe{
-    \item{\code{min_w}}{Smallest weight in size range. Defaults to smallest weight in
-the model.}
-    \item{\code{max_w}}{Largest weight in size range. Defaults to largest weight in the
-model.}
-    \item{\code{min_l}}{Smallest length in size range. If supplied, this takes
+\item{return_data}{A boolean value that determines whether the formatted data
+used for the plot is returned instead of the plot itself. Default is FALSE.}
+
+\item{log_x}{If \code{TRUE}, use a log10 x-axis. Default is \code{FALSE}.}
+
+\item{log_y}{If \code{TRUE}, use a log10 y-axis. Default is \code{TRUE}.}
+
+\item{use_cutoff}{If TRUE, the \code{biomass_cutoff} column in the species
+parameters is used as the minimum weight for each species.}
+
+\item{...}{Arguments setting the size range over which the biomass is
+calculated (see \code{\link[=getBiomass]{getBiomass()}}):
+\describe{
+\item{\code{min_w}}{Smallest weight in size range. Defaults to smallest weight
+in the model.}
+\item{\code{max_w}}{Largest weight in size range. Defaults to largest weight
+in the model.}
+\item{\code{min_l}}{Smallest length in size range. If supplied, this takes
 precedence over \code{min_w}.}
-    \item{\code{max_l}}{Largest length in size range. If supplied, this takes precedence
-over \code{max_w}.}
-  }}
+\item{\code{max_l}}{Largest length in size range. If supplied, this takes
+precedence over \code{max_w}.}
+}}
 }
 \value{
 A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
@@ -86,13 +87,13 @@ returned.
 \description{
 After running a projection, the biomass of each species can be plotted
 against time. The biomass is calculated within user defined size limits
-(min_w, max_w, min_l, max_l, see \code{\link[=getBiomass]{getBiomass()}}).
+(see \code{\link[=getBiomass]{getBiomass()}}).
 }
 \examples{
 \donttest{
 plotBiomass(NS_sim)
 plotBiomass(NS_sim, species = c("Sandeel", "Herring"), total = TRUE)
-plotBiomass(NS_sim, start_time = 1980, end_time = 1990)
+plotBiomass(NS_sim, tlim = c(1980, 1990))
 
 # Returning the data frame
 fr <- plotBiomass(NS_sim, return_data = TRUE)
@@ -102,18 +103,26 @@ str(fr)
 \seealso{
 \link{plotting_functions}, \code{\link[=getBiomass]{getBiomass()}}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotDiet}()},
-\code{\link{plotFMort}()},
-\code{\link{plotFeedingLevel}()},
-\code{\link{plotGrowthCurves}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotSpectra}()},
-\code{\link{plotYield}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotDiet]{plotDiet()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotFeedingLevel]{plotFeedingLevel()}},
+\code{\link[=plotGrowthCurves]{plotGrowthCurves()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra]{plotSpectra()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYield]{plotYield()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

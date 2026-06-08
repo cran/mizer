@@ -2,9 +2,15 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerMort}
 \alias{mizerMort}
+\alias{projectMort}
+\alias{projectMort.MizerParams}
 \title{Get total mortality rate needed to project standard mizer model}
 \usage{
-mizerMort(params, n, n_pp, n_other, t, f_mort, pred_mort, ...)
+projectMort(params, n, n_pp, n_other, t = 0, f_mort, pred_mort, ...)
+
+\method{projectMort}{MizerParams}(params, n, n_pp, n_other, t = 0, f_mort, pred_mort, ...)
+
+mizerMort(params, n, n_pp, n_other, t = 0, f_mort, pred_mort, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -61,18 +67,18 @@ same arguments.
 }
 
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

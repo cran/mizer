@@ -1,10 +1,162 @@
+#' Check that a rate function returns the correct output dimensions
+#'
+#' Called by [setRateFunction()] to verify that a candidate rate function
+#' returns an array (or vector/list) of the correct dimensions for the
+#' requested rate.
+#'
+#' @param params A MizerParams object
+#' @param rate Name of the rate being replaced, e.g. `"Encounter"`.
+#' @param fun Name of the candidate function to validate.
+#' @return Invisibly `NULL`. Called for its side-effect of stopping with an
+#'   informative error if the output has the wrong shape.
+#' @keywords internal
+.checkRateFunctionOutput <- function(params, rate, fun) {
+    no_sp  <- nrow(params@species_params)
+    no_w   <- length(params@w)
+    no_w_full <- length(params@w_full)
+
+    n       <- params@initial_n
+    n_pp    <- params@initial_n_pp
+    n_other <- params@initial_n_other
+    t       <- 0
+    effort  <- params@initial_effort
+
+    f <- get(fun, mode = "function")
+
+    # For functions that depend on prerequisite rates, compute the current rates
+    # first (using whatever functions are already registered).
+    if (!(rate %in% c("Encounter", "Rates"))) {
+        rates <- tryCatch(
+            getRates(params, n = n, n_pp = n_pp, n_other = n_other,
+                     effort = effort, t = t),
+            error = function(e) {
+                warning("Could not validate '", fun, "' because the current ",
+                        "model rates could not be computed: ",
+                        conditionMessage(e), call. = FALSE)
+                NULL
+            }
+        )
+        if (is.null(rates)) return(invisible(NULL))
+    }
+
+    # Call the candidate function with appropriate test inputs.
+    result <- tryCatch(
+        switch(rate,
+            Encounter =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t),
+            FeedingLevel =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  encounter = rates$encounter),
+            EReproAndGrowth =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  encounter = rates$encounter,
+                  feeding_level = rates$feeding_level),
+            ERepro =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  e = rates$e),
+            EGrowth =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  e = rates$e, e_repro = rates$e_repro),
+            Diffusion =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  feeding_level = rates$feeding_level),
+            PredRate =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  feeding_level = rates$feeding_level),
+            PredMort =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  pred_rate = rates$pred_rate),
+            FMort =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  effort = effort,
+                  e_growth = rates$e_growth, pred_mort = rates$pred_mort),
+            Mort =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  f_mort = rates$f_mort, pred_mort = rates$pred_mort),
+            RDI =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  e_growth = rates$e_growth, mort = rates$mort,
+                  e_repro = rates$e_repro, diffusion = rates$diffusion),
+            RDD =
+                f(rdi = rates$rdi, species_params = params@species_params,
+                  params = params, t = t),
+            ResourceMort =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  pred_rate = rates$pred_rate),
+            Rates =
+                f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
+                  effort = effort,
+                  rates_fns = lapply(params@rates_funcs, get))
+        ),
+        error = function(e) {
+            stop("The function '", fun, "' failed when called with test inputs: ",
+                 conditionMessage(e), call. = FALSE)
+        }
+    )
+
+    # --- Check return dimensions ---
+    if (rate == "Rates") {
+        if (!is.list(result)) {
+            stop("The function '", fun, "' must return a list, not a ",
+                 class(result)[[1L]], ".", call. = FALSE)
+        }
+        required <- c("encounter", "feeding_level", "pred_rate", "pred_mort",
+                      "f_mort", "mort", "resource_mort", "e", "e_repro",
+                      "e_growth", "diffusion", "rdi", "rdd")
+        missing  <- setdiff(required, names(result))
+        if (length(missing) > 0L) {
+            stop("The list returned by '", fun,
+                 "' is missing the following components: ",
+                 toString(missing), ".", call. = FALSE)
+        }
+    } else if (rate %in% c("RDI", "RDD")) {
+        if (length(result) != no_sp) {
+            stop("The function '", fun, "' must return a vector of length ",
+                 no_sp, " (one value per species), but returned length ",
+                 length(result), ".", call. = FALSE)
+        }
+    } else if (rate == "ResourceMort") {
+        if (length(result) != no_w_full) {
+            stop("The function '", fun, "' must return a vector of length ",
+                 no_w_full,
+                 " (one value per size bin in the full size grid), ",
+                 "but returned length ", length(result), ".", call. = FALSE)
+        }
+    } else {
+        expected_dim <- if (rate == "PredRate") c(no_sp, no_w_full)
+                        else                    c(no_sp, no_w)
+        actual_dim   <- dim(result)
+        size_desc    <- if (rate == "PredRate")
+            paste0(no_sp, " x ", no_w_full, " (species x full size grid)")
+        else
+            paste0(no_sp, " x ", no_w, " (species x size grid)")
+        if (is.null(actual_dim) || length(actual_dim) < 2L ||
+            actual_dim[[1L]] != expected_dim[[1L]] ||
+            actual_dim[[2L]] != expected_dim[[2L]]) {
+            if (!is.null(actual_dim)) {
+                stop("The function '", fun,
+                     "' must return a 2D array of dimensions ", size_desc,
+                     " but returned dimensions ",
+                     paste(actual_dim, collapse = " x "), ".", call. = FALSE)
+            } else {
+                stop("The function '", fun,
+                     "' must return a 2D array of dimensions ", size_desc,
+                     " but returned a non-array object of class ",
+                     class(result)[[1L]], ".", call. = FALSE)
+            }
+        }
+    }
+
+    invisible(NULL)
+}
+
 #' Set own rate function to replace mizer rate function
-#' 
+#'
 #' If the way mizer calculates a fundamental rate entering the model is
 #' not flexible enough for you (for example if you need to introduce time
 #' dependence) then you can write your own functions for calculating that
 #' rate and use `setRateFunction()` to register it with mizer.
-#' 
+#'
 #' At each time step during a simulation with the [project()] function, mizer
 #' needs to calculate the instantaneous values of the various rates. By
 #' default it calls the [mizerRates()] function which creates a list with the
@@ -19,9 +171,10 @@
 #' * `e` from [mizerEReproAndGrowth()]
 #' * `e_repro` from [mizerERepro()]
 #' * `e_growth` from [mizerEGrowth()]
+#' * `diffusion` from [mizerDiffusion()]
 #' * `rdi` from [mizerRDI()]
 #' * `rdd` from [BevertonHoltRDD()]
-#' 
+#'
 #' For each of these you can substitute your own function. So for example if
 #' you have written your own function for calculating the total mortality
 #' rate and have called it `myMort` and have a mizer model stored in a
@@ -35,14 +188,14 @@
 #' ```
 #' params <- setRateFunction(params, "SomeRateFunc", "myVersionOfThis")
 #' ```
-#' 
+#'
 #' In some extreme cases you may need to swap out the entire `mizerRates()`
 #' function for your own function called `myRates()`. That you can do with
 #' ```
 #' params <- setRateFunction(params, "Rates", "myRates")
 #' ```
-#' 
-#' Your new rate functions may need their own model parameters. These you 
+#'
+#' Your new rate functions may need their own model parameters. These you
 #' can store in `other_params(params)`. For example
 #' ```
 #' other_params(params)$my_param <- 42
@@ -50,29 +203,31 @@
 #' Note that your own rate functions need to be defined in the global
 #' environment or in a package. If they are defined within a function then
 #' mizer will not find them.
-#' 
+#'
 #' @param params A MizerParams object
 #' @param rate Name of the rate for which a new function is to be set.
 #' @param fun Name of the function to use to calculate the rate.
 #' @return For `setRateFunction()`: An updated MizerParams object
+#' @seealso "Extending mizer":
+#'   \code{vignette("extending-mizer", package = "mizer")}
 #' @export
+#' @family extension tools
 setRateFunction <- function(params, rate, fun) {
-    assert_that(is(params, "MizerParams"),
-                is.string(rate),
+    params <- validParams(params)
+    assert_that(is.string(rate),
                 is.string(fun))
     if (!(rate %in% names(params@rates_funcs))) {
-        stop("The `rate` argument must be one of ", 
+        stop("The `rate` argument must be one of ",
              toString(names(params@rates_funcs)), ".")
     }
     if (!exists(fun, mode = "function")) {
         stop("There is no function called '", fun, "'.")
     }
-    # TODO: put some code to test that the function has the right kind of
-    # arguments
+    .checkRateFunctionOutput(params, rate, fun)
     params@rates_funcs[[rate]] <- fun
-    
+
     validObject(params)
-    
+
     params@time_modified <- lubridate::now()
     params
 }
@@ -88,15 +243,16 @@ getRateFunction <- function(params, rate) {
         return(params@rates_funcs)
     }
     if (!(rate %in% names(params@rates_funcs))) {
-        stop("The `rate` argument must be one of ", 
+        stop("The `rate` argument must be one of ",
              toString(names(params@rates_funcs)), ".")
     }
     params@rates_funcs[[rate]]
 }
 
 #' @rdname setRateFunction
-#' @return For `other_params()`: A named list with all the parameters for which
-#'   you have set values.
+#' @return For `other_params()`: The user-defined parameters stored in
+#'   `other_params(params)`, or `NULL` if none have been set. This excludes any
+#'   component-specific parameters stored via [setComponent()].
 #' @export
 other_params <- function(params) {
     assert_that(is(params, "MizerParams"))
@@ -104,7 +260,8 @@ other_params <- function(params) {
 }
 
 #' @rdname setRateFunction
-#' @param value Values for other parameters
+#' @param value A named list of user-defined parameters to store in
+#'   `other_params(params)`.
 #' @export
 `other_params<-` <- function(params, value) {
     assert_that(is(params, "MizerParams"))
@@ -114,26 +271,28 @@ other_params <- function(params) {
     # We save the value in the $other slot in order to make it impossible for
     # the user to overwrite component parameters by mistake.
     params@other_params$other <- value
-    
+
     params@time_modified <- lubridate::now()
     params
 }
 
 #' Add a dynamical ecosystem component
-#' 
+#'
 #' By default, mizer models any number of size-resolved consumer species
 #' and a single size-resolved resource spectrum. Your model may require
 #' additional components, like for example detritus or carrion or multiple
 #' resources or .... This function allows you to set up such components.
-#' 
+#'
 #' The component can be a number, a vector, an array, a list, or any other
-#' data structure you like. 
-#' 
+#' data structure you like.
+#'
 #' If you set a component with a new name, the new component will be added
 #' to the existing components. If you set a component with an existing name,
-#' that component will be overwritten. You can remove a component with
+#' the `initial_value` and `dynamics_fun` are overwritten, while the optional
+#' `encounter_fun`, `mort_fun` and `component_params` are only changed if the
+#' corresponding arguments are supplied. You can remove a component with
 #' `removeComponent()`.
-#' 
+#'
 #' @param params A MizerParams object
 #' @param component Name of the component
 #' @param initial_value Initial value of the component
@@ -144,12 +303,20 @@ other_params <- function(params) {
 #'   mortality rate. Optional.
 #' @param component_params Object holding the parameters needed by the component
 #'   functions. This could for example be a named list of parameters. Optional.
+#' @param colour Line colour to use for the component in plots. Defaults to
+#'   `"grey"`.
+#' @param linetype Line type to use for the component in plots. Defaults to
+#'   `"solid"`.
 #' @return The updated MizerParams object
+#' @seealso "Extending mizer":
+#'   \code{vignette("extending-mizer", package = "mizer")}
 #' @export
+#' @family extension tools
 setComponent <- function(params, component, initial_value,
-                         dynamics_fun, 
-                         encounter_fun, mort_fun,  
-                         component_params) {
+                         dynamics_fun,
+                         encounter_fun, mort_fun,
+                         component_params,
+                         colour = "grey", linetype = "solid") {
     assert_that(is(params, "MizerParams"),
                 is.string(component),
                 is.string(dynamics_fun),
@@ -173,7 +340,9 @@ setComponent <- function(params, component, initial_value,
     if (!missing(component_params)) {
         params@other_params[[component]] <- component_params
     }
-    
+    params <- setColours(params, stats::setNames(list(colour), component))
+    params <- setLinetypes(params, stats::setNames(list(linetype), component))
+
     params@time_modified <- lubridate::now()
     params
 }
@@ -189,23 +358,22 @@ removeComponent <- function(params, component) {
     params@other_mort[[component]] <- NULL
     params@other_params[[component]] <- NULL
     params@initial_n_other[[component]] <- NULL
-    
+
     params@time_modified <- lubridate::now()
     params
 }
 
 
-#' Get information about other ecosystem components
-#' 
 #' @param params A MizerParams object
 #' @param component Name of the component of interest. If missing, a list of
 #'   all components will be returned.
-#' @return A list with the entries `initial_value`, `dynamics_fun`,
+#' @return For `getComponent`: A list with the entries `initial_value`, `dynamics_fun`,
 #'   `encounter_fun`, `mort_fun`, `component_params` for the requested
 #'   component. If the requested component does not exist, `NULL` is returned.
 #'   If no `component` argument is given, then a list of lists for all
 #'   components is returned.
 #' @export
+#' @rdname setComponent
 getComponent <- function(params, component) {
     assert_that(is(params, "MizerParams"))
     if (missing(component)) {
@@ -234,6 +402,7 @@ getComponent <- function(params, component) {
 #' @param value A named list with the initial values of other ecosystem
 #'   components
 #' @export
+#' @family extension tools
 #' @seealso [initialNResource()], [initialN()]
 `initialNOther<-` <- function(params, value) {
     assert_that(is(params, "MizerParams"),
@@ -248,13 +417,13 @@ getComponent <- function(params, component) {
         stop("Missing values for components ", components[extra])
     }
     params@initial_n_other <- value
-    
+
     params@time_modified <- lubridate::now()
     params
 }
 
-#' @param object An object of class MizerParams or MizerSim
 #' @rdname initialNOther-set
+#' @param object An object of class MizerParams or MizerSim
 #' @return A named list with the initial values of other ecosystem
 #'   components
 #' @export
@@ -271,24 +440,26 @@ initialNOther <- function(object) {
 }
 
 #' Time series of other components
-#' 
+#'
 #' Fetch the simulation results for other components over time.
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return A list array (time x component) that stores the projected values for
-#'   other ecosystem components.
+#' @return For `NOther`: A list array indexed by time and component that stores the projected
+#'   values for other ecosystem components.
 #' @export
+#' @family extension tools
 NOther <- function(sim) {
     return(sim@n_other)
 }
 
 
 #' Values of other ecosystem components at end of simulation
-#' 
+#'
 #' @param sim A MizerSim object
-#' @return A named list holding the values of other ecosystem components at the
+#' @return For `finalNOther`: A named list holding the values of other ecosystem components at the
 #'   end of the simulation
 #' @export
+#' @rdname NOther
 finalNOther <- function(sim) {
     assert_that(is(sim, "MizerSim"))
     n_other <- sim@n_other[dim(sim@n)[[1]], ]

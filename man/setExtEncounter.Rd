@@ -7,7 +7,7 @@
 \alias{ext_encounter<-}
 \title{Set external encounter rate}
 \usage{
-setExtEncounter(params, ext_encounter = NULL, ...)
+setExtEncounter(params, ext_encounter = NULL, reset = FALSE, ...)
 
 getExtEncounter(params)
 
@@ -19,8 +19,15 @@ ext_encounter(params) <- value
 \item{params}{MizerParams}
 
 \item{ext_encounter}{Optional. An array (species x size) holding the external
-encounter rate.  If not supplied, the external encounter rate is left
-unchanged. Initially is is set to 0.}
+encounter rate.  If not supplied, a default is calculated from the \code{E_ext}
+and \code{n} species parameters as described in the section "Setting external
+encounter rate".}
+
+\item{reset}{If set to TRUE, then the external encounter rate will be reset to the value
+calculated from the species parameters, even if it was previously
+overwritten with a custom value. If set to FALSE (default) then a
+recalculation from the species parameters will take place only if no
+custom value has been set.}
 
 \item{...}{Unused}
 
@@ -30,8 +37,8 @@ unchanged. Initially is is set to 0.}
 \code{setExtEncounter()}: A MizerParams object with updated external encounter
 rate.
 
-\code{getExtEncounter()} or equivalently \code{ext_encounter()}: An array
-(species x size) with the external encounter rate.
+\code{getExtEncounter()} or equivalently \code{ext_encounter()}: A
+\code{ArraySpeciesBySize} object (species x size) with the external encounter rate.
 }
 \description{
 Set external encounter rate
@@ -44,6 +51,17 @@ food that is not explicitly modelled. It is a rate with units mass/year.
 The \code{ext_encounter} argument allows you to specify an external encounter rate
 that depends on species and body size. You can see an example of this in
 the Examples section of the help page for \code{\link[=setExtEncounter]{setExtEncounter()}}.
+
+If the \code{ext_encounter} argument is not supplied, then the external encounter
+rate is calculated as a power law:
+\deqn{E_{ext.i}(w) = E_{ext.i}\, w^{n_i}.}{E_{ext.i}(w) = E_{ext.i} * w^n_i.}
+The coefficient \eqn{E_{ext.i}} is taken from the \code{E_ext} column of the
+species parameter data frame, which defaults to 0. The exponent \eqn{n_i} is
+taken from the \code{n} column of the species parameter data frame.
+
+If the \code{ext_encounter} slot has a comment and \code{reset = FALSE}, then a
+recalculation from the species parameters is suppressed and a message is
+issued if the recalculated values would differ from the stored ones.
 }
 
 \examples{
@@ -62,18 +80,19 @@ allo_encounter <- outer(encounter_pre, w(params)^(3/4))
 ext_encounter(params) <- allo_encounter
 }
 \seealso{
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()},
-\code{\link{species_params}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=species_params]{species_params()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

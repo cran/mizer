@@ -2,9 +2,15 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerPredMort}
 \alias{mizerPredMort}
+\alias{projectPredMort}
+\alias{projectPredMort.MizerParams}
 \title{Get total predation mortality rate needed to project standard mizer model}
 \usage{
-mizerPredMort(params, n, n_pp, n_other, t, pred_rate, ...)
+projectPredMort(params, n, n_pp, n_other, t = 0, pred_rate, ...)
+
+\method{projectPredMort}{MizerParams}(params, n, n_pp, n_other, t = 0, pred_rate, ...)
+
+mizerPredMort(params, n, n_pp, n_other, t = 0, pred_rate, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -20,8 +26,9 @@ ecosystem}
 mizer rate functions but useful for extensions with time-dependent
 parameters.)}
 
-\item{pred_rate}{A two dimensional array (predator species x predator size)
-with the feeding level.}
+\item{pred_rate}{A two dimensional array (predator species x prey size) with
+the predation rate, where prey size runs over fish community plus resource
+spectrum.}
 
 \item{...}{Unused}
 }
@@ -53,18 +60,18 @@ same arguments.
 }
 
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMort}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMort]{mizerFMort()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

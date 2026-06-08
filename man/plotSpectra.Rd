@@ -2,15 +2,16 @@
 % Please edit documentation in R/plots.R
 \name{plotSpectra}
 \alias{plotSpectra}
+\alias{plotSpectra.MizerSim}
+\alias{plotSpectra.MizerParams}
 \alias{plotlySpectra}
-\title{Plot the abundance spectra}
+\title{Plot abundance and biomass spectra}
 \usage{
 plotSpectra(
   object,
   species = NULL,
-  time_range,
-  geometric_mean = FALSE,
   wlim = c(NA, NA),
+  llim = c(NA, NA),
   ylim = c(NA, NA),
   power = 1,
   biomass = TRUE,
@@ -18,23 +19,11 @@ plotSpectra(
   resource = TRUE,
   background = TRUE,
   highlight = NULL,
+  log_x = TRUE,
+  log_y = TRUE,
+  log = NULL,
+  size_axis = c("w", "l"),
   return_data = FALSE,
-  ...
-)
-
-plotlySpectra(
-  object,
-  species = NULL,
-  time_range,
-  geometric_mean = FALSE,
-  wlim = c(NA, NA),
-  ylim = c(NA, NA),
-  power = 1,
-  biomass = TRUE,
-  total = FALSE,
-  resource = TRUE,
-  background = TRUE,
-  highlight = NULL,
   ...
 )
 }
@@ -43,27 +32,26 @@ plotlySpectra(
 \linkS4class{MizerParams}.}
 
 \item{species}{The species to be selected. Optional. By default all target
-species are selected. A vector of species names, or a
-numeric vector with the species indices, or a logical vector indicating for
-each species whether it is to be selected (TRUE) or not.}
-
-\item{time_range}{The time range (either a vector of values, a vector of min
-and max time, or a single value) to average the abundances over. Default is
-the final time step. Ignored when called with a \linkS4class{MizerParams}
-object.}
-
-\item{geometric_mean}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-If TRUE then the average of the abundances over the
-time range is a geometric mean instead of the default arithmetic mean.}
+species are selected. A vector of species names, or a numeric vector with
+the species indices, or a logical vector indicating for each species
+whether it is to be selected (TRUE) or not.}
 
 \item{wlim}{A numeric vector of length two providing lower and upper limits
-for the w axis. Use NA to refer to the existing minimum or maximum. Data
-is filtered to this range and the axis limits are set accordingly.}
+for the w axis. Use NA for the default: the lower default is
+\code{min(params@w) / 100} when \code{resource = TRUE} (to show some resource below
+the fish grid) or \code{min(params@w)} when \code{resource = FALSE}; the upper
+default is \code{max(params@w_full)}. Data is filtered to this range and the
+axis limits are set accordingly.}
+
+\item{llim}{A numeric vector of length two providing lower and upper limits
+for the length axis when \code{size_axis = "l"}. Use \code{NA} to auto-scale to the
+data range. Data is filtered to this range and the axis limits are set
+accordingly.}
 
 \item{ylim}{A numeric vector of length two providing lower and upper limits
-for the y axis. Use NA to refer to the existing minimum or maximum. Any
-values below 1e-20 are always cut off. Data is filtered to this range and
-the axis limits are set accordingly.}
+for the y axis. Use NA to auto-scale to the data range. Values below 1e-20
+are always filtered out from the data regardless of \code{ylim[1]}. Data above
+\code{ylim[2]} is filtered and the upper axis limit is set accordingly.}
 
 \item{power}{The abundance is plotted as the number density times the weight
 raised to \code{power}. The default \code{power = 1} gives the biomass
@@ -87,27 +75,51 @@ Default is TRUE.}
 are included. Ignored if the model does not contain background species.
 Default is TRUE.}
 
-\item{highlight}{Name or vector of names of the species to be highlighted.}
+\item{highlight}{Name or vector of names of the species to be highlighted by
+being plotted with thicker lines.}
+
+\item{log_x}{If \code{TRUE} (default), use a log10 x-axis.}
+
+\item{log_y}{If \code{TRUE} (default), use a log10 y-axis.}
+
+\item{log}{Character string specifying which axes should use log10 scales,
+in the same form as the base \code{\link[=plot]{plot()}} argument. For example, \code{"x"},
+\code{"y"}, \code{"xy"} or \code{""}. If supplied, this overrides \code{log_x} and \code{log_y}.}
+
+\item{size_axis}{Whether to plot size as weight (\code{"w"}, default) or length
+(\code{"l"}), using the allometric weight-length relationship.}
 
 \item{return_data}{A boolean value that determines whether the formatted data
 used for the plot is returned instead of the plot itself. Default value is FALSE}
 
-\item{...}{Other arguments (currently unused)}
+\item{...}{Further arguments used by only some of the methods:
+
+\strong{For \code{MizerSim} methods:}
+\itemize{
+\item \code{time_range}: The time range (either a vector of values, a vector
+of min and max time, or a single value) to average the abundances
+over. Default is the final time step.
+\item \code{geometric_mean}: \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} If \code{TRUE}
+then the average of the abundances over the time range is a geometric
+mean instead of the default arithmetic mean.
+}}
 }
 \value{
 A ggplot2 object, unless \code{return_data = TRUE}, in which case a data
-frame with the four variables 'w', 'value', 'Species', 'Legend' is
-returned.
+frame with the four variables 'w' (or 'l' if \code{size_axis = "l"}), 'value',
+'Species', 'Legend' is returned. \code{plotlySpectra()} returns a plotly object.
 }
 \description{
-Plots the number density multiplied by a power of the weight, with the power
-specified by the \code{power} argument.
+\code{plotSpectra()} plots the number density multiplied by a power of the
+weight, with the power specified by the \code{power} argument. When called with a
+\link{MizerSim} object, the abundance is averaged over the specified time range
+(a single value for the time range can be used to plot a single time step).
+When called with a \link{MizerParams} object the initial abundance is plotted.
 }
 \details{
-When called with a \linkS4class{MizerSim} object, the abundance is averaged
-over the specified time range (a single value for the time range can be used
-to plot a single time step). When called with a \linkS4class{MizerParams}
-object the initial abundance is plotted.
+\code{plotlySpectra()} is the interactive plotly version. To compare spectra from
+two objects use \code{\link[=plotSpectra2]{plotSpectra2()}}. To show relative differences use
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}}.
 }
 \examples{
 \donttest{
@@ -118,6 +130,7 @@ plotSpectra(sim, wlim = c(1e-6, NA))
 plotSpectra(sim, time_range = 10:20)
 plotSpectra(sim, time_range = 10:20, power = 0)
 plotSpectra(sim, species = c("Cod", "Herring"), power = 1)
+plotSpectra(sim, species = c("Cod", "Herring"), size_axis = "l")
 
 # Returning the data frame
 fr <- plotSpectra(sim, return_data = TRUE)
@@ -127,18 +140,26 @@ str(fr)
 \seealso{
 \link{plotting_functions}
 
-Other plotting functions: 
-\code{\link{animateSpectra}()},
-\code{\link{plot,MizerParams,missing-method}},
-\code{\link{plot,MizerSim,missing-method}},
-\code{\link{plotBiomass}()},
-\code{\link{plotDiet}()},
-\code{\link{plotFMort}()},
-\code{\link{plotFeedingLevel}()},
-\code{\link{plotGrowthCurves}()},
-\code{\link{plotPredMort}()},
-\code{\link{plotYield}()},
-\code{\link{plotYieldGear}()},
+Other plotting functions:
+\code{\link[=addPlot]{addPlot()}},
+\code{\link[=animate.ArrayTimeBySpeciesBySize]{animate.ArrayTimeBySpeciesBySize()}},
+\code{\link{plot}},
+\code{\link[=plot2]{plot2()}},
+\code{\link[=plotBiomass]{plotBiomass()}},
+\code{\link[=plotCDF]{plotCDF()}},
+\code{\link[=plotCDF2]{plotCDF2()}},
+\code{\link[=plotDiet]{plotDiet()}},
+\code{\link[=plotFMort]{plotFMort()}},
+\code{\link[=plotFeedingLevel]{plotFeedingLevel()}},
+\code{\link[=plotGrowthCurves]{plotGrowthCurves()}},
+\code{\link{plotMizerParams}},
+\code{\link{plotMizerSim}},
+\code{\link[=plotPredMort]{plotPredMort()}},
+\code{\link[=plotRelative]{plotRelative()}},
+\code{\link[=plotSpectra2]{plotSpectra2()}},
+\code{\link[=plotSpectraRelative]{plotSpectraRelative()}},
+\code{\link[=plotYield]{plotYield()}},
+\code{\link[=plotYieldGear]{plotYieldGear()}},
 \code{\link{plotting_functions}}
 }
 \concept{plotting functions}

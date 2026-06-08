@@ -24,7 +24,24 @@ calculated_species_params(params)
 \item{value}{A data frame with the species parameters}
 }
 \value{
-Data frame of species parameters
+\code{species_params()}: Data frame containing all species parameters
+currently stored in the model.
+
+\verb{species_params<-()}: Updates the full species parameter table after
+validating it with \code{\link[=validSpeciesParams]{validSpeciesParams()}} and then recalculating the model
+parameters with \code{\link[=setParams]{setParams()}}.
+
+\code{given_species_params()}: Data frame containing the species parameter
+values that were supplied explicitly by the user.
+
+\verb{given_species_params<-()}: Updates the explicitly supplied species
+parameters after validating them with \code{\link[=validGivenSpeciesParams]{validGivenSpeciesParams()}} and then
+recalculating the full species parameter table and dependent model
+quantities.
+
+\code{calculated_species_params()}: Data frame containing only those species
+parameter entries that are not explicit user input. Columns that would
+consist entirely of \code{NA} values are dropped.
 }
 \description{
 These functions allow you to get or set the species-specific parameters
@@ -59,7 +76,12 @@ size-dependent parameters that are used in the mizer model:
 \item \code{h} and \code{n} are used to set the maximum intake rate, see \code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}}.
 \item \code{k}, \code{ks} and \code{p} are used to set activity and basic metabolic rate,
 see \code{\link[=setMetabolicRate]{setMetabolicRate()}}.
-\item \code{z0} is used to set the external mortality rate, see \code{\link[=setExtMort]{setExtMort()}}.
+\item \code{z0}, \code{z_ext} and \code{d} are used to set the external mortality rate, see
+\code{\link[=setExtMort]{setExtMort()}}.
+\item \code{E_ext} and \code{n} are used to set the external encounter rate, see
+\code{\link[=setExtEncounter]{setExtEncounter()}}.
+\item \code{D_ext} and \code{n} are used to set the external diffusion rate, see
+\code{\link[=setExtDiffusion]{setExtDiffusion()}}.
 \item \code{w_mat}, \code{w_mat25}, \code{w_repro_max} and \code{m} are used to set the allocation to
 reproduction, see \code{\link[=setReproduction]{setReproduction()}}.
 \item \code{pred_kernel_type} specifies the shape of the predation kernel. The default
@@ -88,7 +110,7 @@ see "Predation encounter" section in the help for \code{\link[=getEncounter]{get
 \item \code{erepro} is the reproductive efficiency, the proportion of the energy
 invested into reproduction that is converted to egg biomass, see
 \code{\link[=getRDI]{getRDI()}}.
-\item \code{Rmax} is the parameter in the Beverton-Holt density dependence added to
+\item \code{R_max} is the parameter in the Beverton-Holt density dependence added to
 the reproduction, see \code{\link[=setBevertonHolt]{setBevertonHolt()}}. There will be other such
 parameters if you use other density dependence functions, see the
 "Density dependence" section in the help for \code{\link[=setReproduction]{setReproduction()}}.
@@ -118,9 +140,12 @@ maintain itself. This is used to get a default value for the coefficient
 the coefficient \code{h} of the maximum intake rate, see \code{\link[=get_h_default]{get_h_default()}}.
 }
 
-Note that setting these parameters with \verb{species_params<-()} will have no
-effect. You need to set them with \verb{given_species_params<-()} in order to
-trigger a re-calculation of the other species parameters.
+Changing these parameters with \verb{species_params<-()} updates the stored
+species parameter table and triggers a recalculation via \code{\link[=setParams]{setParams()}}.
+However they only affect model behaviour if the corresponding downstream
+parameters are recalculated rather than kept at explicitly supplied values.
+In typical workflows these quantities should therefore be changed via
+\verb{given_species_params<-()}.
 
 In the past, mizer also used the von Bertalanffy parameters \code{k_vb}, \code{w_inf}
 and \code{t0} to determine a default for \code{h}. This is unreliable and is therefore
@@ -160,18 +185,19 @@ MizerParams object, in case your own code makes use of them.
 \seealso{
 \code{\link[=validSpeciesParams]{validSpeciesParams()}}, \code{\link[=setParams]{setParams()}}
 
-Other functions for setting parameters: 
-\code{\link{gear_params}()},
-\code{\link{setExtEncounter}()},
-\code{\link{setExtMort}()},
-\code{\link{setFishing}()},
-\code{\link{setInitialValues}()},
-\code{\link{setInteraction}()},
-\code{\link{setMaxIntakeRate}()},
-\code{\link{setMetabolicRate}()},
-\code{\link{setParams}()},
-\code{\link{setPredKernel}()},
-\code{\link{setReproduction}()},
-\code{\link{setSearchVolume}()}
+Other functions for setting parameters:
+\code{\link[=gear_params]{gear_params()}},
+\code{\link[=setExtDiffusion]{setExtDiffusion()}},
+\code{\link[=setExtEncounter]{setExtEncounter()}},
+\code{\link[=setExtMort]{setExtMort()}},
+\code{\link[=setFishing]{setFishing()}},
+\code{\link[=setInteraction]{setInteraction()}},
+\code{\link[=setMaxIntakeRate]{setMaxIntakeRate()}},
+\code{\link[=setMetabolicRate]{setMetabolicRate()}},
+\code{\link[=setParams]{setParams()}},
+\code{\link[=setPredKernel]{setPredKernel()}},
+\code{\link[=setReproduction]{setReproduction()}},
+\code{\link[=setSearchVolume]{setSearchVolume()}},
+\code{\link[=use_predation_diffusion]{use_predation_diffusion()}}
 }
 \concept{functions for setting parameters}

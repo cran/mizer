@@ -4,13 +4,16 @@
 \alias{calibrateYield}
 \title{Calibrate the model scale to match total observed yield}
 \usage{
-calibrateYield(params)
+calibrateYield(params, ...)
 }
 \arguments{
 \item{params}{A MizerParams object}
+
+\item{...}{Additional arguments passed to the method.}
 }
 \value{
-A MizerParams object
+A MizerParams object. If no non-missing observed yield values are
+provided, the original object is returned unchanged.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}

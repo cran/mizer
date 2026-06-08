@@ -17,6 +17,7 @@ getPhiPrey(object, n, n_pp, ...)
 }
 \value{
 A two dimensional array (predator species x predator size)
+equal to \code{getEncounter(object, n, n_pp) / getSearchVolume(object)}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
@@ -24,17 +25,6 @@ A two dimensional array (predator species x predator size)
 This is deprecated and is no longer used by the mizer project() method.
 Calculates the amount \eqn{E_{a,i}(w)} of food exposed to each predator as
 a function of predator size.
-}
-\examples{
-\donttest{
-params <-  NS_params
-sim <- project(params, t_max = 20, effort = 0.5)
-n <- sim@n[21,,]
-n_pp <- sim@n_pp[21,]
-getPhiPrey(params,n,n_pp)
-# ->
-getEncounter(params) / getSearchVolume(params)
-}
 }
 \seealso{
 \code{\link[=project]{project()}}

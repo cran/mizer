@@ -32,30 +32,20 @@ parameters.)}
 
 \item{...}{Unused}
 }
-\value{
-List of rates.
-}
 \description{
 Calls other rate functions in sequence and collects the results in a list.
+The rates returned are encounter, feeding level, energy for growth and
+reproduction, predation rate, predation mortality, and resource mortality.
+The purpose of this function is to provide a convenient way to get all the
+rates at once, and to ensure that they are all calculated at the same time
+step with the same inputs. The rates are returned in a list with the same
+names as the rate functions that calculate them, so for example the encounter
+rate is returned in the list element named "encounter" and is calculated with
+the getEncounter() function.
 }
 \details{
-By default this function returns a list with the following components:
-\itemize{
-\item encounter from \code{\link[=mizerEncounter]{mizerEncounter()}}
-\item feeding_level from \code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}}
-\item e from \code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}}
-\item e_repro from \code{\link[=mizerERepro]{mizerERepro()}}
-\item e_growth from \code{\link[=mizerEGrowth]{mizerEGrowth()}}
-\item pred_rate from \code{\link[=mizerPredRate]{mizerPredRate()}}
-\item pred_mort from \code{\link[=mizerPredMort]{mizerPredMort()}}
-\item f_mort from \code{\link[=mizerFMort]{mizerFMort()}}
-\item mort from \code{\link[=mizerMort]{mizerMort()}}
-\item rdi from \code{\link[=mizerRDI]{mizerRDI()}}
-\item rdd from \code{\link[=BevertonHoltRDD]{BevertonHoltRDD()}}
-\item resource_mort from \code{\link[=mizerResourceMort]{mizerResourceMort()}}
-}
-However you can replace any of these rate functions by your own rate
-function if you wish, see \code{\link[=setRateFunction]{setRateFunction()}} for details.
+When mizer needs to calculate the rates during a simulation it does not use
+this function but instead the faster \code{projectRates()}.
 }
 \examples{
 rates <- getRates(NS_params)
@@ -63,19 +53,21 @@ names(rates)
 identical(rates$encounter, getEncounter(NS_params))
 }
 \seealso{
-Other rate functions: 
-\code{\link{getEGrowth}()},
-\code{\link{getERepro}()},
-\code{\link{getEReproAndGrowth}()},
-\code{\link{getEncounter}()},
-\code{\link{getFMort}()},
-\code{\link{getFMortGear}()},
-\code{\link{getFeedingLevel}()},
-\code{\link{getMort}()},
-\code{\link{getPredMort}()},
-\code{\link{getPredRate}()},
-\code{\link{getRDD}()},
-\code{\link{getRDI}()},
-\code{\link{getResourceMort}()}
+Other rate functions:
+\code{\link[=getDiffusion]{getDiffusion()}},
+\code{\link[=getEGrowth]{getEGrowth()}},
+\code{\link[=getERepro]{getERepro()}},
+\code{\link[=getEReproAndGrowth]{getEReproAndGrowth()}},
+\code{\link[=getEncounter]{getEncounter()}},
+\code{\link[=getFMort]{getFMort()}},
+\code{\link[=getFMortGear]{getFMortGear()}},
+\code{\link[=getFeedingLevel]{getFeedingLevel()}},
+\code{\link[=getFlux]{getFlux()}},
+\code{\link[=getMort]{getMort()}},
+\code{\link[=getPredMort]{getPredMort()}},
+\code{\link[=getPredRate]{getPredRate()}},
+\code{\link[=getRDD]{getRDD()}},
+\code{\link[=getRDI]{getRDI()}},
+\code{\link[=getResourceMort]{getResourceMort()}}
 }
 \concept{rate functions}

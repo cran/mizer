@@ -1,7 +1,7 @@
 # emptyParams ----
 # * test dimensions ----
 test_that("basic constructor sets dimensions properly", {
-    species_params <- NS_species_params[c(6, 10, 11), ]
+    species_params <- NS_species_params_small[c(1, 2, 3), ]
     species_names <- species_params$species
     no_sp <- 3
     min_w <- 0.1
@@ -10,7 +10,7 @@ test_that("basic constructor sets dimensions properly", {
     min_w_pp <- 1e-8
     expect_error(emptyParams(species_params, min_w = min_w, max_w = max_w,
                              no_w = no_w, min_w_pp = min_w_pp),
-                 "Some of your species have an maximum size larger than max_w: Cod")
+                 paste0("Some of your species have an maximum size larger than max_w: ", species_params$species[3]))
     max_w <- 40000
     test_params <- 
         emptyParams(species_params, min_w = min_w, max_w = max_w,
@@ -59,9 +59,19 @@ test_that("basic constructor sets dimensions properly", {
     expect_equal(dimnames(test_params_gears@catchability)$gear, gear_names)
 })
 
+test_that("emptyParams validates min_w_pp against min_w", {
+    species_params <- NS_species_params_small[c(1, 2, 3), ]
+    expect_error(emptyParams(species_params,
+                             min_w = 0.1,
+                             max_w = 40000,
+                             no_w = 200,
+                             min_w_pp = 0.1),
+                 "min_w_pp must be larger than min_w")
+})
+
 # validMizerParams ----
 test_that("Slots are allowed to have comments", {
-    params <- NS_params
+    params <- NS_params_small
     comment(params) <- "All slots are given comments"
     for (slot in (slotNames(params))) {
         comment(slot(params, slot)) <- slot
@@ -72,7 +82,7 @@ test_that("Slots are allowed to have comments", {
 
 # size bins ----
 test_that("w, w_full, dw, dw_full work", {
-    params <- NS_params
+    params <- NS_params_small
     expect_identical(w(params), params@w)
     expect_identical(w_full(params), params@w_full)
     expect_identical(dw(params), params@dw)
@@ -95,12 +105,28 @@ test_that("validParams works", {
 
 test_that("validParams checks w_min and w_max", {
     # w_max
-    params <- NS_params
+    params <- NS_params_small
     params@species_params$w_max[1] <- 1e6
     expect_warning(validParams(params), "The maximum weight of a species is larger")
     # w_min
-    params <- NS_params
+    params <- NS_params_small
     params@species_params$w_min[1:3] <- 1e-6
     expect_warning(params <- validParams(params), "smaller than the minimum")
     expect_true(validObject(params))
+    expect_equal(params@w_min_idx[1:3], rep(1, 3), ignore_attr = TRUE)
+})
+
+test_that("validParams rejects non-finite rate arrays and allows infinite intake_max", {
+    params <- NS_params_small
+    params@search_vol[1, 1] <- NaN
+    expect_error(validParams(params), "search_vol must not contain non-finite values")
+
+    params <- NS_params_small
+    params@intake_max[1, 1] <- Inf
+    expect_no_error(validParams(params))
+
+    params <- NS_params_small
+    params@intake_max[1, 1] <- NaN
+    expect_error(validParams(params),
+                 "intake_max must contain finite or infinite numeric values only")
 })

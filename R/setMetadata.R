@@ -41,8 +41,20 @@
 #' 
 #' @return `setMetadata()`: The MizerParams object with updated metadata
 #' @export
-setMetadata <- function(params, title, description,
-                        authors, url, doi, ...) {
+#' @examples
+#' params <- setMetadata(NS_params,
+#'     title = "North Sea model",
+#'     description = "A multi-species model of the North Sea fish community.",
+#'     authors = list(list(name = "Finlay Scott", email = "finlay@example.com")))
+#' getMetadata(params)$title
+#' getMetadata(params)$authors[[1]]$name
+setMetadata <- function(params, title = NULL, description = NULL,
+                        authors = NULL, url = NULL, doi = NULL, ...) {
+    UseMethod("setMetadata")
+}
+#' @export
+setMetadata.MizerParams <- function(params, title = NULL, description = NULL,
+                        authors = NULL, url = NULL, doi = NULL, ...) {
     params <- validParams(params)
     extra <- list(...)
     special <- c("mizer_version", "extensions", "time_modified", "time_created")
@@ -82,6 +94,10 @@ setMetadata <- function(params, title, description,
 #'   including at least 
 #'   `mizer_version`, `extensions`, `time_created` and `time_modified`.
 getMetadata <- function(params) {
+    UseMethod("getMetadata")
+}
+#' @export
+getMetadata.MizerParams <- function(params) {
     list <- params@metadata
     list$mizer_version <- params@mizer_version
     list$extensions <- params@extensions

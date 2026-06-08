@@ -2,9 +2,15 @@
 % Please edit documentation in R/project_methods.R
 \name{mizerFMort}
 \alias{mizerFMort}
+\alias{projectFMort}
+\alias{projectFMort.MizerParams}
 \title{Get the total fishing mortality rate from all fishing gears}
 \usage{
-mizerFMort(params, n, n_pp, n_other, t, effort, e_growth, pred_mort, ...)
+projectFMort(params, n, n_pp, n_other, t = 0, effort, e_growth, pred_mort, ...)
+
+\method{projectFMort}{MizerParams}(params, n, n_pp, n_other, t = 0, effort, e_growth, pred_mort, ...)
+
+mizerFMort(params, n, n_pp, n_other, t = 0, effort, e_growth, pred_mort, ...)
 }
 \arguments{
 \item{params}{A \linkS4class{MizerParams} object}
@@ -60,18 +66,18 @@ same arguments.
 }
 
 \seealso{
-Other mizer rate functions: 
-\code{\link{mizerEGrowth}()},
-\code{\link{mizerERepro}()},
-\code{\link{mizerEReproAndGrowth}()},
-\code{\link{mizerEncounter}()},
-\code{\link{mizerFMortGear}()},
-\code{\link{mizerFeedingLevel}()},
-\code{\link{mizerMort}()},
-\code{\link{mizerPredMort}()},
-\code{\link{mizerPredRate}()},
-\code{\link{mizerRDI}()},
-\code{\link{mizerRates}()},
-\code{\link{mizerResourceMort}()}
+Other mizer rate functions:
+\code{\link[=mizerEGrowth]{mizerEGrowth()}},
+\code{\link[=mizerERepro]{mizerERepro()}},
+\code{\link[=mizerEReproAndGrowth]{mizerEReproAndGrowth()}},
+\code{\link[=mizerEncounter]{mizerEncounter()}},
+\code{\link[=mizerFMortGear]{mizerFMortGear()}},
+\code{\link[=mizerFeedingLevel]{mizerFeedingLevel()}},
+\code{\link[=mizerMort]{mizerMort()}},
+\code{\link[=mizerPredMort]{mizerPredMort()}},
+\code{\link[=mizerPredRate]{mizerPredRate()}},
+\code{\link[=mizerRDI]{mizerRDI()}},
+\code{\link[=mizerRates]{mizerRates()}},
+\code{\link[=mizerResourceMort]{mizerResourceMort()}}
 }
 \concept{mizer rate functions}

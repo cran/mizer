@@ -3,6 +3,8 @@
 \name{initialNResource<-}
 \alias{initialNResource<-}
 \alias{initialNResource}
+\alias{initialNResource.MizerParams}
+\alias{initialNResource.MizerSim}
 \title{Initial value for resource spectrum}
 \usage{
 initialNResource(params) <- value
@@ -28,8 +30,6 @@ Value used as starting value for simulations with \code{project()}.
 # Doubling resource abundance in the initial state of the North Sea model
 params <- NS_params
 initialNResource(params) <- 2 * initialNResource(params)
-# Of course this initial state will no longer be a steady state
-params <- steady(params)
 }
 \seealso{
 \code{\link[=initialN]{initialN()}}, \code{\link[=initialNOther]{initialNOther()}}
