@@ -467,8 +467,9 @@ quite acceptable.</p>
 <p>This guide assumes that you will be using RStudio to work with R.
 There is really no reason not to use RStudio and it makes a lot of
 things much easier. RStudio develops rapidly and adds useful features
-all the time and so it pays to upgrade to the <a href="https://posit.co/download/rstudio-desktop">latest version</a>
-frequently. This guide was written with version 2023.12.1.</p>
+all the time and so it pays to upgrade to the <a href="https://docs.posit.co/ide/user/#rstudio-ide-oss-downloads">latest
+version</a> frequently. This guide was written with version
+2023.12.1.</p>
 <p>The source code for mizer is hosted on <a href="https://github.com/sizespectrum/mizer">GitHub</a>. If you are
 feeling brave and wish to try out a development version of mizer you can
 install the package from here using the R package devtools (which was
@@ -508,7 +509,7 @@ for the North Sea species.</p>
 ## Because the age at maturity is not known, I need to fall back to using
 ## von Bertalanffy parameters, where available, and this is not reliable.
 ## No ks column so calculating from critical feeding level.
-## Using z0 = z0pre * w_max ^ z0exp for missing z0 values.
+## Using z0 = z0pre * w_inf ^ z0exp for missing z0 values.
 ## Using f0, h, lambda, kappa and the predation kernel to calculate gamma.</code></pre>
 <p>The notes printed out by the function show us that mizer calculated
 default values for many parameters that were not provided.</p>

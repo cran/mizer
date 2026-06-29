@@ -46,13 +46,30 @@ NULL
 #'   bar should be shown in the console, or a shiny Progress object to implement
 #'   a progress bar in a shiny app.
 #' @param method The numerical method to use for the consumer density update.
-#'   Currently `"euler"` uses the existing semi-implicit Euler update, while
+#'   `"euler"` uses the first-order semi-implicit Euler update.
 #'   `"predictor_corrector"` uses a predictor-corrector Crank-Nicolson update
-#'   with midpoint rates. `"predictor-corrector"` is accepted as an alias.
-#'   When `object` is a `MizerSim`, defaults to the value used to produce that
-#'   simulation. A warning is issued if `append = TRUE` and the supplied value
-#'   differs from the stored one.
+#'   with midpoint rates, which is second order in time but can oscillate at
+#'   large time steps. `"tr_bdf2"` uses the L-stable, second-order TR-BDF2
+#'   method, which retains second-order accuracy while damping those
+#'   oscillations. `"predictor-corrector"` is accepted as an alias for
+#'   `"predictor_corrector"`. When `object` is a `MizerSim`, defaults to the
+#'   value used to produce that simulation. A warning is issued if
+#'   `append = TRUE` and the supplied value differs from the stored one.
 #' @param ... Other arguments will be passed to rate functions.
+#'
+#' @section Advective flux scheme:
+#' The spatial discretisation of the growth (advection) term is controlled by
+#' the `flux` entry of the `second_order_w` slot of the params object, not by
+#' an argument to `project()`. With the default (`"upwind"`) the first-order
+#' upwind flux is used. Setting it to `"van_leer"` (for example with
+#' `second_order_w(params) <- TRUE`) switches on a flux-limited (van Leer, TVD)
+#' deferred correction that removes the leading numerical diffusion
+#' \eqn{\approx g\,w\,\log\beta} of the upwind flux while keeping the density
+#' update a tridiagonal solve and preserving positivity. The correction is most
+#' useful on coarse logarithmic grids and pairs naturally with the second-order
+#' time methods. Because it changes the discrete steady state, the choice lives
+#' in the params object alongside the steady state rather than being a per-run
+#' argument. See [second_order_w()].
 #'
 #' @note The `effort` argument specifies the level of fishing effort during the
 #'   simulation. If it is not supplied, the initial effort stored in the params
@@ -143,7 +160,8 @@ project <- function(object, effort,
                     initial_n, initial_n_pp,
                     append = TRUE,
                     progress_bar = TRUE,
-                    method = c("euler", "predictor_corrector"), ...) {
+                    method = c("euler", "predictor_corrector", "tr_bdf2"),
+                    ...) {
     UseMethod("project")
 }
 
@@ -152,7 +170,7 @@ normalise_project_method <- function(method) {
         method <- method[[1]]
     }
     method <- match.arg(method, c("euler", "predictor_corrector",
-                                  "predictor-corrector"))
+                                  "predictor-corrector", "tr_bdf2"))
     if (method == "predictor-corrector") {
         method <- "predictor_corrector"
     }
@@ -160,16 +178,20 @@ normalise_project_method <- function(method) {
 }
 
 #' @rdname project
+#' @usage NULL
 #' @export
 project.MizerParams <- function(object, effort,
                                 t_max = 100, dt = 0.1, t_save = 1, t_start = 0,
                                 initial_n, initial_n_pp,
                                 append = TRUE,
                                 progress_bar = TRUE,
-                                method = c("euler", "predictor_corrector"),
+                                method = c("euler", "predictor_corrector", "tr_bdf2"),
                                 ...) {
     params <- validParams(object)
     method <- normalise_project_method(method)
+    # The advective-flux scheme is a property of the model, held in the
+    # second_order_w slot, not a per-run choice.
+    flux_limiter <- flux_limiter_scheme(params)
     # Set and check initial values ----
     assert_that(t_max > 0)
     if (!missing(initial_n)) params@initial_n[] <- initial_n
@@ -304,7 +326,8 @@ project.MizerParams <- function(object, effort,
     # Make the MizerSim object with the right size ----
     # We only save every t_save years
     sim <- MizerSim(params, t_dimnames = times)
-    sim@sim_params <- list(method = method, dt = dt)
+    sim@sim_params <- list(method = method, dt = dt,
+                           flux_limiter = flux_limiter)
     # Set initial population and effort
     sim@n[1, , ] <- initial_n
     sim@n_pp[1, ] <- initial_n_pp
@@ -349,7 +372,7 @@ project.MizerParams <- function(object, effort,
             resource_dynamics_fn = resource_dynamics_fn,
             other_dynamics_fns = other_dynamics_fns,
             rates_fns = rates_fns,
-            method = method, ...
+            method = method, flux_limiter = flux_limiter, ...
         )
         # Calculate start time for next iteration
         # The reason we don't simply use the next entry in `times` is that
@@ -372,19 +395,22 @@ project.MizerParams <- function(object, effort,
 }
 
 #' @rdname project
+#' @usage NULL
 #' @export
 project.MizerSim <- function(object, effort,
                              t_max = 100, dt = 0.1, t_save = 1, t_start = 0,
                              initial_n, initial_n_pp,
                              append = TRUE,
                              progress_bar = TRUE,
-                             method = c("euler", "predictor_corrector"),
+                             method = c("euler", "predictor_corrector", "tr_bdf2"),
                              ...) {
     validObject(object)
     stored <- object@sim_params
     dt_provided <- !missing(dt)
     method_provided <- !missing(method)
-    # Default dt and method to values used in the existing simulation
+    # Default dt and method to values used in the existing simulation. The
+    # advective-flux scheme is a property of the params, so it is carried over
+    # automatically.
     if (!dt_provided && !is.null(stored$dt)) {
         dt <- stored$dt
     }
@@ -499,7 +525,8 @@ project.MizerSim <- function(object, effort,
 project_simple <- function(params, n, n_pp, n_other, effort, t, dt, steps,
                            resource_dynamics_fn, other_dynamics_fns,
                            rates_fns,
-                           method = c("euler", "predictor_corrector"), ...) {
+                           method = c("euler", "predictor_corrector", "tr_bdf2"),
+                           ...) {
     UseMethod("project_simple")
 }
 
@@ -514,8 +541,10 @@ project_simple.MizerParams <-
              resource_dynamics_fn = get(params@resource_dynamics),
              other_dynamics_fns = lapply(params@other_dynamics, get),
              rates_fns = projectRateFunctions(params),
-             method = c("euler", "predictor_corrector"), ...) {
+             method = c("euler", "predictor_corrector", "tr_bdf2"), ...) {
         method <- normalise_project_method(method)
+        # Advective-flux scheme is read from the model's second_order_w slot.
+        flux_limiter <- flux_limiter_scheme(params)
         # Handy things ----
         no_sp <- nrow(params@species_params) # number of species
         no_w <- length(params@w) # number of fish size bins
@@ -531,6 +560,26 @@ project_simple.MizerParams <-
         c <- matrix(0, nrow = no_sp, ncol = no_w)
         S <- matrix(0, nrow = no_sp, ncol = no_w)
 
+        # Advance the other components by one Euler step from the start-of-step
+        # state (`n`, `n_pp`, `n_other`) using the supplied rates. Used for the
+        # predictor (with the start-of-step rates `r`) and, for the
+        # second-order methods, the corrector (with the midpoint rates
+        # `r_mid`), so that the other components are integrated to the same
+        # order of accuracy as the resource and consumer spectra.
+        step_other_components <- function(rates) {
+            out <- list()
+            for (component in names(params@other_dynamics)) {
+                out[[component]] <-
+                    other_dynamics_fns[[component]](
+                        params,
+                        n = n, n_pp = n_pp, n_other = n_other,
+                        rates = rates, t = t, dt = dt,
+                        component = component, ...
+                    )
+            }
+            out
+        }
+
         # Loop over time steps ----
         for (i_time in 1:steps) {
             r <- rates_fns$Rates(
@@ -539,55 +588,98 @@ project_simple.MizerParams <-
                 t = t, effort = effort, rates_fns = rates_fns, ...
             )
 
-            # * Update other components ----
-            n_other_new <- list() # So that the resource dynamics can still
-            # use the current value
-            for (component in names(params@other_dynamics)) {
-                n_other_new[[component]] <-
-                    other_dynamics_fns[[component]](
-                        params,
-                        n = n,
-                        n_pp = n_pp,
-                        n_other = n_other,
-                        rates = r,
-                        t = t,
-                        dt = dt,
-                        component = component,
-                        ...
-                    )
-            }
+            # * Update other components (predictor) ----
+            # First-order Euler update using the start-of-step rates `r`. For
+            # the Euler method this is the final value for the step. The
+            # second-order methods use `n_other_hat` in the end-of-step rates
+            # (like the resource's `n_pp_hat`) and then overwrite `n_other_new`
+            # with a corrector below.
+            n_other_hat <- step_other_components(r)
+            n_other_new <- n_other_hat
 
-            # * Update resource ----
-            n_pp <- resource_dynamics_fn(params,
-                n = n, n_pp = n_pp,
-                n_other = n_other, rates = r,
-                t = t, dt = dt,
-                resource_rate = params@rr_pp,
-                resource_capacity = params@cc_pp, ...
-            )
+            # * Update resource and species ----
+            if (method == "predictor_corrector" || method == "tr_bdf2") {
+                # Second-order methods: compute midpoint rates once and use them
+                # for both the resource and the consumer update.
+                # Predictor: advance resource and consumer with start-of-step
+                # rates r.
+                n_pp_hat <- resource_dynamics_fn(params,
+                    n = n, n_pp = n_pp,
+                    n_other = n_other, rates = r,
+                    t = t, dt = dt,
+                    resource_rate = params@rr_pp,
+                    resource_capacity = params@cc_pp, ...
+                )
+                n_hat <- project_n(params, r, n, dt, a, b, c, S, idx,
+                                   w_min_idx_array_ref, no_sp, no_w,
+                                   flux_limiter = flux_limiter)
+                # End-of-step rates from the prediction, then midpoint rates
+                r_hat <- rates_fns$Rates(
+                    params,
+                    n = n_hat, n_pp = n_pp_hat, n_other = n_other_hat,
+                    t = t + dt, effort = effort, rates_fns = rates_fns, ...
+                )
+                r_mid <- average_rates(r, r_hat)
 
-            # * Update species ----
-            if (method == "predictor_corrector") {
-                n <- project_n_2(params, r, n, dt, a, b, c, S, idx,
-                                 w_min_idx_array_ref, no_sp, no_w,
-                                 rates_fns = rates_fns,
-                                 n_pp = n_pp,
-                                 n_other = n_other_new,
-                                 t = t,
-                                 effort = effort, ...)
-            } else if (any(r$diffusion > 0)) {
-                n <- project_n(params, r, n, dt, a, b, c, S, idx, w_min_idx_array_ref,
-                               no_sp, no_w)
+                # Corrector: other components with the midpoint rates, so they
+                # reach the same second-order accuracy as the resource and
+                # consumer. Computed from the start-of-step state before the
+                # resource corrector below overwrites `n_pp`.
+                n_other_new <- step_other_components(r_mid)
+
+                # Corrector: resource with midpoint resource mortality
+                n_pp <- resource_dynamics_fn(params,
+                    n = n, n_pp = n_pp,
+                    n_other = n_other, rates = r_mid,
+                    t = t, dt = dt,
+                    resource_rate = params@rr_pp,
+                    resource_capacity = params@cc_pp, ...
+                )
+                # Corrector: consumer with the same midpoint rates. Supplying
+                # r_mid makes the stepper skip its internal predictor.
+                if (method == "predictor_corrector") {
+                    n <- project_n_2(params, r, n, dt, a, b, c, S, idx,
+                                     w_min_idx_array_ref, no_sp, no_w,
+                                     r_mid = r_mid, n_hat = n_hat,
+                                     flux_limiter = flux_limiter)
+                } else {
+                    n <- project_n_tr_bdf2(params, r, n, dt, a, b, c, S, idx,
+                                           w_min_idx_array_ref, no_sp, no_w,
+                                           r_mid = r_mid, n_hat = n_hat,
+                                           flux_limiter = flux_limiter)
+                }
             } else {
-                n <- project_n_no_diffusion(params, r, n, dt, a, b, S, idx, w_min_idx_array_ref,
-                                            no_sp, no_w)
+                # First-order Euler method.
+                n_pp <- resource_dynamics_fn(params,
+                    n = n, n_pp = n_pp,
+                    n_other = n_other, rates = r,
+                    t = t, dt = dt,
+                    resource_rate = params@rr_pp,
+                    resource_capacity = params@cc_pp, ...
+                )
+                if (any(r$diffusion > 0) || flux_limiter != "none") {
+                    n <- project_n(params, r, n, dt, a, b, c, S, idx,
+                                   w_min_idx_array_ref, no_sp, no_w,
+                                   flux_limiter = flux_limiter)
+                } else {
+                    n <- project_n_no_diffusion(params, r, n, dt, a, b, S, idx,
+                                                w_min_idx_array_ref, no_sp,
+                                                no_w)
+                }
             }
+
+            # * Carry the updated other components into the next step ----
+            # They were computed into `n_other_new` so that the resource and
+            # consumer updates above still saw the start-of-step value. Now that
+            # those updates are done, advance `n_other` so that the next time
+            # step (and the returned value) uses the new abundances.
+            n_other <- n_other_new
 
             # * Update time ----
             t <- t + dt
         }
 
-        return(list(n = n, n_pp = n_pp, n_other = n_other_new, rates = r))
+        return(list(n = n, n_pp = n_pp, n_other = n_other, rates = r))
     }
 
 validEffortArray <- function(effort, params) {

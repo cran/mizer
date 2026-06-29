@@ -2,13 +2,51 @@
 #'
 #' @description
 #' Calculates the diffusion rate \eqn{D_i(w)} (grams^2/year) for each species.
-#' This is the rate at which the abundance density is diffused along the
-#' size axis due to the variability in prey sizes. This is the diffusion
-#' term from the jump-growth equation.
+#' This diffusion rate has two components:
+#' 1. The diffusion due due to the variability in prey sizes. This is the
+#'    diffusion term from the jump-growth equation.
+#' 2. Any externally specified diffusion, which is added via [setExtDiffusion()]
+#'
+#' @details
+#' The diffusion due due to the variability in prey sizes
+#' is determined by summing over all prey
+#' species and the resource spectrum and then integrating over all prey sizes
+#' \eqn{w_p}, weighted by predation kernel \eqn{\phi(w,w_p)}:
+#' \deqn{
+#' d_i(w) = (1-f_i(w))(\alpha_i(1-\psi_i(w)))^2\gamma_i(w) \int
+#' \left( \theta_{ip} N_R(w_p) + \sum_{j} \theta_{ij} N_j(w_p) \right)
+#' \phi_i(w,w_p) w_p^2 \, dw_p.
+#' }{(1-f_i(w))(\alpha_i(1-\psi_i(w)))^2\gamma_i(w) \int
+#' ( \theta_{ip} N_R(w_p) + \sum_{j} \theta_{ij} N_j(w_p) )
+#' \phi_i(w,w_p) w_p^2 dw_p.}
+#' Here \eqn{N_j(w)} is the abundance density of species \eqn{j} and
+#' \eqn{N_R(w)} is the abundance density of resource.
+#' The overall prefactor \eqn{\gamma_i(w)} determines the predation power of the
+#' predator. It could be interpreted as a search volume and is set with the
+#' [setSearchVolume()] function. The predation kernel
+#' \eqn{\phi(w,w_p)} is set with the [setPredKernel()] function. The
+#' species interaction matrix \eqn{\theta_{ij}} is set with [setInteraction()]
+#' and the resource interaction vector \eqn{\theta_{ip}} is taken from the
+#' `interaction_resource` column in [species_params()].
+#' \eqn{f(w)} is the feeding level calculated with
+#' [getFeedingLevel()]. \eqn{\psi(w)} is the proportion of the available energy
+#' that is invested in reproduction instead of growth, obtained with [psi()].
+#'
+#' The diffusion integral is normally evaluated efficiently with a fast Fourier
+#' transform, which assumes that the predation kernel depends only on the ratio
+#' of predator to prey size. If a custom predation kernel that depends on
+#' predator and prey size separately has been set with [setPredKernel()], the
+#' integral is instead evaluated by direct summation over the full predation
+#' kernel, as in [getEncounter()].
 #'
 #' @template param_object_dots
 #'
-#' @return An array of dimensions species x size holding the diffusion rates.
+#' @return
+#' * `MizerParams`: An `ArraySpeciesBySize` object (predator species x predator
+#'   size) with the diffusion rates.
+#' * `MizerSim`: An `ArrayTimeBySpeciesBySize` object (time step x predator
+#'   species x predator size) with the diffusion rates at every time step.
+#'   If `drop = TRUE` then dimensions of length 1 will be removed.
 #' @export
 #' @family rate functions
 #' @references
@@ -99,20 +137,47 @@ projectDiffusion.MizerParams <- function(params, n, n_pp, n_other, t = 0,
         # I_d(w) = sum_prey theta_i * N_prey(w_p) * w_p^2 * dw_p
         # This is the same convolution as in mizerEncounter but with w_p^2 * dw_p
         # weighting instead of w_p * dw_p.
-        prey_sq <- outer(params@species_params$interaction_resource, n_pp)
-        prey_sq[, idx_sp] <- prey_sq[, idx_sp] + params@interaction %*% n
-        prey_sq <- sweep(prey_sq, 2, params@w_full^2 * params@dw_full, "*")
+        if (!is.null(comment(params@pred_kernel))) {
+            # The user has set a custom predation kernel that does not depend
+            # only on the predator/prey size ratio, so we cannot use the FFT
+            # method. Instead we sum over the prey-size dimension of the full
+            # predation kernel, following the same approach as mizerEncounter
+            # but with w_p^2 dw_p weighting instead of w_p dw_p.
+            n_eff_prey <- sweep(params@interaction %*% n, 2,
+                                params@w^2 * params@dw, "*",
+                                check.margin = FALSE)
+            phi_prey_species <- rowSums(sweep(
+                params@pred_kernel[, , idx_sp, drop = FALSE],
+                c(1, 3), n_eff_prey, "*", check.margin = FALSE), dims = 2)
+            phi_prey_background <- params@species_params$interaction_resource *
+                rowSums(sweep(
+                    params@pred_kernel, 3,
+                    params@dw_full * params@w_full^2 * n_pp,
+                    "*", check.margin = FALSE), dims = 2)
+            integral_d <- phi_prey_species + phi_prey_background
+        } else {
+            prey_sq <- outer(params@species_params$interaction_resource, n_pp)
+            prey_sq[, idx_sp] <- prey_sq[, idx_sp] + params@interaction %*% n
+            prey_sq <- sweep(prey_sq, 2, params@w_full^2 * params@dw_full, "*")
 
-        # Convolve with the predation kernel via FFT.
-        # mvfft() transforms each column, so we transpose to get row-wise FFTs,
-        # following the same pattern as mizerEncounter.
-        integral_d <- Re(base::t(mvfft(base::t(params@ft_pred_kernel_e) *
-                                           mvfft(base::t(prey_sq)),
-                                       inverse = TRUE))) / length(params@w_full)
-        # Keep only the consumer sizes
-        integral_d <- integral_d[, idx_sp, drop = FALSE]
-        # Remove numerical noise
-        integral_d[integral_d < 0] <- 0
+            # Convolve with the predation kernel via FFT.
+            # mvfft() transforms each column, so we transpose to get row-wise
+            # FFTs, following the same pattern as mizerEncounter. We use the
+            # dedicated diffusion kernel `ft_pred_kernel_d`: the diffusion
+            # integrand carries w_p^2 dw_p (one more power of prey size than the
+            # encounter's w_p dw_p), so under `second_order_w` its bin-integral
+            # needs the e^{3t} Jacobian rather than the encounter's e^{2t}. In
+            # the default first-order scheme `ft_pred_kernel_d` equals
+            # `ft_pred_kernel_e`, so the result is byte-identical to before.
+            integral_d <- Re(base::t(mvfft(base::t(params@ft_pred_kernel_d) *
+                                               mvfft(base::t(prey_sq)),
+                                           inverse = TRUE))) /
+                length(params@w_full)
+            # Keep only the consumer sizes
+            integral_d <- integral_d[, idx_sp, drop = FALSE]
+            # Remove numerical noise
+            integral_d[integral_d < 0] <- 0
+        }
 
         # D(w) = (1 - f(w)) * gamma(w) * alpha^2 * I_d(w)
         alpha <- params@species_params$alpha

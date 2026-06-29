@@ -34,6 +34,7 @@ newMultispeciesParams(
   selectivity = NULL,
   catchability = NULL,
   initial_effort = NULL,
+  second_order_w = FALSE,
   info_level = 3,
   z0 = deprecated(),
   r_pp = deprecated()
@@ -84,11 +85,11 @@ mortality rate.  If not supplied, a default is set as described in the
 section "Setting external mortality rate".}
 
 \item{z0pre}{If \code{z0}, the mortality from other sources, is not a column
-in the species data frame, it is calculated as z0pre * w_max ^ z0exp.
+in the species data frame, it is calculated as z0pre * w_inf ^ z0exp.
 Default value is 0.6.}
 
 \item{z0exp}{If \code{z0}, the mortality from other sources, is not a column in
-the species data frame, it is calculated as \code{z0pre * w_max ^ z0exp}.
+the species data frame, it is calculated as \code{z0pre * w_inf ^ z0exp}.
 Default value is \code{n-1}.}
 
 \item{ext_encounter}{Optional. An array (species x size) holding the external
@@ -152,6 +153,19 @@ each species by each gear, \eqn{Q_{g,i}}.}
 the fishing effort. If a number, the same effort is used for all gears. If
 a vector, must be named by gear.}
 
+\item{second_order_w}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} Selects the
+second-order numerical scheme for the new model. Accepts the same values as
+the \code{\link[=second_order_w]{second_order_w()}} setter: a single logical (\code{TRUE} switches on both
+second-order flux and bin-averaging), a single flux scheme name
+(\code{"upwind"}, \code{"van_leer"} or \code{"centred"}), or a named vector with entries
+\code{flux} and/or \code{bin_average}. The \code{bin_average} choice is applied \emph{before}
+the resource and abundance power laws are constructed, so they are built
+bin-averaged from the start (unlike setting \code{\link[=second_order_w]{second_order_w()}} on an
+existing object). The \code{flux} scheme governs time projection only, so the
+robust first-order upwind scheme is used for the construction-time
+steady-state solve and the chosen scheme is then activated for the returned
+model. Defaults to \code{FALSE} (the first-order behaviour of previous mizer).}
+
 \item{info_level}{Controls the amount of information messages that are shown
 when the function sets default values for parameters. Higher levels lead
 to more messages.}
@@ -183,9 +197,12 @@ parameters for one of the species in the model.
 There are two essential columns that must be included in the species
 parameter data.frame and that do not have default values: the
 \code{species} column that should hold strings with the names of the
-species and the \code{w_max} column with the maximum sizes of the species
-in grams. (You could alternatively specify the maximum length in cm in an
-\code{l_max} column.)
+species and the \code{w_inf} column with the von Bertalanffy asymptotic sizes of
+the species in grams. (You could alternatively specify the corresponding
+length in cm in an \code{l_inf} column.) The computational upper size boundary
+\code{w_max} is not essential; if it is missing it defaults to \code{1.5 * w_inf}. For
+backwards compatibility, if \code{w_inf} is missing it is taken from the
+\code{w_repro_max} or \code{w_max} column instead.
 
 The \verb{species_params dataframe} also needs to contain the parameters needed
 by any predation kernel function (size selectivity function). This will
@@ -454,6 +471,18 @@ Otherwise it is calculated as
 \deqn{z_{0.i} = {\tt z0pre}_i\, w_{inf}^{\tt z0exp}.}{z_{0.i} = z0pre_i w_{inf}^{z0exp}.}
 Missing values of \code{z_ext} are set to 0 and missing values of \code{d} are set to
 \code{n - 1}.
+
+By default the power law is evaluated at the left bin edges \eqn{w_j}
+(point sampling). If the \code{bin_average} entry of the \code{second_order_w} slot is
+\code{TRUE} (see \code{\link[=second_order_w]{second_order_w()}}), then the \eqn{z_{ext} w^d} term is instead
+replaced by its exact average over each bin \eqn{[w_j, w_{j+1}]},
+\deqn{\frac{z_{ext}}{\Delta w_j}\int_{w_j}^{w_{j+1}} w^d\, dw
+  = z_{ext}\,\frac{w_{j+1}^{d+1} - w_j^{d+1}}{(d+1)\,\Delta w_j},}
+(with the limiting form \eqn{z_{ext}\ln(w_{j+1}/w_j)/\Delta w_j} when
+\eqn{d = -1}). This is the consistent choice in the finite-volume scheme,
+where the external mortality multiplies the bin-averaged abundance. The
+bin-averaging is applied only to the auto-calculated power-law default; a
+user-supplied \code{ext_mort} array is left untouched.
 }
 
 \section{Setting external encounter rate}{
@@ -506,11 +535,13 @@ available energy
 that is invested into reproduction is the product of two factors: the
 proportion \code{maturity} of individuals that are mature and the proportion
 \code{repro_prop} of the energy available to a mature individual that is
-invested into reproduction. There is a size \code{w_repro_max} at which all the
-energy is invested into reproduction and therefore all growth stops. There
-can be no fish larger than \code{w_repro_max}. If you have not specified the
-\code{w_repro_max} column in the species parameter data frame, then the maximum size
-\code{w_max} is used instead.
+invested into reproduction. There is a size \code{w_repro_max} at which a typical
+mature individual invests all of its available energy into reproduction.
+This is \strong{not} a hard ceiling on size: not all individuals are mature at
+\code{w_repro_max}, and diffusion in the growth process allows some individuals to
+grow beyond it, so fish larger than \code{w_repro_max} can exist. If you have not
+specified the \code{w_repro_max} column in the species parameter data frame, then
+the von Bertalanffy asymptotic size \code{w_inf} is used instead.
 
 \subsection{Maturity ogive}{
 If the the proportion of individuals that are mature is not supplied via
@@ -522,7 +553,7 @@ maturity ogive that changes from 0 to 1 at around the maturity size:
 although each species has its own maturity ogive.)
 The maturity weights are taken from the \code{w_mat} column of the
 species_params data frame. Any missing maturity weights are set to 1/4 of the
-maximum weight in the \code{w_max} column.
+asymptotic size in the \code{w_inf} column.
 
 The exponent \eqn{U} determines the steepness of the maturity ogive. By
 default it is chosen as \eqn{U = 10}, however this can be overridden by
@@ -548,9 +579,9 @@ the exponent \eqn{m} determines the scaling of the investment into
 reproduction for mature individuals. By default it is chosen to be
 \eqn{m = 1} so that the rate at which energy is invested into reproduction
 scales linearly with the size. This default can be overridden by including a
-column \code{m} in the species parameter dataframe. The maximum sizes are taken
-from the \code{w_repro_max} column in the species parameter data frame, if it
-exists, or otherwise from the \code{w_max} column.
+column \code{m} in the species parameter dataframe. The sizes \eqn{w_{repro\_max}}
+are taken from the \code{w_repro_max} column in the species parameter data frame,
+if it exists, or otherwise from the \code{w_inf} column.
 
 The total proportion of energy invested into reproduction of an individual
 of size \eqn{w} is then

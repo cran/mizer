@@ -146,3 +146,163 @@ test_that("default_pred_kernel_params leaves manually set full kernels unchanged
     expect_true(all(is.na(unchanged@species_params$beta)))
     expect_identical(unchanged@pred_kernel, params@pred_kernel)
 })
+
+## Higher-order (bin-integrated) quadrature ----
+test_that("default scheme is first-order and leaves the slot untouched", {
+    params <- NS_params_small
+    # The default (bin_average = FALSE) leaves the Fourier kernels and the
+    # second_order_w slot untouched
+    expect_unchanged(setPredKernel(params), params)
+    expect_false(setPredKernel(params)@second_order_w[["bin_average"]])
+})
+
+test_that("bin_average = TRUE changes the kernels", {
+    params <- NS_params_small
+    # setPredKernel() reads the bin_average flag from the slot
+    params@second_order_w[["bin_average"]] <- TRUE
+    p_hi <- setPredKernel(params)
+    expect_false(isTRUE(all.equal(p_hi@ft_pred_kernel_e,
+                                  NS_params_small@ft_pred_kernel_e)))
+    expect_false(isTRUE(all.equal(p_hi@ft_pred_kernel_p,
+                                  NS_params_small@ft_pred_kernel_p)))
+    # The rates remain finite and a projection runs
+    expect_true(all(is.finite(getEncounter(p_hi))))
+    expect_true(all(is.finite(getPredRate(p_hi))))
+    sim <- project(p_hi, t_max = 1, t_save = 1)
+    expect_true(all(is.finite(sim@n)))
+})
+
+test_that("the high-order kernels persist through recalculation", {
+    params <- NS_params_small
+    # Enabling via the slot setter re-runs setParams() and builds the
+    # high-order kernels
+    second_order_w(params) <- c(bin_average = TRUE)
+    hi_e <- params@ft_pred_kernel_e
+    # A bare setPredKernel() recalculation keeps the high-order kernels
+    expect_equal(setPredKernel(params)@ft_pred_kernel_e, hi_e)
+    # Changing a kernel parameter re-runs setPredKernel() via the setParams
+    # pipeline; the high-order scheme must be retained
+    p2 <- params
+    species_params(p2)$beta <- species_params(p2)$beta * 1.1
+    expect_true(p2@second_order_w[["bin_average"]])
+    p2_lo <- NS_params_small
+    species_params(p2_lo)$beta <- species_params(p2_lo)$beta * 1.1
+    expect_false(isTRUE(all.equal(p2@ft_pred_kernel_e, p2_lo@ft_pred_kernel_e)))
+    # Switching back to first order also persists
+    second_order_w(p2) <- c(bin_average = FALSE)
+    expect_equal(p2@ft_pred_kernel_e, p2_lo@ft_pred_kernel_e)
+})
+
+test_that("bin-integrated box kernel matches the analytic weights", {
+    params <- NS_params_small
+    # Set the box parameters via the slot directly so that the kernel is not
+    # recalculated before ppmr_min/ppmr_max are in place.
+    params@species_params$pred_kernel_type <- "box"
+    params@species_params$ppmr_min <- 1
+    params@species_params$ppmr_max <- 1e8  # wide support: whole bins lie inside
+    params@second_order_w[["bin_average"]] <- TRUE
+    p_hi <- setPredKernel(params)
+    no_w_full <- length(params@w_full)
+    beta_grid <- params@w_full[2] / params@w_full[1]
+    # Invert the FFT of the first species to recover the kernel weights
+    phi_e <- Re(fft(p_hi@ft_pred_kernel_e[1, ], inverse = TRUE)) / no_w_full
+    phi_p <- Re(fft(p_hi@ft_pred_kernel_p[1, ], inverse = TRUE)) / no_w_full
+    phi_d <- Re(fft(p_hi@ft_pred_kernel_d[1, ], inverse = TRUE)) / no_w_full
+    # Offset m = 0 (own bin) carries no encounter; a mid-range offset lies fully
+    # inside the box support
+    expect_equal(unname(phi_e[1]), 0, tolerance = 1e-8)
+    expect_equal(unname(phi_e[5]), (beta_grid + 1) / 2, tolerance = 1e-4)
+    # The predation weight for a fully-covered bin is exactly 1. phi_p is the
+    # reversed kernel, so offset m = 1 sits in the last entry. The prey-bin fold
+    # (issue #381) averages two fully-covered offsets, 1/2 (1 + 1) = 1, so this
+    # value is unchanged.
+    expect_equal(unname(phi_p[no_w_full]), 1, tolerance = 1e-4)
+    # The diffusion integrand carries one more power of prey size than the
+    # encounter (w_p^2 dw_p), so a fully-covered bin gets the bin average of
+    # (w_p/w_k)^2, which is (beta^3 - 1)/(3(beta - 1)) = (beta^2 + beta + 1)/3,
+    # the diffusion analogue of the encounter's (beta + 1)/2.
+    expect_equal(unname(phi_d[5]),
+                 (beta_grid^2 + beta_grid + 1) / 3, tolerance = 1e-4)
+})
+
+test_that("ft_pred_kernel_d equals ft_pred_kernel_e in the first-order scheme", {
+    # With bin_average off the diffusion kernel mirrors the encounter kernel, so
+    # the predation-diffusion integral is byte-identical to previous mizer.
+    p <- setPredKernel(NS_params_small)
+    expect_identical(p@ft_pred_kernel_d, p@ft_pred_kernel_e)
+    # And it differs once bin-averaging is on (the extra power of prey size).
+    p_hi <- NS_params_small
+    p_hi@second_order_w[["bin_average"]] <- TRUE
+    p_hi <- setPredKernel(p_hi)
+    expect_false(isTRUE(all.equal(p_hi@ft_pred_kernel_d, p_hi@ft_pred_kernel_e)))
+})
+
+test_that("the predation kernel is prey-bin averaged under second_order_w", {
+    # A box kernel whose upper edge ppmr_max lands exactly on a grid point
+    # gives a covered -> uncovered transition between adjacent offsets: the
+    # predator-bin-integrated weight is 1 just below the edge and 0 just above.
+    # The prey-bin trapezoid fold (issue #381) turns the first uncovered offset
+    # into 1/2 (0 + 1) = 1/2 -- a value that appears *only* if the prey-bin
+    # average is applied, and in the correct place.
+    params <- NS_params_small
+    beta_grid <- params@w_full[2] / params@w_full[1]
+    M <- 5L
+    params@species_params$pred_kernel_type <- "box"
+    params@species_params$ppmr_min <- 1
+    params@species_params$ppmr_max <- beta_grid^M  # exactly on a grid point
+    params@second_order_w[["bin_average"]] <- TRUE
+    p_hi <- setPredKernel(params)
+    no_w_full <- length(params@w_full)
+    phi_p <- Re(fft(p_hi@ft_pred_kernel_p[1, ], inverse = TRUE)) / no_w_full
+    # Reversed layout: offset m sits at index no_w_full - m + 1.
+    idx <- function(m) no_w_full - m + 1L
+    # Offsets below the edge are fully covered -> fold of two ones stays 1.
+    expect_equal(unname(phi_p[idx(M - 1L)]), 1, tolerance = 1e-4)
+    # The edge offset M: covered weight 0, previous offset 1 -> fold gives 1/2.
+    expect_equal(unname(phi_p[idx(M)]), 0.5, tolerance = 1e-3)
+    # Beyond the edge both offsets are uncovered -> fold stays 0.
+    expect_equal(unname(phi_p[idx(M + 1L)]), 0, tolerance = 1e-4)
+})
+
+test_that("the diffusion kernel is predator-bin averaged under second_order_w", {
+    # Similar to predation kernel test, but for unreversed layout.
+    params <- NS_params_small
+    beta_grid <- params@w_full[2] / params@w_full[1]
+    M <- 5L
+    params@species_params$pred_kernel_type <- "box"
+    params@species_params$ppmr_min <- 1
+    params@species_params$ppmr_max <- beta_grid^M  # exactly on a grid point
+    params@second_order_w[["bin_average"]] <- TRUE
+    p_hi <- setPredKernel(params)
+    no_w_full <- length(params@w_full)
+    phi_d <- Re(fft(p_hi@ft_pred_kernel_d[1, ], inverse = TRUE)) / no_w_full
+    # Layout is non-reversed: offset m sits at index m + 1.
+    # The edge offset M is at index M+1.
+    # Offsets below the edge (offsets <= M-1, R indices <= M) are fully covered.
+    val_covered <- (beta_grid^2 + beta_grid + 1) / 3
+    # Index M is fully covered (offset M-1): fold of two covered values remains val_covered.
+    expect_equal(unname(phi_d[M]), val_covered, tolerance = 1e-3)
+    # Index M+1 is the edge (offset M): covered value and uncovered 0 -> fold gives val_covered / 2.
+    expect_equal(unname(phi_d[M + 1L]), val_covered / 2, tolerance = 1e-3)
+    # Index M+2 is beyond the edge (offset M+1): fold of two zeros remains 0.
+    expect_equal(unname(phi_d[M + 2L]), 0, tolerance = 1e-4)
+})
+
+test_that("second_order_w prey-bin average leaves the default path unchanged", {
+    # With the flag off the predation kernel is the previous point-sampled one.
+    expect_equal(setPredKernel(NS_params_small)@ft_pred_kernel_p,
+                 NS_params_small@ft_pred_kernel_p)
+})
+
+test_that("prey-bin-averaged predation mortality stays finite for all consumers", {
+    params <- NS_params_small
+    second_order_w(params) <- c(bin_average = TRUE)
+    # Both the consumer mortality and the resource mortality read the same
+    # (now prey-bin-averaged) predation rate.
+    expect_true(all(is.finite(getPredMort(params))))
+    expect_true(all(is.finite(getResourceMort(params))))
+    # The prey-bin average shifts predation mortality away from the first-order
+    # point-sampled values.
+    expect_false(isTRUE(all.equal(getPredMort(params),
+                                  getPredMort(NS_params_small))))
+})

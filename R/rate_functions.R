@@ -200,7 +200,8 @@ get_sim_rate_slice <- function(sim, time_idx) {
 #' @keywords internal
 get_species_size_rate_from_sim <- function(sim, time_range, drop,
                                            rate_fun, value_name,
-                                           units = NULL) {
+                                           units = NULL,
+                                           representation = "point") {
     time_elements <- get_sim_rate_time_elements(sim, time_range)
 
     # Apply the one-time rate calculation to each selected saved time. The
@@ -220,11 +221,13 @@ get_species_size_rate_from_sim <- function(sim, time_range, drop,
         result <- ArrayTimeBySpeciesBySize(result,
                                           value_name = value_name,
                                           units = units,
-                                          params = sim@params)
+                                          params = sim@params,
+                                          representation = representation)
     } else if (is.matrix(result) &&
                names(dimnames(result))[[1]] == "sp") {
         result <- ArraySpeciesBySize(result, value_name = value_name,
-                                     units = units, params = sim@params)
+                                     units = units, params = sim@params,
+                                     representation = representation)
     }
     result
 }
@@ -409,7 +412,8 @@ mizer_rates_subset <- function(params, n, n_pp, n_other, t, effort,
 #' @keywords internal
 sim_size_rate <- function(sim, time_range, drop, target, slot,
                           value_name, units = NULL,
-                          use_sim_effort = FALSE, ...) {
+                          use_sim_effort = FALSE,
+                          representation = "point", ...) {
     params <- validParams(sim@params)
     rates_fns <- projectRateFunctions(params)
     effort <- params@initial_effort
@@ -435,20 +439,22 @@ sim_size_rate <- function(sim, time_range, drop, target, slot,
             }
             m
         },
-        value_name = value_name, units = units)
+        value_name = value_name, units = units,
+        representation = representation)
 }
 
 #' Build a `MizerSim` rate getter that resolves the rate functions once
 #'
 #' Like [sim_size_rate()] but for getters that return one value per species at
 #' each time step (a time-by-species array), such as [getRDI()] and [getRDD()].
-#' These use the initial effort, matching their `MizerParams` counterparts.
+#' By default these use the initial effort, matching their `MizerParams` counterparts.
 #'
 #' @inheritParams sim_size_rate
 #' @return An `ArrayTimeBySpecies` object.
 #' @keywords internal
 sim_species_rate <- function(sim, time_range, target, slot,
-                             value_name, units = NULL, ...) {
+                             value_name, units = NULL,
+                             use_sim_effort = FALSE, ...) {
     params <- validParams(sim@params)
     rates_fns <- projectRateFunctions(params)
     effort <- params@initial_effort
@@ -457,7 +463,8 @@ sim_species_rate <- function(sim, time_range, target, slot,
         function(slice) {
             r <- mizer_rates_subset(
                 params, n = slice$n, n_pp = slice$n_pp,
-                n_other = slice$n_other, t = slice$t, effort = effort,
+                n_other = slice$n_other, t = slice$t,
+                effort = if (use_sim_effort) slice$effort else effort,
                 rates_fns = rates_fns, targets = target, ...)
             r[[slot]]
         },
@@ -756,8 +763,11 @@ getPredMort.MizerParams <- function(object, n, n_pp, n_other,
         pred_mort <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
                        pred_rate = pred_rate)
     }
+    # Predation mortality is a sink integrated against the prey density over the
+    # prey bin, so under second-order bin-averaging it is a bin average and is
+    # plotted at the geometric bin centre (see get_ArraySpeciesBySize_w()).
     ArraySpeciesBySize(pred_mort, value_name = "Predation mortality",
-             units = "1/year", params = params)
+             units = "1/year", params = params, representation = "average")
 }
 
 #' @export
@@ -766,7 +776,7 @@ getPredMort.MizerSim <- function(object, n, n_pp, n_other,
     sim <- object
     sim_size_rate(sim, time_range, drop, target = "PredMort",
                   slot = "pred_mort", value_name = "Predation mortality",
-                  units = "1/year", ...)
+                  units = "1/year", representation = "average", ...)
 }
 
 #' Alias for `getPredMort()`
@@ -824,7 +834,15 @@ getResourceMort.MizerParams <- function(params, n = initialN(params),
         mort <- f(params, n = n, n_pp = n_pp, n_other = n_other,
                   t = t, pred_rate = pred_rate)
     }
-    names(mort) <- names(params@initial_n_pp)
+
+    # Extensions such as mizerMR return a resource x size matrix here. Leave
+    # such non-vector results unwrapped so the extension can wrap them in its
+    # own class; only wrap the plain single-resource vector.
+    if (is.null(dim(mort))) {
+        names(mort) <- names(params@initial_n_pp)
+        mort <- ArrayResourceBySize(mort, value_name = "Resource mortality",
+                                    units = "1/year", params = params)
+    }
     mort
 }
 
@@ -1117,7 +1135,8 @@ getFMort.MizerParams <- function(object, effort, time_range, drop = TRUE,
                                     n_other = n_other, time_range = t))
         fmort <- do.call(f, c(args, list(...)))
         fmort <- ArraySpeciesBySize(fmort, value_name = "Fishing mortality",
-                           units = "1/year", params = params)
+                           units = "1/year", params = params,
+                           representation = "average")
         return(fmort)
     } else if (length(effort) == no_gears) {
         args <- list(
@@ -1129,7 +1148,8 @@ getFMort.MizerParams <- function(object, effort, time_range, drop = TRUE,
                                     n_other = n_other, time_range = t))
         fmort <- do.call(f, c(args, list(...)))
         fmort <- ArraySpeciesBySize(fmort, value_name = "Fishing mortality",
-                           units = "1/year", params = params)
+                           units = "1/year", params = params,
+                           representation = "average")
         return(fmort)
     } else {
         stop("Invalid effort argument")
@@ -1142,7 +1162,7 @@ getFMort.MizerSim <- function(object, effort, time_range, drop = TRUE,
     sim <- object
     sim_size_rate(sim, time_range, drop, target = "FMort", slot = "f_mort",
                   value_name = "Fishing mortality", units = "1/year",
-                  use_sim_effort = TRUE, ...)
+                  use_sim_effort = TRUE, representation = "average", ...)
 }
 
 
@@ -1216,7 +1236,8 @@ getMort.MizerParams <- function(object,
                              t = t, effort = effort,
                              rates_fns = rates_fns, targets = "Mort", ...)
     return(ArraySpeciesBySize(r$mort, value_name = "Total mortality",
-                     units = "1/year", params = params))
+                     units = "1/year", params = params,
+                     representation = "average"))
 }
 
 #' @export
@@ -1226,7 +1247,7 @@ getMort.MizerSim <- function(object, n, n_pp, n_other, effort, t, ...,
     if (missing(time_range) && !missing(t)) time_range <- t
     sim_size_rate(sim, time_range, drop, target = "Mort", slot = "mort",
                   value_name = "Total mortality", units = "1/year",
-                  use_sim_effort = TRUE, ...)
+                  use_sim_effort = TRUE, representation = "average", ...)
 }
 
 #' Alias for `getMort()`
@@ -1290,8 +1311,11 @@ getERepro.MizerParams <- function(object, n = initialN(object),
         erepro <- f(params, n = n, n_pp = n_pp, n_other = n_other, t = t,
                     e = e)
     }
+    # The per-capita reproductive investment is the integrand of the
+    # reproduction integral, where (under second-order bin-averaging) it enters
+    # as a bin average, so it is plotted at the geometric bin centre.
     ArraySpeciesBySize(erepro, value_name = "Energy for reproduction",
-             units = "g/year", params = params)
+             units = "g/year", params = params, representation = "average")
 }
 
 #' @export
@@ -1300,7 +1324,8 @@ getERepro.MizerSim <- function(object, n, n_pp, n_other, t, ...,
     sim <- object
     if (missing(time_range) && !missing(t)) time_range <- t
     sim_size_rate(sim, time_range, drop, target = "ERepro", slot = "e_repro",
-                  value_name = "Energy for reproduction", units = "g/year", ...)
+                  value_name = "Energy for reproduction", units = "g/year",
+                  representation = "average", ...)
 }
 
 #' Alias for `getERepro()`
@@ -1435,7 +1460,7 @@ getRDI.MizerSim <- function(object, n, n_pp, n_other, t = 0,
     sim <- object
     sim_species_rate(sim, time_range, target = "RDI", slot = "rdi",
                      value_name = "Density-independent reproduction rate",
-                     units = "1/year", ...)
+                     units = "1/year", use_sim_effort = TRUE, ...)
 }
 
 
@@ -1522,7 +1547,7 @@ getRDD.MizerSim <- function(object, n, n_pp, n_other, t = 0,
     sim <- object
     sim_species_rate(sim, time_range, target = "RDD", slot = "rdd",
                      value_name = "Density-dependent reproduction rate",
-                     units = "1/year", ...)
+                     units = "1/year", use_sim_effort = TRUE, ...)
 }
 
 #' Get flux into size bins
@@ -1585,7 +1610,8 @@ getFlux.MizerParams <- function(object, n = initialN(object),
     rdd <- getRDD(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
 
     flux <- flux_from_rates(params, n = n, g = g, d = d, rdd = rdd,
-                            power = power)
+                            power = power,
+                            flux_limiter = flux_limiter_scheme(params))
 
     ArraySpeciesBySize(flux, value_name = "Flux",
              units = flux_units(power), params = params)
@@ -1605,10 +1631,14 @@ getFlux.MizerParams <- function(object, n = initialN(object),
 #'   from [getRDD()].
 #' @param power The flux at weight \eqn{w} is multiplied by \eqn{w} raised to
 #'   `power`. The default `power = 0` leaves the flux of individuals unchanged.
+#' @param flux_limiter Advective-flux scheme: `"none"` (first-order upwind),
+#'   `"van_leer"` or `"centred"` (second-order log-size scheme).  Defaults to
+#'   `"none"`.
 #'
 #' @return A plain species x size matrix of fluxes (no mizer array class).
 #' @keywords internal
-flux_from_rates <- function(params, n, g, d, rdd, power = 0) {
+flux_from_rates <- function(params, n, g, d, rdd, power = 0,
+                             flux_limiter = "none") {
     no_sp <- nrow(params@species_params)
     no_w <- length(params@w)
     dw <- params@dw
@@ -1619,12 +1649,28 @@ flux_from_rates <- function(params, n, g, d, rdd, power = 0) {
     idx <- 2:no_w
     idx_minus_1 <- idx - 1
 
-    # Calculate J_{i,j} for all j > 1
-    # J_{i,j} = g_{i, j-1} N_{i, j-1} - 1/2 * (d_{i, j} N_{i, j} - d_{i, j-1} N_{i, j-1}) / dw_{j-1}
-    diff_term <- (d[, idx] * n[, idx] - d[, idx_minus_1] * n[, idx_minus_1]) /
-        matrix(dw[idx_minus_1], nrow = no_sp, ncol = length(idx_minus_1), byrow = TRUE)
-
-    flux[, idx] <- g[, idx_minus_1] * n[, idx_minus_1] - 0.5 * diff_term
+    if (flux_limiter == "none") {
+        # First-order upwind: advective velocity from the upwind cell, bin-width
+        # diffusion denominator.
+        # J_{i,j} = g_{i,j-1} N_{i,j-1} - 1/2 (d_{i,j} N_{i,j} - d_{i,j-1} N_{i,j-1}) / dw_{j-1}
+        diff_term <- (d[, idx] * n[, idx] - d[, idx_minus_1] * n[, idx_minus_1]) /
+            matrix(dw[idx_minus_1], nrow = no_sp, ncol = length(idx_minus_1),
+                   byrow = TRUE)
+        flux[, idx] <- g[, idx_minus_1] * n[, idx_minus_1] - 0.5 * diff_term
+    } else {
+        # Second-order log-size scheme: advective velocity at the face, van Leer
+        # or centred reconstruction, log-size diffusion denominator h*w_j.
+        # J_{i,j} = g_{i,j} [N_{i,j-1} + psi_{i,j}/2 (N_{i,j} - N_{i,j-1})]
+        #           - 1/2 (d_{i,j} N_{i,j} - d_{i,j-1} N_{i,j-1}) / (h w_j)
+        h <- log_dx(params)
+        w <- params@w
+        psi <- flux_limiter_psi(params, n, g, flux_limiter)
+        adv <- g[, idx] * (n[, idx_minus_1] +
+                               0.5 * psi[, idx] * (n[, idx] - n[, idx_minus_1]))
+        diff_term <- (d[, idx] * n[, idx] - d[, idx_minus_1] * n[, idx_minus_1]) /
+            matrix(h * w[idx], nrow = no_sp, ncol = length(idx), byrow = TRUE)
+        flux[, idx] <- adv - 0.5 * diff_term
+    }
 
     # Apply recruitment boundary conditions
     j_start <- params@w_min_idx
@@ -1675,23 +1721,150 @@ getFlux.MizerSim <- function(object, n, n_pp, n_other, t, power = 0, ...,
     # those depend on), which `mizer_rates_subset()` calculates selectively.
     params <- validParams(sim@params)
     rates_fns <- projectRateFunctions(params)
-    effort <- params@initial_effort
+    flux_lim <- flux_limiter_scheme(params)
 
     get_species_size_rate_from_sim(
         sim, time_range, drop,
         function(slice) {
             r <- mizer_rates_subset(
                 params, n = slice$n, n_pp = slice$n_pp,
-                n_other = slice$n_other, t = slice$t, effort = effort,
+                n_other = slice$n_other, t = slice$t, effort = slice$effort,
                 rates_fns = rates_fns,
                 targets = c("EGrowth", "Diffusion", "RDD"), ...)
             flux_from_rates(params, n = slice$n,
                             g = r$e_growth, d = r$diffusion, rdd = r$rdd,
-                            power = power)
+                            power = power, flux_limiter = flux_lim)
         },
         value_name = "Flux", units = flux_units(power))
 }
 
+
+#' Get flux gradient
+#'
+#' Calculates the flux divergence \eqn{(J_{j+1} - J_j)/\Delta w_j} that
+#' appears as the second term in the discretised size-spectrum transport
+#' equation
+#' \deqn{\frac{\partial N_j}{\partial t} + \frac{J_{j+1} - J_j}{\Delta w_j}
+#'       = -\mu_j N_j.}
+#' The bin-boundary fluxes \eqn{J_j} are obtained from [getFlux()], which
+#' uses the advective-flux scheme stored in the `flux` entry of the
+#' [`second_order_w`][second_order_w()] slot of `params`.  The flux leaving
+#' the largest size class through the upper boundary (\eqn{J_{K+1}}) is
+#' evaluated with the same scheme using the boundary condition
+#' \eqn{N_{K+1} = 0}.
+#'
+#' @template param_object_dots
+#' @return
+#' * `MizerParams`: An `ArraySpeciesBySize` object (species x size) giving the
+#'   flux divergence in each size bin, in units of
+#'   \eqn{g^{-1} \, \text{year}^{-1}}.
+#' * `MizerSim`: An `ArrayTimeBySpeciesBySize` object (time step x species x
+#'   size) with the flux divergence at every saved time step. If `drop = TRUE`
+#'   then dimensions of length 1 will be removed.
+#' @export
+#' @seealso [getFlux()], [second_order_w()]
+#' @family rate functions
+#' @examples
+#' \donttest{
+#' params <- NS_params
+#' fg <- getFluxGradient(params)
+#' sim <- project(params, t_max = 5)
+#' fg_sim <- getFluxGradient(sim)
+#' }
+getFluxGradient <- function(object, ...) {
+    UseMethod("getFluxGradient")
+}
+
+#' @rdname getFluxGradient
+#' @usage NULL
+#' @export
+getFluxGradient.MizerParams <- function(object,
+                                         n = initialN(object),
+                                         n_pp = initialNResource(object),
+                                         n_other = initialNOther(object),
+                                         t = 0, ...) {
+    params <- validParams(object)
+
+    flux <- getFlux(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
+    g <- getEGrowth(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
+    d <- getDiffusion(params, n = n, n_pp = n_pp, n_other = n_other, t = t)
+
+    flux_lim <- flux_limiter_scheme(params)
+
+    no_sp <- nrow(params@species_params)
+    no_w <- length(params@w)
+    dw <- params@dw
+
+    # Upper boundary flux J_{K+1} with N[K+1] = 0: natural extension of each
+    # scheme's flux formula to the phantom bin above the grid.
+    if (flux_lim == "none") {
+        # Upwind: J_{K+1} = g_K N_K - (0 - d_K N_K) / (2 dw_K)
+        flux_upper <- g[, no_w] * n[, no_w] +
+            0.5 * d[, no_w] * n[, no_w] / dw[no_w]
+    } else {
+        # Log-size second-order: J_{K+1} = g_K N_K - (0 - d_K N_K) / (2 h w_{K+1})
+        # psi = 0 at the upper boundary (forced upwind there)
+        h <- log_dx(params)
+        beta <- params@w[2] / params@w[1]
+        w_Kp1 <- params@w[no_w] * beta
+        flux_upper <- g[, no_w] * n[, no_w] +
+            0.5 * d[, no_w] * n[, no_w] / (h * w_Kp1)
+    }
+
+    # (J[j+1] - J[j]) / dw[j]  for j = 1..K
+    flux_shifted <- cbind(flux[, 2:no_w, drop = FALSE], flux_upper)
+    gradient <- (flux_shifted - flux) /
+        matrix(dw, nrow = no_sp, ncol = no_w, byrow = TRUE)
+    dimnames(gradient) <- dimnames(params@metab)
+
+    ArraySpeciesBySize(gradient, value_name = "Flux gradient",
+                       units = "g^-1/year", params = params)
+}
+
+#' @rdname getFluxGradient
+#' @usage NULL
+#' @export
+getFluxGradient.MizerSim <- function(object, n, n_pp, n_other, t, ...,
+                                      time_range, drop = FALSE) {
+    sim <- object
+    if (missing(time_range) && !missing(t)) time_range <- t
+
+    params <- validParams(sim@params)
+    rates_fns <- projectRateFunctions(params)
+    flux_lim <- flux_limiter_scheme(params)
+
+    no_w <- length(params@w)
+    dw <- params@dw
+
+    get_species_size_rate_from_sim(
+        sim, time_range, drop,
+        function(slice) {
+            r <- mizer_rates_subset(
+                params, n = slice$n, n_pp = slice$n_pp,
+                n_other = slice$n_other, t = slice$t, effort = slice$effort,
+                rates_fns = rates_fns,
+                targets = c("EGrowth", "Diffusion", "RDD"), ...)
+            no_sp <- nrow(slice$n)
+            flux <- flux_from_rates(params, n = slice$n,
+                                    g = r$e_growth, d = r$diffusion,
+                                    rdd = r$rdd, flux_limiter = flux_lim)
+            if (flux_lim == "none") {
+                flux_upper <- r$e_growth[, no_w] * slice$n[, no_w] +
+                    0.5 * r$diffusion[, no_w] * slice$n[, no_w] / dw[no_w]
+            } else {
+                h <- log_dx(params)
+                w_Kp1 <- params@w[no_w] * params@w[2] / params@w[1]
+                flux_upper <- r$e_growth[, no_w] * slice$n[, no_w] +
+                    0.5 * r$diffusion[, no_w] * slice$n[, no_w] / (h * w_Kp1)
+            }
+            flux_shifted <- cbind(flux[, 2:no_w, drop = FALSE], flux_upper)
+            gradient <- (flux_shifted - flux) /
+                matrix(dw, nrow = no_sp, ncol = no_w, byrow = TRUE)
+            dimnames(gradient) <- dimnames(params@metab)
+            gradient
+        },
+        value_name = "Flux gradient", units = "g^-1/year")
+}
 
 #' Get array indices for a time range in a MizerSim object
 #'

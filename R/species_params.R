@@ -6,9 +6,22 @@
 #'
 #' There are a lot of species parameters and we will list them all below, but
 #' most of them have sensible default values. The only required columns are
-#' `species` for the species name and `w_max` for its maximum size. However
-#' if you have information about the values of other parameters then you should
-#' provide them.
+#' `species` for the species name and `w_inf` for its von Bertalanffy
+#' asymptotic size. However if you have information about the values of other
+#' parameters then you should provide them.
+#'
+#' Three species parameters describe maximum sizes and play distinct roles:
+#'
+#' * `w_inf` is the von Bertalanffy asymptotic size of an average individual.
+#'   It is the required maximum-size parameter and is used to set default values
+#'   for `w_max`, `w_repro_max` and `w_mat`.
+#' * `w_repro_max` is the size at which a typical mature individual invests all
+#'   of its available energy into reproduction, see [setReproduction()]. It is
+#'   not a hard ceiling on size and defaults to `w_inf`.
+#' * `w_max` is purely a computational boundary: it sets the upper end of the
+#'   size grid and the range of plots. It defaults to `1.5 * w_inf`. For
+#'   backwards compatibility, if `w_inf` is not supplied it is taken from
+#'   `w_repro_max` or `w_max` instead.
 #'
 #' Mizer distinguishes between the species parameters that you have given
 #' explicitly and the species parameters that have been calculated by mizer or
@@ -77,9 +90,9 @@
 #'   relationship \eqn{w = a l ^ b}.
 #'
 #' If you have supplied the `a` and `b` parameters, then you can replace weight
-#' parameters like `w_max`, `w_mat`, `w_mat25`, `w_repro_max` and `w_min` by
-#' their corresponding length parameters `l_max`, `l_mat`, `l_mat25`,
-#' `l_repro_max` and `l_min`.
+#' parameters like `w_inf`, `w_max`, `w_mat`, `w_mat25`, `w_repro_max` and
+#' `w_min` by their corresponding length parameters `l_inf`, `l_max`, `l_mat`,
+#' `l_mat25`, `l_repro_max` and `l_min`.
 #'
 #' The parameters that are only used to calculate default values for other
 #' parameters are:
@@ -91,6 +104,9 @@
 #'   `ks` of the metabolic rate, see [get_ks_default()].
 #' * `age_mat` is the age at maturity and is used to get a default value for
 #'   the coefficient `h` of the maximum intake rate, see [get_h_default()].
+#' * If `age_mat` is not supplied, mizer used the von Bertalanffy parameters
+#'   `k_vb`, `w_inf` and `t0` as well as the weight-length exponent `b` to
+#'   determine it. This is unreliable and is therefore not recommended.
 #'
 #' Changing these parameters with `species_params<-()` updates the stored
 #' species parameter table and triggers a recalculation via [setParams()].
@@ -98,10 +114,6 @@
 #' parameters are recalculated rather than kept at explicitly supplied values.
 #' In typical workflows these quantities should therefore be changed via
 #' `given_species_params<-()`.
-#'
-#' In the past, mizer also used the von Bertalanffy parameters `k_vb`, `w_inf`
-#' and `t0` to determine a default for `h`. This is unreliable and is therefore
-#' now deprecated.
 #'
 #' There are other species parameters that are used in tuning the model to
 #' observations:
@@ -418,8 +430,9 @@ get_gamma_default <- function(params) {
             # See issue #238
             params@species_params$interaction_resource <- 1
         }
-        params@initial_n_pp[] <- params@resource_params$kappa *
-            params@w_full^(-params@resource_params$lambda)
+        params@initial_n_pp[] <- resource_power_law(
+            params, params@resource_params$kappa,
+            params@resource_params$lambda)
         avail_energy <- getEncounter(params)[, length(params@w)] /
             params@w[length(params@w)] ^
             (2 + params@species_params[["q"]] - params@resource_params$lambda)
@@ -471,8 +484,9 @@ get_f0_default <- function(params) {
         # Calculate available energy by setting a power-law prey spectrum
         params@initial_n[] <- 0
         params@species_params$interaction_resource <- 1
-        params@initial_n_pp[] <- params@resource_params$kappa *
-            params@w_full^(-params@resource_params$lambda)
+        params@initial_n_pp[] <- resource_power_law(
+            params, params@resource_params$kappa,
+            params@resource_params$lambda)
         avail_energy <- getEncounter(params)[, length(params@w)] /
             params@w[length(params@w)] ^
             (2 + params@species_params[["q"]] - params@resource_params$lambda)

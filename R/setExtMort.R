@@ -21,6 +21,18 @@
 #' Missing values of `z_ext` are set to 0 and missing values of `d` are set to
 #' `n - 1`.
 #'
+#' By default the power law is evaluated at the left bin edges \eqn{w_j}
+#' (point sampling). If the `bin_average` entry of the `second_order_w` slot is
+#' `TRUE` (see [second_order_w()]), then the \eqn{z_{ext} w^d} term is instead
+#' replaced by its exact average over each bin \eqn{[w_j, w_{j+1}]},
+#' \deqn{\frac{z_{ext}}{\Delta w_j}\int_{w_j}^{w_{j+1}} w^d\, dw
+#'   = z_{ext}\,\frac{w_{j+1}^{d+1} - w_j^{d+1}}{(d+1)\,\Delta w_j},}
+#' (with the limiting form \eqn{z_{ext}\ln(w_{j+1}/w_j)/\Delta w_j} when
+#' \eqn{d = -1}). This is the consistent choice in the finite-volume scheme,
+#' where the external mortality multiplies the bin-averaged abundance. The
+#' bin-averaging is applied only to the auto-calculated power-law default; a
+#' user-supplied `ext_mort` array is left untouched.
+#'
 #' @param params MizerParams
 #' @param ext_mort Optional. An array (species x size) holding the external
 #'   mortality rate.  If not supplied, a default is set as described in the
@@ -32,10 +44,10 @@
 #'   a recalculation from the species parameters will take place only if no
 #'   custom value has been set.
 #' @param z0pre If `z0`, the mortality from other sources, is not a column
-#'   in the species data frame, it is calculated as z0pre * w_max ^ z0exp.
+#'   in the species data frame, it is calculated as z0pre * w_inf ^ z0exp.
 #'   Default value is 0.6.
 #' @param z0exp If `z0`, the mortality from other sources, is not a column in
-#'   the species data frame, it is calculated as \code{z0pre * w_max ^ z0exp}.
+#'   the species data frame, it is calculated as \code{z0pre * w_inf ^ z0exp}.
 #'   Default value is \code{n-1}.
 #' @param z0 `r lifecycle::badge("deprecated")` Use `ext_mort` instead. Not to
 #'   be confused with the species_parameter `z0`.
@@ -105,11 +117,11 @@ setExtMort.MizerParams <- function(params, ext_mort = NULL,
     assert_that(is.number(z0pre), z0pre >= 0,
                 is.number(z0exp))
     species_params <- params@species_params
-    assert_that(noNA(species_params$w_max))
+    assert_that(noNA(species_params$w_inf))
     # Sort out z0 (external mortality)
-    message <- ("Using z0 = z0pre * w_max ^ z0exp for missing z0 values.")
+    message <- ("Using z0 = z0pre * w_inf ^ z0exp for missing z0 values.")
     params <- set_species_param_default(params, "z0",
-                                        z0pre * species_params$w_max^z0exp,
+                                        z0pre * species_params$w_inf^z0exp,
                                         message)
     params <- set_species_param_default(params, "z_ext", 0)
     params <- set_species_param_default(params, "d",
@@ -118,12 +130,28 @@ setExtMort.MizerParams <- function(params, ext_mort = NULL,
     mu_b[] <- params@species_params$z0
     has_power_law <- params@species_params$z_ext != 0
     if (any(has_power_law)) {
-        mu_b[has_power_law, ] <- mu_b[has_power_law, ] +
-            sweep(
-                outer(params@species_params$d[has_power_law], params@w,
-                      function(d, w) w^d),
-                1, params@species_params$z_ext[has_power_law], "*"
-            )
+        if (isTRUE(params@second_order_w[["bin_average"]])) {
+            # Use the exact bin average of the power law z_ext * w^d over each
+            # bin instead of point-sampling at the left bin edge. This makes
+            # the external mortality sink second-order (in fact exact) in the
+            # finite-volume scheme where mu_b multiplies the bin-averaged
+            # abundance N_j. See the "Point values and bin averages" section
+            # of the numerical-details vignette.
+            sp <- which(has_power_law)
+            for (i in sp) {
+                w_pow <- power_law_bin_average(params@w, params@dw,
+                                               params@species_params$d[i])
+                mu_b[i, ] <- mu_b[i, ] +
+                    params@species_params$z_ext[i] * w_pow
+            }
+        } else {
+            mu_b[has_power_law, ] <- mu_b[has_power_law, ] +
+                sweep(
+                    outer(params@species_params$d[has_power_law], params@w,
+                          function(d, w) w^d),
+                    1, params@species_params$z_ext[has_power_law], "*"
+                )
+        }
     }
 
     # Prevent overwriting slot if it has been commented
@@ -150,10 +178,14 @@ getExtMort <- function(params) {
 }
 #' @export
 getExtMort.MizerParams <- function(params) {
+    # External mortality is a sink integrated against the abundance over the
+    # bin; under second-order bin-averaging mu_b is the exact bin average
+    # (see setExtMort()), so it is plotted at the geometric bin centre.
     ArraySpeciesBySize(params@mu_b,
                        value_name = "External mortality",
                        units = "1/year",
-                       params = params)
+                       params = params,
+                       representation = "average")
 }
 
 #' @rdname setExtMort

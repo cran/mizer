@@ -25,6 +25,18 @@
 #'   is set to the smallest value at which any of the consumers can feed.
 #' @param n The allometric growth exponent. This can be overruled for individual
 #'   species by including a `n` column in the `species_params`.
+#' @param second_order_w `r lifecycle::badge("experimental")` Selects the
+#'   second-order numerical scheme for the new model. Accepts the same values as
+#'   the [second_order_w()] setter: a single logical (`TRUE` switches on both
+#'   second-order flux and bin-averaging), a single flux scheme name
+#'   (`"upwind"`, `"van_leer"` or `"centred"`), or a named vector with entries
+#'   `flux` and/or `bin_average`. The `bin_average` choice is applied *before*
+#'   the resource and abundance power laws are constructed, so they are built
+#'   bin-averaged from the start (unlike setting [second_order_w()] on an
+#'   existing object). The `flux` scheme governs time projection only, so the
+#'   robust first-order upwind scheme is used for the construction-time
+#'   steady-state solve and the chosen scheme is then activated for the returned
+#'   model. Defaults to `FALSE` (the first-order behaviour of previous mizer).
 #' @param info_level Controls the amount of information messages that are shown
 #'   when the function sets default values for parameters. Higher levels lead
 #'   to more messages.
@@ -40,9 +52,12 @@
 #' There are two essential columns that must be included in the species
 #' parameter data.frame and that do not have default values: the
 #' `species` column that should hold strings with the names of the
-#' species and the `w_max` column with the maximum sizes of the species
-#' in grams. (You could alternatively specify the maximum length in cm in an
-#' `l_max` column.)
+#' species and the `w_inf` column with the von Bertalanffy asymptotic sizes of
+#' the species in grams. (You could alternatively specify the corresponding
+#' length in cm in an `l_inf` column.) The computational upper size boundary
+#' `w_max` is not essential; if it is missing it defaults to `1.5 * w_inf`. For
+#' backwards compatibility, if `w_inf` is missing it is taken from the
+#' `w_repro_max` or `w_max` column instead.
 #'
 #' The `species_params dataframe` also needs to contain the parameters needed
 #' by any predation kernel function (size selectivity function). This will
@@ -129,6 +144,7 @@ newMultispeciesParams <- function(
     selectivity = NULL,
     catchability = NULL,
     initial_effort = NULL,
+    second_order_w = FALSE,
     info_level = 3,
     z0 = deprecated(),
     r_pp = deprecated()) {
@@ -173,13 +189,28 @@ newMultispeciesParams <- function(
                           max_w = max_w,
                           min_w_pp = min_w_pp)
 
+    # Resolve the requested second-order scheme. The `bin_average` choice is
+    # applied now, before the rest of the parameters are computed, so that the
+    # bin-averaged resource constructions (initial abundance, capacity, rate)
+    # and the encounter/mortality quadratures all honour it. We set the slot
+    # directly rather than via the `second_order_w<-` setter to avoid its extra
+    # setParams() call here, since setParams() is run below anyway. The `flux`
+    # scheme is deferred until the end (see below): it does not affect any
+    # precomputed array, only time projection, and the construction-time
+    # steady-state solve for the initial abundances is only robust with the
+    # first-order upwind scheme.
+    target_second_order_w <-
+        validate_second_order_w(params@second_order_w, second_order_w)
+    params@second_order_w[["bin_average"]] <-
+        target_second_order_w[["bin_average"]]
+
     # Fill the slots ----
     if (is.null(interaction)) {
         interaction <- matrix(1, nrow = no_sp, ncol = no_sp)
     }
 
-    params@initial_n_pp[] <- kappa * params@w_full ^ (-lambda)
-    params@initial_n_pp[params@w_full >= w_pp_cutoff] <- 0
+    params@initial_n_pp[] <- resource_power_law(params, kappa, lambda,
+                                                w_max = w_pp_cutoff)
     params@resource_params$kappa <- kappa
     params@resource_params$lambda <- lambda
     params@resource_params$w_pp_cutoff <- w_pp_cutoff
@@ -226,6 +257,9 @@ newMultispeciesParams <- function(
         # TODO: The next line can be removed after release of mizer 3.0
         params@A <- rep(1, nrow(species_params))
     })
+    # Now that the initial abundances have been computed with the robust upwind
+    # solver, switch on the requested advective-flux scheme for projection.
+    params@second_order_w[["flux"]] <- target_second_order_w[["flux"]]
     if (length(infos) > 0) {
         message(paste(infos, collapse = "\n"))
     }

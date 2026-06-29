@@ -204,6 +204,39 @@ test_that("getDiet works with additional components", {
     expect_identical(diet2[1, 1, no_prey + 1], 111)
 })
 
+test_that("getDiet works on a MizerSim", {
+    diet_p <- getDiet(params)
+    # All saved times by default
+    diet_all <- getDiet(sim)
+    times <- dimnames(sim@n)$time
+    expect_equal(length(dim(diet_all)), 4)
+    expect_equal(dim(diet_all),
+                 c(length(times), dim(diet_p)))
+    expect_identical(names(dimnames(diet_all))[[1]], "time")
+    expect_identical(dimnames(diet_all)$time, times)
+    # The diet at t = 0 is computed from the initial abundances and so equals
+    # the MizerParams diet
+    expect_equal(diet_all["0", , , ], diet_p, ignore_attr = TRUE)
+
+    # Selecting a single time and dropping gives the MizerParams-shaped array
+    diet_last <- getDiet(sim, time_range = max(as.numeric(times)), drop = TRUE)
+    expect_equal(dim(diet_last), dim(diet_p))
+    # and matches getDiet computed directly from that time step's state
+    last <- length(times)
+    n_last <- array(sim@n[last, , ], dim = dim(sim@n)[2:3],
+                    dimnames = dimnames(sim@n)[2:3])
+    n_other_last <- sim@n_other[last, ]
+    names(n_other_last) <- dimnames(sim@n_other)$component
+    diet_direct <- getDiet(sim@params, n = n_last, n_pp = sim@n_pp[last, ],
+                           n_other = n_other_last)
+    expect_equal(diet_last, diet_direct, ignore_attr = TRUE)
+
+    # proportion = FALSE is passed through
+    diet_rate <- getDiet(sim, proportion = FALSE)
+    expect_equal(length(dim(diet_rate)), 4)
+    expect_false(isTRUE(all.equal(diet_rate, diet_all)))
+})
+
 
 # getTrophicLevel ----
 test_that("getTrophicLevel returns matrix with correct structure", {
@@ -233,6 +266,30 @@ test_that("getTrophicLevel increases along body size for apex predators", {
     cod_tl <- cod_tl[!is.na(cod_tl)]
     # Should be non-decreasing overall (allow small numerical fluctuations)
     expect_true(cod_tl[length(cod_tl)] >= cod_tl[1])
+})
+
+test_that("non-zero resource trophic level lifts trophic levels above 1", {
+    # With the resource carrying a trophic level >= 1, fish that feed should
+    # have trophic levels strictly above 1.
+    tl <- getTrophicLevel(NS_params_small)
+    expect_true(all(tl > 1, na.rm = TRUE))
+    expect_true(all(is.finite(tl[!is.na(tl)])))
+})
+
+test_that("getTrophicLevel responds monotonically to beta_R", {
+    # A smaller beta_R packs more trophic steps into the resource spectrum and
+    # so should give resource (and hence fish) higher trophic levels.
+    tl_low <- getTrophicLevel(NS_params_small, beta_R = 100)
+    tl_high <- getTrophicLevel(NS_params_small, beta_R = 1e6)
+    finite <- !is.na(tl_low) & !is.na(tl_high)
+    expect_true(all(tl_low[finite] >= tl_high[finite] - 1e-10))
+    expect_false(isTRUE(all.equal(tl_low[finite], tl_high[finite])))
+})
+
+test_that("getTrophicLevelBySpecies forwards w_R and beta_R", {
+    tl_default <- getTrophicLevelBySpecies(NS_params_small)
+    tl_low <- getTrophicLevelBySpecies(NS_params_small, beta_R = 100)
+    expect_false(isTRUE(all.equal(tl_default, tl_low)))
 })
 
 # getTrophicLevelBySpecies ----
@@ -376,6 +433,27 @@ test_that("summary works", {
     sim <- project(params, t_max = 0.1)
     expect_output(summary(sim),
                   'An object of class "MizerSim"')
+})
+
+test_that("summary of MizerSim reports the effort actually used", {
+    # `params` has initial_effort = 1, so the params summary shows 1.00 but a
+    # simulation run with a different effort must report that effort instead.
+    sim <- project(params, effort = 2, t_max = 2, dt = 1, t_save = 1)
+    out <- capture.output(summary(sim))
+    gear_line <- grep("^Industrial", out, value = TRUE)
+    expect_match(gear_line, "2\\.00")
+    expect_no_match(gear_line, "1\\.00")
+})
+
+test_that("summary flags effort that varied over time", {
+    gears <- dimnames(NS_params_small@catchability)$gear
+    effort <- matrix(1, nrow = 3, ncol = length(gears),
+                     dimnames = list(time = 0:2, gear = gears))
+    effort[, "Pelagic"] <- c(1, 1, 2)
+    sim <- project(NS_params_small, effort = effort, dt = 1, t_save = 1)
+    out <- capture.output(summary(sim))
+    expect_match(out, "effort varied over time", all = FALSE)
+    expect_match(out, "Pelagic \\(1\\.00 to 2\\.00\\)", all = FALSE)
 })
 
 test_that("str works", {

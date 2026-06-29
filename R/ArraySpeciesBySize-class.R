@@ -23,6 +23,11 @@
 #' @param units A string giving the units (e.g. "g/year", "1/year").
 #' @param params A `MizerParams` object. Used for species colours, linetypes,
 #'   and size ranges in the `plot()` method.
+#' @param representation Either `"point"` (the default) for a quantity sampled
+#'   at the grid nodes, or `"average"` for a finite-volume bin average. A
+#'   bin-averaged quantity is drawn at the geometric bin centre rather than the
+#'   left bin edge, but only when the model uses second-order bin-averaging
+#'   (`second_order_w[["bin_average"]]`), so default plots are unchanged.
 #'
 #' @return An `ArraySpeciesBySize` object (inherits from `matrix` and `array`).
 #' @seealso [print()], [summary()], [as.data.frame()], [plot()]
@@ -34,10 +39,12 @@
 #' summary(enc)
 #' }
 ArraySpeciesBySize <- function(x, value_name = NULL, units = NULL,
-                               params = NULL) {
+                               params = NULL,
+                               representation = c("point", "average")) {
     if (!is.matrix(x)) {
         stop("`x` must be a matrix.")
     }
+    representation <- match.arg(representation)
     if (!is.null(params) && identical(dim(x), dim(params@metab))) {
         dimnames(x) <- dimnames(params@metab)
     }
@@ -45,7 +52,8 @@ ArraySpeciesBySize <- function(x, value_name = NULL, units = NULL,
         class = c("ArraySpeciesBySize", "matrix", "array"),
         value_name = value_name,
         units = units,
-        params = params
+        params = params,
+        representation = representation
     )
 }
 
@@ -260,6 +268,21 @@ plot.ArraySpeciesBySize <- function(x, species = NULL,
                   legend_var = "Legend")
 }
 
+#' Parse the log-axis arguments of a mizer plot function
+#'
+#' Internal helper that resolves the various ways of specifying which axes
+#' should use a logarithmic scale into a consistent pair of logical flags. It
+#' is exported so that extension packages (such as mizerMR) can reuse it in
+#' their own array `plot()` methods.
+#'
+#' @param log Either `NULL`, a single logical (legacy form, toggling only the
+#'   y-axis), or a character string containing only the letters `"x"` and/or
+#'   `"y"` to indicate which axes should be logarithmic.
+#' @param log_x,log_y Default logical flags used when `log` is `NULL`.
+#'
+#' @return A list with logical components `log_x` and `log_y`.
+#' @keywords internal
+#' @export
 parsePlotLog <- function(log, log_x = FALSE, log_y = FALSE) {
     if (is.null(log)) {
         return(list(log_x = log_x, log_y = log_y))
@@ -742,6 +765,19 @@ label_units <- function(label) {
     NULL
 }
 
+#' Restrict plot data to a range of weights
+#'
+#' Internal helper that filters a plot data frame to the weight range given by
+#' `wlim`. It is exported so that extension packages (such as mizerMR) can reuse
+#' it in their own array `plot()` methods.
+#'
+#' @param data A data frame with a numeric `w` column.
+#' @param wlim A length-2 numeric vector giving the lower and upper weight
+#'   limits. Either entry may be `NA` to leave that side unrestricted.
+#'
+#' @return The subset of `data` with `w` inside `wlim`.
+#' @keywords internal
+#' @export
 apply_wlim <- function(data, wlim) {
     if (!is.na(wlim[1])) data <- data[data$w >= wlim[1], ]
     if (!is.na(wlim[2])) data <- data[data$w <= wlim[2], ]
@@ -860,7 +896,13 @@ as.data.frame.ArraySpeciesBySize <- function(x, row.names = NULL,
 #'
 #' @param x An `ArraySpeciesBySize` object.
 #'
-#' @return A numeric vector giving the size represented by each column.
+#' @return A numeric vector giving the size represented by each column. When the
+#'   array is tagged as a bin average (`representation = "average"`) *and* the
+#'   model uses second-order bin-averaging (`second_order_w[["bin_average"]]`),
+#'   the geometric bin centres are returned instead of the left bin edges, so
+#'   that bin-averaged quantities are drawn at the size where they actually live
+#'   (see [bin_midpoints()]). Point-valued quantities and first-order models are
+#'   unaffected, keeping default plots unchanged.
 #' @keywords internal
 get_ArraySpeciesBySize_w <- function(x) {
     params <- attr(x, "params")
@@ -871,11 +913,13 @@ get_ArraySpeciesBySize_w <- function(x) {
         }
         return(w)
     }
+    average <- identical(attr(x, "representation"), "average") &&
+        isTRUE(params@second_order_w[["bin_average"]])
     if (ncol(x) == length(params@w)) {
-        return(params@w)
+        return(if (average) bin_midpoints(params) else params@w)
     }
     if (ncol(x) == length(params@w_full)) {
-        return(params@w_full)
+        return(if (average) bin_midpoints(params, w_full = TRUE) else params@w_full)
     }
     stop("Can not determine the size grid for this ArraySpeciesBySize object. ",
          "The number of columns is ", ncol(x), ", but the params object has ",
@@ -891,6 +935,7 @@ get_ArraySpeciesBySize_w <- function(x) {
         attr(result, "value_name") <- attr(x, "value_name")
         attr(result, "units") <- attr(x, "units")
         attr(result, "params") <- attr(x, "params")
+        attr(result, "representation") <- attr(x, "representation")
         class(result) <- c("ArraySpeciesBySize", "matrix", "array")
     }
     result

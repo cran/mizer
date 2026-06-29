@@ -63,20 +63,38 @@ NULL
 #' consumed biomass rather than the available biomass. Outside the range of
 #' sizes for a predator species the returned rate is zero.
 #'
-#' @param params A \linkS4class{MizerParams} object.
-#' @param n A matrix of species abundances (species x size). Defaults to
-#'   the initial abundances stored in `params`.
-#' @param n_pp A vector of the resource abundance by size. Defaults to the
-#'   initial resource abundance stored in `params`.
-#' @param n_other A named list of the abundances of other dynamical
-#'   components. Defaults to the initial values stored in `params`.
+#' @param object A \linkS4class{MizerParams} or \linkS4class{MizerSim} object.
 #' @param proportion If TRUE (default) the function returns the diet as a
 #'   proportion of the total consumption rate. If FALSE it returns the
 #'   consumption rate in grams per year.
+#' @param ... Additional arguments that depend on the class of `object`.
 #'
-#' @return An array (predator species  x predator size x
-#'   (prey species + resource + other components). Dimnames are "prey", "w",
-#'   and "predator".
+#'   **For a \linkS4class{MizerParams} object:**
+#'   \describe{
+#'     \item{`n`}{A matrix of species abundances (species x size). Defaults to
+#'       the initial abundances stored in `object`.}
+#'     \item{`n_pp`}{A vector of the resource abundance by size. Defaults to the
+#'       initial resource abundance stored in `object`.}
+#'     \item{`n_other`}{A named list of the abundances of other dynamical
+#'       components. Defaults to the initial values stored in `object`.}
+#'   }
+#'
+#'   **For a \linkS4class{MizerSim} object:**
+#'   \describe{
+#'     \item{`time_range`}{The time range over which to return the diet. Either
+#'       a vector of values, a vector of min and max time, or a single value.
+#'       Defaults to the whole time range of the simulation.}
+#'     \item{`drop`}{If `TRUE` then any dimension of length 1 is removed from
+#'       the returned array.}
+#'   }
+#'
+#' @return
+#' * `MizerParams`: An array (predator species x predator size x
+#'   (prey species + resource + other components)). Dimnames are "predator",
+#'   "w", and "prey".
+#' * `MizerSim`: A four-dimensional array (time x predator species x predator
+#'   size x prey) with the diet at each selected saved time step. If
+#'   `drop = TRUE` then dimensions of length 1 are removed.
 #'
 #' @export
 #' @family summary functions
@@ -85,21 +103,24 @@ NULL
 #' @examples
 #' diet <- getDiet(NS_params)
 #' str(diet)
-getDiet <- function(params,
-                    n = initialN(params),
-                    n_pp = initialNResource(params),
-                    n_other = initialNOther(params),
-                    proportion = TRUE) {
+#' \donttest{
+#' # For a MizerSim the diet is returned at each saved time step
+#' sim <- project(NS_params, t_max = 20, effort = 0.5)
+#' # Diet at the saved time steps over years 15 - 20
+#' diet <- getDiet(sim, time_range = c(15, 20))
+#' str(diet)
+#' }
+getDiet <- function(object, proportion = TRUE, ...) {
     UseMethod("getDiet")
 }
 #' @export
-getDiet.MizerParams <- function(params,
-                    n = initialN(params),
-                    n_pp = initialNResource(params),
-                    n_other = initialNOther(params),
-                    proportion = TRUE) {
+getDiet.MizerParams <- function(object,
+                    proportion = TRUE,
+                    n = initialN(object),
+                    n_pp = initialNResource(object),
+                    n_other = initialNOther(object), ...) {
     # The code is based on that for getEncounter()
-    params <- validParams(params)
+    params <- validParams(object)
     species <- params@species_params$species
     no_sp <- length(species)
     no_w <- length(params@w)
@@ -118,6 +139,18 @@ getDiet.MizerParams <- function(params,
     # object@w_full[idx_sp] = object@w
     idx_sp <- (no_w_full - no_w + 1):no_w_full
 
+    # Prey-biomass weight factor K = w. On the default path `w_eff` and
+    # `w_full_eff` are just the grid weights `w` and `w_full`, so the
+    # quadratures below are byte-identical to previous mizer versions. When
+    # second-order is enabled they become the trapezoidal bin-averages of `w`.
+    if (isTRUE(params@second_order_w[["bin_average"]])) {
+        w_eff <- bin_average_weight(params@w)
+        w_full_eff <- bin_average_weight(params@w_full)
+    } else {
+        w_eff <- params@w
+        w_full_eff <- params@w_full
+    }
+
     # If the user has set a custom kernel we can not use fft.
     if (!is.null(comment(params@pred_kernel))) {
         # pred_kernel is predator species x predator size x prey size
@@ -126,16 +159,16 @@ getDiet.MizerParams <- function(params,
         # multiplication for this. Then we multiply 1st and 3rd
         ae <- matrix(params@pred_kernel[, , idx_sp, drop = FALSE],
                      ncol = no_w) %*%
-            t(sweep(n, 2, params@w * params@dw, "*"))
+            t(sweep(n, 2, w_eff * params@dw, "*"))
         diet[, , 1:no_sp] <- ae
         # Eating the resource
         diet[, , no_sp + 1] <- rowSums(sweep(
-            params@pred_kernel, 3, params@dw_full * params@w_full * n_pp, "*"),
+            params@pred_kernel, 3, params@dw_full * w_full_eff * n_pp, "*"),
             dims = 2)
     } else {
         prey <- matrix(0, nrow = no_sp + 1, ncol = no_w_full)
-        prey[1:no_sp, idx_sp] <- sweep(n, 2, params@w * params@dw, "*")
-        prey[no_sp + 1, ] <- n_pp * params@w_full * params@dw_full
+        prey[1:no_sp, idx_sp] <- sweep(n, 2, w_eff * params@dw, "*")
+        prey[no_sp + 1, ] <- n_pp * w_full_eff * params@dw_full
         ft <- array(rep(params@ft_pred_kernel_e, times = no_sp + 1) *
                         rep(mvfft(t(prey)), each = no_sp),
                     dim = c(no_sp, no_w_full, no_sp + 1))
@@ -180,6 +213,27 @@ getDiet.MizerParams <- function(params,
     return(diet)
 }
 
+#' @export
+getDiet.MizerSim <- function(object, proportion = TRUE,
+                             time_range, drop = FALSE, ...) {
+    sim <- object
+    time_elements <- get_sim_rate_time_elements(sim, time_range)
+
+    # Compute the diet at each selected saved time step from that step's
+    # abundances and stack the results into a time x predator x size x prey
+    # array. This mirrors the other `MizerSim` rate getters, which evaluate the
+    # quantity per saved step (see `get_species_size_rate_from_sim()`); the
+    # plotting functions then average the computed quantity over a time range.
+    diet_time <- plyr::aaply(which(time_elements), 1, function(time_idx) {
+        slice <- get_sim_rate_slice(sim, time_idx)
+        getDiet(sim@params, n = slice$n, n_pp = slice$n_pp,
+                n_other = slice$n_other, proportion = proportion, ...)
+    }, .drop = FALSE)
+    names(dimnames(diet_time))[[1]] <- "time"
+
+    diet_time[, , , , drop = drop]
+}
+
 
 #' Get trophic level of individuals at size
 #'
@@ -188,7 +242,7 @@ getDiet.MizerParams <- function(params,
 #' assuming the system is in a steady state. The trophic level of an individual
 #' is defined as 1 more than the consumption-rate-weighted average trophic level
 #' of all the prey it has consumed during its lifetime up to the current size.
-#' The trophic level of the primary resource is set to 0.
+#' The resource is given a size-dependent trophic level (see below).
 #'
 #'
 #' @details
@@ -220,10 +274,19 @@ getDiet.MizerParams <- function(params,
 #' r_{ij}(w, w_p) = \theta_{ij}\,\gamma_i(w)\,(1 - f_i(w))\,\phi_i(w/w_p)\,
 #'   N_j(w_p)\,w_p.
 #' }
-#' The sum over \eqn{j} runs over all species. The resource is excluded from
-#' the numerator because its trophic level is 0, but is included in the
-#' denominator (which equals the total biomass consumed over the predator's
-#' lifetime from egg size to current weight \eqn{w}).
+#' The sum over \eqn{j} runs over all species and the resource. The resource is
+#' assigned a size-dependent trophic level
+#' \deqn{
+#'   T_R(w) = \max\left(1,\; 1 + \frac{\log(w / w_R)}{\log(\beta_R)}\right),
+#' }
+#' where \eqn{w_R} is an average size of primary producers (which therefore have
+#' trophic level 1) and \eqn{\beta_R} is an average predator/prey mass ratio for
+#' the resource (for example zooplankton). This adds one trophic level for each
+#' factor of \eqn{\beta_R} increase in resource size, with a floor at 1 so that
+#' the resource trophic level never drops below the primary-producer level.
+#' Both the numerator and the denominator (which equals the total biomass
+#' consumed over the predator's lifetime from egg size to current weight
+#' \eqn{w}) therefore include the resource.
 #'
 #' This equation can be viewed as a linear system
 #' \eqn{(I - D)\,\mathbf{T} = \mathbf{1}} in which the entries of
@@ -234,7 +297,19 @@ getDiet.MizerParams <- function(params,
 #' trophic levels of all relevant prey sizes are already known when computing
 #' \eqn{T_i(w)}.
 #'
-#' @inheritParams getDiet
+#' @param params A \linkS4class{MizerParams} object.
+#' @param n A matrix of species abundances (species x size). Defaults to
+#'   the initial abundances stored in `params`.
+#' @param n_pp A vector of the resource abundance by size. Defaults to the
+#'   initial resource abundance stored in `params`.
+#' @param n_other A named list of the abundances of other dynamical
+#'   components. Defaults to the initial values stored in `params`.
+#' @param w_R An average size (in grams) of primary producers in the resource
+#'   spectrum, used to set the size-dependent resource trophic level. Defaults
+#'   to `1e-10`.
+#' @param beta_R An average predator/prey mass ratio for the resource spectrum,
+#'   used to set the size-dependent resource trophic level. Must be greater than
+#'   `1`. Defaults to `1000`.
 #' @param ... Unused
 #'
 #' @return An `ArraySpeciesBySize` object (species x size) with the trophic
@@ -252,6 +327,8 @@ getTrophicLevel <- function(params,
                             n = initialN(params),
                             n_pp = initialNResource(params),
                             n_other = initialNOther(params),
+                            w_R = 1e-10,
+                            beta_R = 1000,
                             ...) {
     UseMethod("getTrophicLevel")
 }
@@ -261,8 +338,12 @@ getTrophicLevel.MizerParams <- function(params,
                                         n = initialN(params),
                                         n_pp = initialNResource(params),
                                         n_other = initialNOther(params),
+                                        w_R = 1e-10,
+                                        beta_R = 1000,
                                         ...) {
     params <- validParams(params)
+    assert_that(is.number(w_R), w_R > 0,
+                is.number(beta_R), beta_R > 1)
     no_sp <- nrow(params@species_params)
     no_w <- length(params@w)
     no_w_full <- length(params@w_full)
@@ -279,9 +360,33 @@ getTrophicLevel.MizerParams <- function(params,
     # getPredKernel() computes it from species parameters if not explicitly stored.
     pred_kernel <- getPredKernel(params)
 
+    # Prey-biomass weight K = w. When second-order, replace the left-edge
+    # value w_j by its trapezoidal bin-average.
+    w_ba <- bin_average_summary_weight(params@w, params)
+
     # prey_mass_tl[j, p] = N_j(w_p) * T_j(w_p) * w_p * dw_p
     # Initialised with T_j = 1 everywhere; updated as trophic levels are computed
-    prey_mass_tl <- sweep(n, 2, params@w * params@dw, "*")  # no_sp x no_w
+    prey_mass_tl <- sweep(n, 2, w_ba * params@dw, "*")  # no_sp x no_w
+
+    # Size-dependent trophic level of the resource:
+    #   T_R(w) = max(1, 1 + log(w / w_R) / log(beta_R))
+    # where w_R is an average primary-producer size and beta_R an average
+    # predator/prey mass ratio for the resource. Unlike the species trophic
+    # levels, this is fixed by the formula, so the resource's whole contribution
+    # to the numerator can be precomputed before the size loop. This mirrors the
+    # `phi_prey_background` term in mizerEncounter().
+    tl_R <- pmax(1, 1 + log(params@w_full / w_R) / log(beta_R))  # no_w_full
+    # Full-grid summary weight, consistent with the species weight w_ba and with
+    # the resource weighting in mizerEncounter() (plain w_full on the default
+    # path; trapezoidal bin-average when second_order_w is on).
+    w_full_ba <- bin_average_summary_weight(params@w_full, params)
+    # TL-weighted resource biomass per bin.
+    resource_mass_tl <- tl_R * n_pp * w_full_ba * params@dw_full  # no_w_full
+    # Resource contribution to the TL-weighted encounter for every predator/size:
+    #   ae_R[i, k] = sum_p kernel[i, k, p] * resource_mass_tl[p]
+    ae_R <- rowSums(sweep(pred_kernel, 3, resource_mass_tl, "*"), dims = 2)
+    E_tl_resource <- params@search_vol *
+        (params@species_params$interaction_resource * ae_R)  # no_sp x no_w
 
     # Cumulative numerator A_i and denominator B_i (integrals weighted by 1/g dw)
     cumA <- numeric(no_sp)
@@ -298,6 +403,9 @@ getTrophicLevel.MizerParams <- function(params,
         pred_kernel_k <- matrix(pred_kernel[, k, idx_sp], nrow = no_sp)
         ae_k <- pred_kernel_k %*% t(prey_mass_tl)  # no_sp x no_sp
         E_tl <- params@search_vol[, k] * rowSums(params@interaction * ae_k)
+        # Add the TL-weighted resource contribution (resource trophic level is
+        # given by the formula, so this term is precomputed).
+        E_tl <- E_tl + E_tl_resource[, k]
 
         # Update trophic level for each species active at this size
         for (i in seq_len(no_sp)) {
@@ -319,7 +427,7 @@ getTrophicLevel.MizerParams <- function(params,
         tl_k <- tl[, k]
         tl_k[is.na(tl_k)] <- 1
         prey_mass_tl[active_k, k] <-
-            n[active_k, k] * tl_k[active_k] * params@w[k] * params@dw[k]
+            n[active_k, k] * tl_k[active_k] * w_ba[k] * params@dw[k]
     }
 
     return(ArraySpeciesBySize(tl, value_name = "Trophic level", params = params))
@@ -338,7 +446,8 @@ getTrophicLevel.MizerParams <- function(params,
 #' where \eqn{r_i(w) = (1 - f_i(w))\,E_i(w)} is the consumption rate of an
 #' individual of species \eqn{i} at weight \eqn{w}, \eqn{N_i(w)} is the
 #' abundance density, and \eqn{T_i(w)} is the size-resolved trophic level
-#' from [getTrophicLevel()].
+#' from [getTrophicLevel()]. As in [getTrophicLevel()], the resource is given a
+#' size-dependent trophic level controlled by the `w_R` and `beta_R` arguments.
 #'
 #' @inheritParams getTrophicLevel
 #'
@@ -354,6 +463,8 @@ getTrophicLevelBySpecies <- function(params,
                                      n = initialN(params),
                                      n_pp = initialNResource(params),
                                      n_other = initialNOther(params),
+                                     w_R = 1e-10,
+                                     beta_R = 1000,
                                      ...) {
     UseMethod("getTrophicLevelBySpecies")
 }
@@ -363,9 +474,12 @@ getTrophicLevelBySpecies.MizerParams <- function(params,
                                                   n = initialN(params),
                                                   n_pp = initialNResource(params),
                                                   n_other = initialNOther(params),
+                                                  w_R = 1e-10,
+                                                  beta_R = 1000,
                                                   ...) {
     params <- validParams(params)
-    tl <- getTrophicLevel(params, n = n, n_pp = n_pp, n_other = n_other)
+    tl <- getTrophicLevel(params, n = n, n_pp = n_pp, n_other = n_other,
+                          w_R = w_R, beta_R = beta_R)
     tl[is.na(tl)] <- 0
     encounter <- getEncounter(params, n, n_pp, n_other)
     feeding_level <- getFeedingLevel(params, n, n_pp, n_other)
@@ -404,14 +518,28 @@ getSSB <- function(object) {
 #' @export
 getSSB.MizerSim <- function(object) {
     sim <- object
-    result <- apply(sweep(sweep(sim@n, c(2, 3), sim@params@maturity, "*"), 3,
-                          sim@params@w * sim@params@dw, "*"), c(1, 2), sum)
+    if (isTRUE(sim@params@second_order_w[["bin_average"]])) {
+        # Bin-average the full composite weight K = maturity * w, then * dw.
+        weight <- sweep(
+            bin_average_weight(sweep(sim@params@maturity, 2, sim@params@w, "*")),
+            2, sim@params@dw, "*")
+        result <- apply(sweep(sim@n, c(2, 3), weight, "*"), c(1, 2), sum)
+    } else {
+        result <- apply(sweep(sweep(sim@n, c(2, 3), sim@params@maturity, "*"), 3,
+                              sim@params@w * sim@params@dw, "*"), c(1, 2), sum)
+    }
     ArrayTimeBySpecies(result, value_name = "Spawning stock biomass",
                        units = "g", params = sim@params)
 }
 #' @export
 getSSB.MizerParams <- function(object) {
     params <- object
+    if (isTRUE(params@second_order_w[["bin_average"]])) {
+        weight <- sweep(
+            bin_average_weight(sweep(params@maturity, 2, params@w, "*")),
+            2, params@dw, "*")
+        return(rowSums(params@initial_n * weight))
+    }
     return(((params@initial_n * params@maturity) %*%
                 (params@w * params@dw))[, , drop = TRUE])
 }
@@ -476,8 +604,17 @@ getBiomass.MizerSim <- function(object, use_cutoff = FALSE, ...) {
         } else {
             size_range <- get_size_range_array(sim@params, ...)
         }
-    result <- apply(sweep(sweep(sim@n, c(2, 3), size_range, "*"), 3,
-                          sim@params@w * sim@params@dw, "*"), c(1, 2), sum)
+    if (isTRUE(sim@params@second_order_w[["bin_average"]])) {
+        # Composite weight K[sp, w] = size_range * w. Bin-averaging the whole
+        # weight (including the window mask) makes the straddling bin partial.
+        weight <- sweep(
+            bin_average_weight(sweep(size_range, 2, sim@params@w, "*")),
+            2, sim@params@dw, "*")
+        result <- apply(sweep(sim@n, c(2, 3), weight, "*"), c(1, 2), sum)
+    } else {
+        result <- apply(sweep(sweep(sim@n, c(2, 3), size_range, "*"), 3,
+                              sim@params@w * sim@params@dw, "*"), c(1, 2), sum)
+    }
     ArrayTimeBySpecies(result, value_name = "Biomass", units = "g",
                        params = sim@params)
 }
@@ -493,6 +630,12 @@ getBiomass.MizerParams <- function(object, use_cutoff = FALSE, ...) {
             size_range <- get_size_range_array(params, min_w = biomass_cutoff)
         } else {
             size_range <- get_size_range_array(params, ...)
+        }
+        if (isTRUE(params@second_order_w[["bin_average"]])) {
+            weight <- sweep(
+                bin_average_weight(sweep(size_range, 2, params@w, "*")),
+                2, params@dw, "*")
+            return(rowSums(params@initial_n * weight))
         }
         return(((params@initial_n * size_range) %*%
                     (params@w * params@dw))[, , drop = TRUE])
@@ -571,15 +714,29 @@ getYieldGear <- function(object) {
 #' @export
 getYieldGear.MizerSim <- function(object) {
     sim <- object
+    f_gear <- getFMortGear(sim)  # time x gear x sp x w
+    if (isTRUE(sim@params@second_order_w[["bin_average"]])) {
+        # Full weight is F * w; bin-average the whole product over the size axis.
+        weight <- sweep(
+            bin_average_weight(sweep(f_gear, 4, sim@params@w, "*")),
+            4, sim@params@dw, "*")
+        return(apply(sweep(weight, c(1, 3, 4), sim@n, "*"), c(1, 2, 3), sum))
+    }
     biomass <- sweep(sim@n, 3, sim@params@w * sim@params@dw, "*")
-    f_gear <- getFMortGear(sim)
     return(apply(sweep(f_gear, c(1, 3, 4), biomass, "*"), c(1, 2, 3), sum))
 }
 #' @export
 getYieldGear.MizerParams <- function(object) {
     params <- object
+    f_gear <- getFMortGear(params)  # gear x sp x w
+    if (isTRUE(params@second_order_w[["bin_average"]])) {
+        weight <- sweep(
+            bin_average_weight(sweep(f_gear, 3, params@w, "*")),
+            3, params@dw, "*")
+        return(apply(sweep(weight, c(2, 3), params@initial_n, "*"),
+                     c(1, 2), sum))
+    }
     biomass <- sweep(params@initial_n, 2, params@w * params@dw, "*")
-    f_gear <- getFMortGear(params)
     return(apply(sweep(f_gear, c(2, 3), biomass, "*"), c(1, 2), sum))
 }
 
@@ -637,17 +794,32 @@ getYield <- function(object) {
 #' @export
 getYield.MizerSim <- function(object) {
     sim <- object
-    biomass <- sweep(sim@n, 3, sim@params@w * sim@params@dw, "*")
-    f <- getFMort(sim, drop = FALSE)
-    result <- apply(f * biomass, c(1, 2), sum)
+    f <- getFMort(sim, drop = FALSE)  # time x sp x w
+    if (isTRUE(sim@params@second_order_w[["bin_average"]])) {
+        # Full weight is F * w; bin-average the whole product over the
+        # size axis.
+        weight <- sweep(
+            bin_average_weight(sweep(f, 3, sim@params@w, "*")),
+            3, sim@params@dw, "*")
+        result <- apply(weight * sim@n, c(1, 2), sum)
+    } else {
+        biomass <- sweep(sim@n, 3, sim@params@w * sim@params@dw, "*")
+        result <- apply(f * biomass, c(1, 2), sum)
+    }
     ArrayTimeBySpecies(result, value_name = "Yield rate", units = "g/year",
                        params = sim@params)
 }
 #' @export
 getYield.MizerParams <- function(object) {
     params <- object
+    f <- getFMort(params, drop = FALSE)  # sp x w
+    if (isTRUE(params@second_order_w[["bin_average"]])) {
+        weight <- sweep(
+            bin_average_weight(sweep(f, 2, params@w, "*")),
+            2, params@dw, "*")
+        return(rowSums(weight * params@initial_n))
+    }
     biomass <- sweep(params@initial_n, 2, params@w * params@dw, "*")
-    f <- getFMort(params, drop = FALSE)
     return(apply(f * biomass, 1, sum))
 }
 
@@ -705,8 +877,14 @@ getGrowthCurves.MizerParams <- function(object,
     g <- getEGrowth(params)
     for (j in seq_along(species)) {
         i <- idx[j]
-        g_fn <- stats::approxfun(c(params@w, params@species_params$w_max[[i]]),
-                                 c(g[i, ], 0))
+        w_max <- params@species_params$w_max[[i]]
+        # Build the interpolation points, appending a point at `w_max` where
+        # growth is zero. Drop any grid points at or above `w_max` first to
+        # avoid duplicate x values, which would trigger a warning from
+        # approxfun().
+        keep <- params@w < w_max
+        g_fn <- stats::approxfun(c(params@w[keep], w_max),
+                                 c(g[i, keep], 0))
         myodefun <- function(t, state, parameters) {
             return(list(g_fn(state)))
         }
@@ -801,16 +979,7 @@ get_size_range_array <- function(params, min_w = min(params@w),
 
 
 #### summary for MizerParams ####
-#' Summarize MizerParams object
-#'
-#' Outputs a general summary of the structure and content of the object
-#' @param object A `MizerParams` object.
-#' @param ... Other arguments (currently not used).
-#' @return The MizerParams object, invisibly
 #' @export
-#' @concept summary_function
-#' @examples
-#' summary(NS_params)
 summary.MizerParams <- function(object, ...) {
     params <- validParams(object)
     cat("An object of class \"", as.character(class(params)), "\" \n", sep = "")
@@ -852,7 +1021,7 @@ summary.MizerParams <- function(object, ...) {
     cat("\tno. size bins:\t", length(params@w_full[params@initial_n_pp > 0]),
         "\t(", length(params@w_full), " size bins in total)\n", sep = "")
     cat("Species details:\n")
-    sel_params <- intersect(c("species", "w_max", "w_mat", "w_min", "f0", "fc",
+    sel_params <- intersect(c("species", "w_inf", "w_mat", "w_min", "f0", "fc",
                               "age_mat", "beta", "sigma"),
                             names(params@species_params))
     sp <- params@species_params[, sel_params]
@@ -873,20 +1042,29 @@ summary.MizerParams <- function(object, ...) {
 
 
 #### summary for MizerSim ####
-#' Summarize MizerSim object
-#'
-#' Outputs a general summary of the structure and content of the object
-#' @param object A `MizerSim` object.
-#' @param ... Other arguments (currently not used).
-#' @return The MizerSim object, invisibly
 #' @export
-#' @concept summary_function
-#' @examples
-#' summary(NS_sim)
 summary.MizerSim <- function(object, ...) {
     cat("An object of class \"", as.character(class(object)), "\" \n", sep = "")
     cat("Parameters:\n")
-    summary(object@params)
+    # Report the effort that was actually used during the simulation (stored in
+    # the `effort` slot) rather than the model's `initial_effort`. We delegate
+    # to the params summary on a copy whose `initial_effort` holds the effort
+    # used, averaged over the saved timesteps for each gear.
+    params <- object@params
+    used <- object@effort
+    gears <- dimnames(used)$gear
+    params@initial_effort[gears] <- colMeans(used)
+    summary(params)
+    # Flag any gears whose effort was not constant over the saved timesteps, so
+    # that the averaged value shown above is not mistaken for a fixed effort.
+    varied <- apply(used, 2, function(x) !isTRUE(all.equal(min(x), max(x))))
+    if (any(varied)) {
+        ranges <- vapply(gears[varied], function(g) {
+            sprintf("%s (%1.2f to %1.2f)", g, min(used[, g]), max(used[, g]))
+        }, character(1))
+        cat("\tNote: effort varied over time for ", toString(ranges),
+            "; mean shown above.\n", sep = "")
+    }
     cat("Simulation parameters:\n")
     # Need to store t_max and dt in a description slot? Or just in simulation
     # time parameters? Like a list?
@@ -897,16 +1075,12 @@ summary.MizerSim <- function(object, ...) {
     cat("\tOutput stored every ",
         as.numeric(dimnames(object@n)$time)[2] -
             as.numeric(dimnames(object@n)$time)[1], " years\n", sep = "")
+    cat("\tTime step ", object@sim_params$dt, sep = "")
+    cat("\tMethod: ", object@sim_params$method, sep = "")
     invisible(object)
 }
 
-#' Display structure of MizerParams object
-#'
-#' Prints a clean, compact summary of the slots in a `MizerParams` object.
-#' @param object A `MizerParams` object.
-#' @param max.level Maximum level of nesting to print. Defaults to `NA` (no limit).
-#' @param ... Other arguments passed to [utils::str()].
-#' @return `NULL`, invisibly.
+
 #' @export
 str.MizerParams <- function(object, max.level = NA, ...) {
     cat("Formal class 'MizerParams' [package \"mizer\"] with ",
@@ -928,13 +1102,7 @@ str.MizerParams <- function(object, max.level = NA, ...) {
     invisible(NULL)
 }
 
-#' Display structure of MizerSim object
-#'
-#' Prints a clean, compact summary of the slots in a `MizerSim` object.
-#' @param object A `MizerSim` object.
-#' @param max.level Maximum level of nesting to print. Defaults to `NA` (no limit).
-#' @param ... Other arguments passed to [utils::str()].
-#' @return `NULL`, invisibly.
+
 #' @export
 str.MizerSim <- function(object, max.level = NA, ...) {
     cat("Formal class 'MizerSim' [package \"mizer\"] with ",
@@ -955,6 +1123,3 @@ str.MizerSim <- function(object, max.level = NA, ...) {
     }
     invisible(NULL)
 }
-
-# Indicator functions ####
-

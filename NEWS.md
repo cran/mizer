@@ -1,7 +1,228 @@
+# mizer 3.1.0
+
+Version 3.1.0 builds on 3.0.0 with an experimental second-order accurate
+numerical scheme in size, additional higher-order time-stepping options, and a
+range of smaller improvements and bug fixes. Unless you opt in to the
+experimental scheme, results are unchanged from 3.0.0.
+
+For an overview see the [release announcement](https://blog.mizer.sizespectrum.org/posts/2026-06-26-mizer-3-1-announcement/) on the mizer blog.
+
+## Experimental second-order in w accuracy
+
+mizer gains an optional, experimental second-order accurate finite-volume scheme
+in the size variable `w`. It is controlled by a new `second_order_w` slot and is
+switched off by default, so all default results are unchanged (the first-order
+path is byte-identical to previous mizer). Enabling it shifts size-integrated
+diagnostics and the resource spectrum by `O(Δw)` (more on coarse grids), so
+calibrated models may need recalibrating. See `?second_order_w` and the
+"Numerical Details" vignette.
+
+- The `second_order_w` slot is a named list with a character entry `flux`
+  (`"upwind"`, `"van_leer"` or `"centred"`) selecting the advective
+  reconstruction, and a logical entry `bin_average` selecting the bin-averaged
+  rate quadratures. A fully second-order scheme needs both. Use the new
+  `second_order_w()` / `second_order_w<-()` accessors to get and set them. The
+  setter accepts a single logical, which sets both entries — `flux = "van_leer"`
+  (a TVD reconstruction that keeps abundances non-negative) and
+  `bin_average = TRUE` — or a named vector for individual control, e.g.
+  `second_order_w(params) <- c(flux = "centred")` for the unlimited flux that is
+  genuinely second order even at extrema. Setting it re-runs `setParams()` to
+  rebuild the precomputed arrays. The default `flux = "upwind"`,
+  `bin_average = FALSE` is the original first-order upwind scheme. Old objects
+  are upgraded automatically.
+
+- `newMultispeciesParams()`, `newTraitParams()`, `newCommunityParams()` and
+  `newSingleSpeciesParams()` gain a `second_order_w` argument (default `FALSE`,
+  accepting the same values as the setter) that builds the new model with the
+  scheme already selected. Under `bin_average` the resource and abundance power
+  laws are constructed bin-averaged from the start; the construction-time
+  steady-state solve always uses the robust upwind flux, and the chosen flux is
+  activated only for the returned model. (#379)
+
+- When `bin_average` is `TRUE`, every point-sampled power law and quadrature that
+  feeds the finite-volume update is replaced by its exact bin average over each
+  size bin (the bin straddling `w_pp_cutoff` receiving the partial average), so
+  the sinks, sources and capacities are consistent with the bin-integrated
+  encounter convolution (#374):
+
+  - the external mortality \eqn{z_{ext} w^d} (`setExtMort()`) and external
+    diffusion \eqn{D_{ext} w^{n+1}} (`setExtDiffusion()`);
+  - the auto-calculated resource intrinsic growth \eqn{r_p w^{n-1}} and carrying
+    capacity \eqn{\kappa w^{-\lambda}} (`setResource()`; user-supplied full
+    vectors are left untouched), together with the matching initial resource
+    abundance \eqn{\kappa w^{-\lambda}} used both for the initial spectrum and
+    for the temporary prey spectra behind the default `gamma`/`f0` and consumer
+    abundances;
+  - the predation kernels, which are now predator- and prey-bin averaged (via
+    trapezoid folds), so `getEncounter()`, `getPredRate()`, `getPredMort()`,
+    `getResourceMort()` and `getDiffusion()` become second order with no change
+    to the rate functions and no extra runtime cost. The predation-diffusion
+    integral uses a dedicated Fourier kernel held in the new `ft_pred_kernel_d`
+    slot, which carries the extra power of prey size (\eqn{w_p^2 dw_p}, the
+    \eqn{\beta^{3s}} Jacobian) that the diffusion integrand needs; in the
+    first-order scheme it equals `ft_pred_kernel_e`, so existing models are
+    byte-identical. (#384)
+  - the gear selectivity (`calc_selectivity()`), so a knife-edge gear gets the
+    exact fraction of the straddling bin above the knife edge and fishing
+    mortality is second order;
+  - the per-capita reproductive investment \eqn{\psi(w) E_r(w)} in `mizerRDI()`
+    (the full investment averaged together, not `psi` alone), making
+    density-independent reproduction second order.
+
+- The advective growth flux uses the chosen `flux` reconstruction (`"van_leer"`
+  or `"centred"`) for a second-order transport step. Combined with the
+  bin-averaged diffusion from `getDiffusion()`, the full growth-transport step is
+  second order. The diffusion coefficient is consumed from `getDiffusion()`
+  directly rather than being re-averaged by the transport routine.
+
+- Size-integrated and size-resolved diagnostics are placed and weighted
+  consistently with the finite-volume scheme when `bin_average` is `TRUE`:
+
+  - the summary integrals `getBiomass()`, `getSSB()`, `getYield()`,
+    `getYieldGear()`, `getDiet()` and `getTrophicLevel()` use the trapezoidal
+    bin-average of the size weight (`getN()` is already exact);
+  - the size-resolved bin-average diagnostics — the mortalities `getPredMort()`,
+    `getFMort()`, `getMort()`, `getExtMort()` and the reproductive investment
+    `getERepro()` — are reported at the geometric bin centre
+    \eqn{\sqrt{w_j w_{j+1}}}, the location where a bin average actually lives,
+    while point-valued quantities (encounter, growth) stay on the grid nodes.
+    The `ArraySpeciesBySize` / `ArrayTimeBySpeciesBySize` classes carry a
+    `representation` tag (`"point"` / `"average"`) recording this. (#382)
+  - the spectrum plots `plotSpectra()`, `plotlySpectra()`,
+    `plotSpectraRelative()` and `animateSpectra()` evaluate both the `w^power`
+    weight and the marker location at the geometric bin centre
+    \eqn{w^* = w \sqrt{\beta}}, placing each marker as a point on the continuous
+    `N w^power` curve instead of misplacing it at the bin edge (the error grows
+    with `power`, worst for the common `power = 2` Sheldon plot). (#383)
+
+## Higher-order time-stepping
+
+- `project()` gains a new time-stepping option `method = "tr_bdf2"`. This is an
+  L-stable, second-order TR-BDF2 scheme that retains the second-order accuracy of
+  `method = "predictor_corrector"` while damping the oscillations the
+  Crank-Nicolson corrector can show at large time steps. Like the other methods
+  it only requires tridiagonal solves. See the "Numerical Details" vignette.
+
+- Under the second-order methods (`"predictor_corrector"` and `"tr_bdf2"`) the
+  resource is now advanced with midpoint resource mortality rather than the
+  start-of-step value, and the other components (set via `setComponent()`) now
+  also receive a corrector step with the midpoint rates. So the resource and the
+  other components are integrated to the same second-order accuracy in time as
+  the consumer spectra. The `"euler"` method and the steady states are unchanged.
+
+## Other improvements
+
+- Extension packages can now upgrade their own data in saved model objects
+  independently of the mizer version. The `@extensions` slot can record, for
+  each extension, the version of the extension package that the object conforms
+  to (write entries with the new `recordExtension()`). `needs_upgrading()` flags
+  an object when an extension's recorded version is missing or older than the
+  installed package version, and `validParams()` then calls the extension's own
+  `upgrade()` method (an S3 method on `utils::upgrade()`, registered with
+  `@exportS3Method utils::upgrade`). The core mizer upgrade is now itself the
+  `upgrade.MizerParams()` / `upgrade.MizerSim()` method. See the "Upgrading
+  objects across versions of your extension" section of
+  `vignette("creating-extension-packages")`.
+
+- `getDiet()` gains a `MizerSim` method and `plotDiet()` for a `MizerSim` now
+  accepts a `time_range` argument, computing the diet from the simulated
+  abundances at the requested times rather than always using the initial
+  abundances. As for the other `MizerSim` plotting functions, `time_range`
+  defaults to the final saved time step. When a range spanning several saved
+  time steps is given, the consumption rates are averaged over the range and
+  then normalised to proportions (rather than averaging the per-step
+  proportions, which are normalised independently). (#357)
+
+- New `getFluxGradient()` function returns the flux divergence
+  \eqn{(J_{j+1} - J_j)/\Delta w_j} that appears as the transport term in the
+  discretised size-spectrum equation. The bin-boundary fluxes are obtained from
+  `getFlux()`, so the advective-flux scheme stored in the `flux` entry of the
+  `second_order_w` slot is used, with the largest size class closed by the
+  boundary condition \eqn{N_{K+1} = 0}. Like `getFlux()`, it has both
+  `MizerParams` and `MizerSim` methods, returning an `ArraySpeciesBySize` or
+  `ArrayTimeBySpeciesBySize` object respectively.
+
+- `getDiffusion()` now works with a custom predation kernel that depends on
+  predator and prey size separately rather than only on their ratio. As for
+  `getEncounter()`, when such a kernel has been set (with
+  `setPredKernel(params, pred_kernel = ...)`) the diffusion integral is
+  evaluated by direct summation over the full predation kernel instead of via
+  the FFT method, which assumes a ratio-only kernel. (#373)
+
+- `getTrophicLevel()` and `getTrophicLevelBySpecies()` now assign the resource a
+  size-dependent trophic level
+  \eqn{T_R(w) = \max(1, 1 + \log(w / w_R) / \log(\beta_R))} instead of treating
+  it as trophic level 0. The new `w_R` (average primary-producer size) and
+  `beta_R` (average resource predator/prey mass ratio) arguments control this.
+
+- Resource functions now return classed objects that support the same
+  convenient `print()`, `summary()`, `plot()` and `as.data.frame()` methods as
+  the consumer rate functions. `getResourceMort()`, `initialNResource()`,
+  `finalNResource()`, `resource_rate()`, `resource_capacity()` and
+  `resource_level()` return an `ArrayResourceBySize` object, and `NResource()`
+  returns an `ArrayTimeByResourceBySize` object, so you can now do e.g.
+  `plot(getResourceMort(NS_params))` or `plot(NResource(NS_sim))`.
+
+- `summary()` of a `MizerSim` object now reports the fishing effort that was
+  actually used during the simulation rather than the model's `initial_effort`.
+  Gears whose effort varied over time show the mean effort, flagged with a note
+  giving the min-max range.
+
+- Added a new vignette explaining the calculation of default parameter values
+  (#189).
+
+## Breaking changes
+
+- The maximum-size species parameters have been clarified (#325). The von
+  Bertalanffy asymptotic size `w_inf` is now the required maximum-size parameter
+  and is used as the default for `w_repro_max` (previously `w_max`) and `w_mat`.
+  `w_max` is now purely a computational boundary (the size grid and plot range)
+  and defaults to `1.5 * w_inf`. `w_repro_max` is documented as the size at which
+  a typical mature individual invests all its energy into reproduction, not as a
+  hard ceiling on size. The default value of the external mortality parameter
+  `z0` is now calculated from `w_inf` rather than `w_max`, so the purely
+  computational boundary `w_max` no longer influences any model parameter. For
+  backwards compatibility, if `w_inf` is not supplied it is taken from
+  `w_repro_max` or `w_max`, so existing models and scripts are unaffected;
+  however, new models built from the defaults may differ from 3.0.0.
+
+## Bug fixes
+
+- Fixed a bug in `project()` where the abundances of other components (set via
+  `setComponent()`) were advanced only once per saved time step instead of once
+  per `dt` time step. Their dynamics are now integrated with the same time step
+  as the consumer and resource spectra, so results no longer depend on `t_save`.
+
+- `getGrowthCurves()` no longer emits a cryptic
+  `collapsing to unique 'x' values` warning when a species' `w_max` lies exactly
+  on a grid point. (#413)
+
+- `getRDI()`, `getRDD()` and `getFlux()` on a `MizerSim` object now correctly use
+  the simulated time-varying effort instead of the initial effort. (#370)
+
+- `plotCDF()` / `plotlyCDF()` now plot each cumulative value on its bin's
+  **upper** edge `w_k + dw_k`, following the inclusive cumulative-sum convention
+  (the sum through bin `k` is the integral up to that bin's upper edge). This
+  corrects a long-standing one-bin location offset and applies in both the
+  default and the second-order schemes; under second-order bin-averaging the CDF
+  is then second-order accurate in its placement as well as its increments.
+  (#383)
+
+- `plotYield()` now uses `sim2 = NULL` instead of `missing(sim2)` to detect the
+  optional second simulation argument, so it works correctly with `do.call()`.
+  This is backward-compatible.
+
+- `distanceMaxRelRDI()` now returns `Inf` instead of `NaN` when a previous RDI
+  is zero, so `projectToSteady()` no longer mistakes a `NaN` distance for
+  convergence.
+
 # mizer 3.0.0
 
 This release brings new biological realism, improved numerics, a richer 
 interactive analysis experience, and a composable extension framework.
+For an overview see the
+[blog post](https://blog.mizer.sizespectrum.org/posts/2026-05-13-mizer-3-0-announcement/)
+pre-announcing the release.
 
 ## Diffusion in mizer
 

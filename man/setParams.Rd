@@ -41,10 +41,10 @@ column in the \code{species_params}.}
 mortality rate.  If not supplied, a default is set as described in the
 section "Setting external mortality rate".}
     \item{\code{z0pre}}{If \code{z0}, the mortality from other sources, is not a column
-in the species data frame, it is calculated as z0pre * w_max ^ z0exp.
+in the species data frame, it is calculated as z0pre * w_inf ^ z0exp.
 Default value is 0.6.}
     \item{\code{z0exp}}{If \code{z0}, the mortality from other sources, is not a column in
-the species data frame, it is calculated as \code{z0pre * w_max ^ z0exp}.
+the species data frame, it is calculated as \code{z0pre * w_inf ^ z0exp}.
 Default value is \code{n-1}.}
     \item{\code{z0}}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{ext_mort} instead. Not to
 be confused with the species_parameter \code{z0}.}
@@ -345,6 +345,18 @@ Otherwise it is calculated as
 \deqn{z_{0.i} = {\tt z0pre}_i\, w_{inf}^{\tt z0exp}.}{z_{0.i} = z0pre_i w_{inf}^{z0exp}.}
 Missing values of \code{z_ext} are set to 0 and missing values of \code{d} are set to
 \code{n - 1}.
+
+By default the power law is evaluated at the left bin edges \eqn{w_j}
+(point sampling). If the \code{bin_average} entry of the \code{second_order_w} slot is
+\code{TRUE} (see \code{\link[=second_order_w]{second_order_w()}}), then the \eqn{z_{ext} w^d} term is instead
+replaced by its exact average over each bin \eqn{[w_j, w_{j+1}]},
+\deqn{\frac{z_{ext}}{\Delta w_j}\int_{w_j}^{w_{j+1}} w^d\, dw
+  = z_{ext}\,\frac{w_{j+1}^{d+1} - w_j^{d+1}}{(d+1)\,\Delta w_j},}
+(with the limiting form \eqn{z_{ext}\ln(w_{j+1}/w_j)/\Delta w_j} when
+\eqn{d = -1}). This is the consistent choice in the finite-volume scheme,
+where the external mortality multiplies the bin-averaged abundance. The
+bin-averaging is applied only to the auto-calculated power-law default; a
+user-supplied \code{ext_mort} array is left untouched.
 }
 
 \section{Setting external encounter rate}{
@@ -397,11 +409,13 @@ available energy
 that is invested into reproduction is the product of two factors: the
 proportion \code{maturity} of individuals that are mature and the proportion
 \code{repro_prop} of the energy available to a mature individual that is
-invested into reproduction. There is a size \code{w_repro_max} at which all the
-energy is invested into reproduction and therefore all growth stops. There
-can be no fish larger than \code{w_repro_max}. If you have not specified the
-\code{w_repro_max} column in the species parameter data frame, then the maximum size
-\code{w_max} is used instead.
+invested into reproduction. There is a size \code{w_repro_max} at which a typical
+mature individual invests all of its available energy into reproduction.
+This is \strong{not} a hard ceiling on size: not all individuals are mature at
+\code{w_repro_max}, and diffusion in the growth process allows some individuals to
+grow beyond it, so fish larger than \code{w_repro_max} can exist. If you have not
+specified the \code{w_repro_max} column in the species parameter data frame, then
+the von Bertalanffy asymptotic size \code{w_inf} is used instead.
 
 \subsection{Maturity ogive}{
 If the the proportion of individuals that are mature is not supplied via
@@ -413,7 +427,7 @@ maturity ogive that changes from 0 to 1 at around the maturity size:
 although each species has its own maturity ogive.)
 The maturity weights are taken from the \code{w_mat} column of the
 species_params data frame. Any missing maturity weights are set to 1/4 of the
-maximum weight in the \code{w_max} column.
+asymptotic size in the \code{w_inf} column.
 
 The exponent \eqn{U} determines the steepness of the maturity ogive. By
 default it is chosen as \eqn{U = 10}, however this can be overridden by
@@ -439,9 +453,9 @@ the exponent \eqn{m} determines the scaling of the investment into
 reproduction for mature individuals. By default it is chosen to be
 \eqn{m = 1} so that the rate at which energy is invested into reproduction
 scales linearly with the size. This default can be overridden by including a
-column \code{m} in the species parameter dataframe. The maximum sizes are taken
-from the \code{w_repro_max} column in the species parameter data frame, if it
-exists, or otherwise from the \code{w_max} column.
+column \code{m} in the species parameter dataframe. The sizes \eqn{w_{repro\_max}}
+are taken from the \code{w_repro_max} column in the species parameter data frame,
+if it exists, or otherwise from the \code{w_inf} column.
 
 The total proportion of energy invested into reproduction of an individual
 of size \eqn{w} is then

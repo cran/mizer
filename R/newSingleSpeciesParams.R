@@ -77,6 +77,7 @@ newSingleSpeciesParams <-
              gamma = NA,
              ext_mort_prop = 0,
              reproduction_level = 0,
+             second_order_w = FALSE,
              R_factor = deprecated(),
              w_inf = deprecated(),
              k_vb = deprecated()) {
@@ -153,6 +154,7 @@ newSingleSpeciesParams <-
     species_params <- data.frame(
         species = species_name,
         w_min = w_min,
+        w_inf = w_max,
         w_max = w_max,
         w_mat = w_mat,
         w_min_idx = 1,
@@ -168,6 +170,10 @@ newSingleSpeciesParams <-
         erepro = erepro,
         stringsAsFactors = FALSE
     )
+    # Build with the requested bin-averaging but the robust upwind flux; the
+    # chosen flux scheme is for projection only and is activated at the end,
+    # after the construction-time steady-state solve below.
+    target_sow <- resolve_second_order_w(second_order_w)
     params <-
         suppressMessages(newMultispeciesParams(
             species_params,
@@ -179,7 +185,8 @@ newSingleSpeciesParams <-
             kappa = kappa,
             n = n,
             p = p,
-            resource_dynamics = "resource_constant"
+            resource_dynamics = "resource_constant",
+            second_order_w = c(bin_average = target_sow[["bin_average"]])
         ))
     # No cannibalism
     params@interaction[] <- 0
@@ -211,16 +218,16 @@ newSingleSpeciesParams <-
 
     initial_n <- params@psi  # get array with correct dimensions and names
     initial_n[, ] <- 0
-    mumu <- mu0 * w^(n - 1)  # Death rate
-    params@mu_b[] <- mumu
-    comment(params@mu_b) <- "power-law"
+    params@species_params$z_ext <- mu0
+    params@given_species_params$z_ext <- mu0
+    params <- setExtMort(params)
     i_inf <- sum(params@w <= w_max)  # index of maximum size
     idx <- 1:(i_inf - 1)
     idxs <- 1:i_inf
     gg <- hbar * w^n * (1 - params@psi[1, ])  # Growth rate
     # Steady state solution of the upwind-difference scheme used in project
     growth_matrix <- matrix(gg, nrow = 1)
-    mort_matrix <- matrix(mumu, nrow = 1)
+    mort_matrix <- params@mu_b
     diffusion_matrix <- growth_matrix
     diffusion_matrix[] <- 0
     n_exact <- get_steady_state_n(params, growth_matrix, mort_matrix,
@@ -246,6 +253,9 @@ newSingleSpeciesParams <-
     params@given_species_params$erepro <- params@species_params$erepro
 
     params <- setBevertonHolt(params, reproduction_level = reproduction_level)
+
+    # Activate the chosen advective-flux scheme now construction is done.
+    params@second_order_w[["flux"]] <- target_sow[["flux"]]
 
     return(params)
 }
